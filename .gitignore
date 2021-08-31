@@ -1,0 +1,8 @@
+npm-debug.log
+raw/
+config/development.json
+config/production.json
+node_modules/
+config/test.json
+docker-compose.yml
+.vscode
