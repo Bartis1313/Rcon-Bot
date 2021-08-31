@@ -25,8 +25,8 @@ services:
       - DISCORD_COMMAND_PREFIX=!
       - DISCORD_RCON_ROLEID=
       - DISCORD_RCON_ROLEID2=
-      - BATTLECON_API_URLS=http://server1:3000,http://server2:3000,http://server3:3000
-      - WAIT_HOSTS=server1:3000,server2:3000,server3:3000
+      - BATTLECON_API_URLS=http://server1:3000
+      - WAIT_HOSTS=server1:3000
 ```
 
 ## Docker config
