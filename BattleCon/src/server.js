@@ -34,7 +34,6 @@ app.listen(process.env.BATTLECON_PORT || 3000, () => {
     console.log(`Server running on port ${process.env.BATTLECON_PORT || 3000}`);
 });
 
-// this will run always, if error then new process is generated
 process.on('SIGTERM', () => {
     server.close(() => {
         console.log('Process terminated')

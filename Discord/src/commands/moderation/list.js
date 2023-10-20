@@ -295,22 +295,8 @@ module.exports = class list {
         }
     }
 
-
-    // TODO add some reading local urls method
-
-    async getGoodUrl(server) {
-        switch (server.toString()) {
-            case "http://server1:3000":
-                return ""
-            case "http://server2:3000":
-                return ""
-            default:
-                return ""
-        }
-    }
-
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID || config.rconRoleId) || message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID2 || config.rconRoleId2))) {
+        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID || config.rconRoleId))) {
             message.reply("You don't have permission to use this command.")
             return
         }
@@ -336,7 +322,6 @@ module.exports = class list {
                         let embedNew = new Discord.MessageEmbed()
                             .setTitle(`There are ${await this.getCount(server)}/64 players\nMap: ${await this.mapName(server)} Mode: ${await this.modeName(server)}\nNext Map: ${await this.getNext(server)}`)
                             .setTimestamp()
-                            .setURL(await this.getGoodUrl(server))
                             .setColor('GREEN')
                             .setFooter('Author: Bartis')
                             .setDescription(`Scores    K   D    Names\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)

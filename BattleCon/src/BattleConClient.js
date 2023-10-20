@@ -1,17 +1,24 @@
 import BattleCon from "../src/BattleCon";
 // import Discord from 'discord.js'; - was used for chat webhook
+const config = require("config")
 
 class BattleConClient {
   constructor(host, port, password) {
-    this._connection = new BattleCon(host, port, password).use("BF4");
+    this._connection = new BattleCon(host, port, password).use(process.env.GAME || config.game);
     this.initialize()
   }
 
 
   initialize() {
+    let reconnectInterval = null;
+
     let connection = this._connection
     this._connection.on("connect", function () {
       console.log("# Connected to " + connection.host + ":" + connection.port);
+      if (reconnectInterval !== null) {
+        clearInterval(reconnectInterval);
+        reconnectInterval = null;
+      }
     });
 
     this._connection.on("login", function () {
@@ -47,17 +54,16 @@ class BattleConClient {
       connection.on("player.leave", function (name, info) {
       });
     });
-
-    this._connection.on("player.chat", function (name, text, subset) {
-      if (name !== "Server" && !text.startsWith("ID_CHAT")) {
-        // webhook.send(name + " -> " + subset.join(' ') + ": " + text);
-      }
-    });
-
+    
     this._connection.on("close", () => {
       const date = new Date();
       console.log(`Disconnect: ${date.toLocaleString()}`);
-      process.kill(process.pid, 'SIGTERM');
+      if (reconnectInterval === null) {
+        reconnectInterval = setInterval(() => {
+          this._connection.connect();
+          console.log("Retried to connect");
+        }, 60_000); // 60secs
+      }
     });
 
     this._connection.on("error", (err) => {
@@ -66,6 +72,7 @@ class BattleConClient {
   }
 
   connect() {
+
     this._connection.connect(); // Connects and logs in
   }
   getBool() {

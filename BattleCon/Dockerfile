@@ -1,4 +1,4 @@
-FROM node:13.10.1
+FROM node:20.8.1
 LABEL maintainer="Bartis"
 
 COPY package.json /src/package.json

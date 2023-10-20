@@ -1,8 +1,6 @@
 const config = require('config');
 const Discord = require('discord.js');
 const client = new Discord.Client();
-const fetch = require('node-fetch');
-//const players = require('./playerCount.js');
 
 const { CommandHandler } = require("djs-commands")
 const CH = new CommandHandler({

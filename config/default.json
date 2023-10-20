@@ -1,0 +1,10 @@
+{
+    "host": "127.0.0.1",
+    "port": "47000",
+    "pass": "0",
+    "game": "BF4",
+    "discordToken": "",
+    "commandPrefix": "!",
+    "bconApiUrls": [ "http://localhost:3000", "http://localhost:3001" ],
+    "rconRoleId": ""
+}

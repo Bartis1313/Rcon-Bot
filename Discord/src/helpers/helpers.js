@@ -71,7 +71,7 @@ class Helpers {
                 const message = await msg.channel.send(embed);
                 // React with possible choices
                 for (const choice of possibleChoices) {
-                    message.react(choice);
+                    await message.react(choice);
                 }
 
                 const filter = (reaction, user) => {
