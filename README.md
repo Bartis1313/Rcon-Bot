@@ -11,6 +11,7 @@ services:
       - RCON_HOST=
       - RCON_PORT=
       - RCON_PASS=
+      - GAME=
     deploy:
       restart_policy:
         condition: any
@@ -24,7 +25,6 @@ services:
       - DISCORD_TOKEN=
       - DISCORD_COMMAND_PREFIX=!
       - DISCORD_RCON_ROLEID=
-      - DISCORD_RCON_ROLEID2=
       - BATTLECON_API_URLS=http://server1:3000
       - WAIT_HOSTS=server1:3000
 ```
@@ -39,6 +39,7 @@ services:
     - RCON_HOST=<ServerIp:192.168.1.2>
     - RCON_PORT=<RconPort:47200>
     - RCON_PASS=<RconPassword:password>
+    - GAME=<BF4/BF3>
 
     - DISCORD_TOKEN=
     - DISCORD_COMMAND_PREFIX=!
@@ -48,32 +49,14 @@ services:
 2. Use the command `docker-compose up`
 3. This can be edited everytime, rerun process if new
 
-## Config json Example
-Remember that more servers = more api urls
-```json
-{
-    "host": "",
-    "port": "",
-    "pass": "",
-    "discordToken": "",
-    "commandPrefix": "!",
-    "bconApiUrls": [ "http://localhost:3000"],
-    "rconRoleId": "",
-    "rconRoleId2": "",
-    "database_login": "",
-    "database_pass": "",
-    "address": ""
-}
-```
-
 ## Local test (windows) 
 Use env variables for terminal or set the config
 ```bash
-$env:RCON_HOST="127.0.0.1";$env:RCON_PORT="25200";$env:RCON_PASS="my password";$env:BATTLECON_PORT="3000";node index.js
+$env:RCON_HOST="127.0.0.1";$env:RCON_PORT="25200";$env:RCON_PASS="my password";$env:BATTLECON_PORT="3000";$env:GAME="BF4";node index.js
 ```
 ## Local test (linux) 
 ```bash
-RCON_HOST="127.0.0.1" RCON_PORT="25200" RCON_PASS="my password" BATTLECON_PORT="3000"
+RCON_HOST="127.0.0.1" RCON_PORT="25200" RCON_PASS="my password" BATTLECON_PORT="3000" GAME="BF4"
 ```
 Using ``export`` to local envs on linux will make them to be always on the device, I don't recommend it.
 
