@@ -2,6 +2,8 @@ var config = require("config")
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
+import getVer from '../../helpers/ver';
+import getMapObj from '../../helpers/mapsObj'
 
 module.exports = class map {
     constructor() {
@@ -60,7 +62,7 @@ module.exports = class map {
         })
             .then(response => response.json())
             .then(json => {
-                console.log(json)
+                //console.log(json)
                 return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
             })
             .catch(error => {
@@ -70,41 +72,7 @@ module.exports = class map {
     }
 
     getMapArray() {
-        const maps = {
-            MP_Abandoned: 'Zavod 311',
-            MP_Damage: 'Lancang Dam',
-            MP_Flooded: 'Flood Zone',
-            MP_Journey: 'Golmud Railway',
-            MP_Naval: 'Paracel Storm',
-            MP_Prison: 'Operation Locker',
-            MP_Resort: 'Hainan Resort',
-            MP_Siege: 'Siege of Shanghai',
-            MP_TheDish: 'Rogue Transmission',
-            MP_Tremors: 'Dawnbreaker',
-            XP1_001: 'Silk Road',
-            XP1_002: 'Altai Range',
-            XP1_003: 'Guilin Peaks',
-            XP1_004: 'Dragon Pass',
-            XP0_Caspian: 'Caspian Border 2014',
-            XP0_Firestorm: 'Operation Firestorm 2014',
-            XP0_Metro: 'Operation Metro 2014',
-            XP0_Oman: 'Gulf of Oman 2014',
-            XP2_001: 'Lost Islands',
-            XP2_002: 'Nansha Strike',
-            XP2_003: 'Wavebreaker',
-            XP2_004: 'Operation Mortar',
-            XP3_MarketPl: 'Pearl Market',
-            XP3_Prpganda: 'Propaganda',
-            XP3_UrbanGdn: 'Lumpini Garden',
-            XP3_WtrFront: 'Sunken Dragon',
-            XP4_Arctic: 'Operation Whiteout',
-            XP4_SubBase: 'Hammerhead',
-            XP4_Titan: 'Hangar 21',
-            XP4_WalkerFactory: 'Giants of Karelia',
-            XP5_Night_01: 'Zavod: Graveyard Shift',
-            XP6_CMP: 'Operation Outbreak',
-            XP7_Valley: 'Dragon Valley 2015'
-        };
+        const maps = getMapObj(getVer(this.serverUrl));
 
         let arr = []
         return fetch(`${this.serverUrl}/listOfMaps`, {
