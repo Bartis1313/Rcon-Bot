@@ -33,6 +33,7 @@
     "discordjs-prompter": "^2.0.4",
     "djs-commands": "^1.2.2",
     "fast-levenshtein": "^3.0.0",
-    "node-fetch": "^2.6.0"
+    "node-fetch": "^2.6.0",
+    "mysql": "2.18.1"
   }
 }

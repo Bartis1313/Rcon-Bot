@@ -1,7 +1,6 @@
 npm-debug.log
 raw/
-config/development.json
-config/production.json
+config/
 node_modules/
 config/test.json
 docker-compose.yml
