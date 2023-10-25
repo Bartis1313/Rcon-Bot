@@ -7,9 +7,9 @@ import getMapObj from '../../helpers/mapsObj'
 
 module.exports = class map {
     constructor() {
-        this.name = 'map',
-            this.alias = ['mapindex'],
-            this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`
+        this.name = 'map';
+        this.alias = ['mapindex'];
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
         this.messagesToDelete = [];
         this.lenMap;
         this.serverUrl;
@@ -32,7 +32,7 @@ module.exports = class map {
         if (!server) {
             message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            clearMessages();
+            this.clearMessages();
             return;
         }
 
@@ -91,7 +91,7 @@ module.exports = class map {
                     this.maplistRaw.push(json.data[i])
                     this.maplistArr.push(maps[json.data[i]])
                 }
-                console.log(arr)
+                //console.log(arr)
                 this.lenMap = arr.length;
                 return arr;
             })
@@ -116,7 +116,7 @@ module.exports = class map {
         }
         ready_str += `\`\`\``
         this.embedDesc = ready_str;
-        console.log(ready_str)
+        //console.log(ready_str)
         return ready_str;
     }
 
@@ -138,7 +138,7 @@ module.exports = class map {
 
             askIndex: while (true) {
                 indexNum = await Helpers.askIndex(message);
-                if (!indexNum) {
+                if (!indexNum || isNaN(indexNum)) {
                     if (await Helpers.askTryAgain(message)) {
                         continue askIndex;
                     }

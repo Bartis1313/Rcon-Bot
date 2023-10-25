@@ -5,10 +5,10 @@ import Helpers from '../../helpers/helpers'
 
 module.exports = class serverFps {
     constructor() {
-        this.name = 'fps',
-            this.alias = ['serverfps'],
-            this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`
-            this.messagesToDelete = [];
+        this.name = 'fps';
+        this.alias = ['serverfps'];
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
+        this.messagesToDelete = [];
     }
 
     async run(bot, message, args) {
@@ -22,7 +22,7 @@ module.exports = class serverFps {
         if (!server) {
             message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            clearMessages();
+            this.clearMessages();
             return;
         }
 
@@ -59,7 +59,7 @@ module.exports = class serverFps {
             .setAuthor('Server Fps Check', message.author.avatarURL())
             .addField('Issuer', message.author.username, true)
             .addField('Status', response.status, true)
-            .addField('Server Fps (tick): ', `${response.data}` , true)
+            .addField('Server Fps (tick): ', `${response.data}`, true)
         if (response.status === "FAILED") {
             embed.addField('Reason for failing', response.error, true)
         }

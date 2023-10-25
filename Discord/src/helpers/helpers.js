@@ -251,13 +251,90 @@ class Helpers {
         });
     }
 
-    static askbanType(msg) {
+    static async askbanType(msg) {
+        const namedChoices = ['name', 'ip', 'guid'];
+        const choices = ['1️⃣', '2️⃣', '3️⃣'];
         const embed = new Discord.MessageEmbed()
             .setTimestamp()
             .setColor("00FF00")
-            .setAuthor('Type of the ban', msg.author.avatarURL())
-            .setDescription('**Give banId**\nname - soldierName\
-            \nip - number \nguid - EA_<number>')
+            .setAuthor('Type of the ban', msg.author.avatarURL());
+        for (let index = 0; index < namedChoices.length; index++) {
+            embed.addField(choices[index], `**${namedChoices[index]}**`, false)
+        }
+        const message = await msg.channel.send(embed);
+
+        for (const choice of choices) {
+            await message.react(choice);
+        }
+
+        const filter = (reaction, user) => {
+            return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
+        };
+
+        return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
+            .then(collected => {
+                const reaction = collected.first();
+                message.delete();
+
+                const index = choices.findIndex(x => x === reaction.emoji.name);
+                if (index >= 0) {
+                    return namedChoices[index];
+                }
+
+                return null;
+            })
+            .catch(async collected => {
+                const message = await msg.reply(`Command timed out`);
+                message.delete({ timeout: 5000 });
+                return null;
+            });
+    }
+
+    static async asktimeout(msg) {
+        const namedChoices = ['perm', 'seconds', 'rounds'];
+        const choices = ['1️⃣', '2️⃣', '3️⃣'];
+        const embed = new Discord.MessageEmbed()
+            .setTimestamp()
+            .setColor("00FF00")
+            .setAuthor('Timeout of the ban', msg.author.avatarURL());
+        for (let index = 0; index < namedChoices.length; index++) {
+            embed.addField(choices[index], `**${namedChoices[index]}**`, false)
+        }
+        const message = await msg.channel.send(embed);
+
+        for (const choice of choices) {
+            await message.react(choice);
+        }
+
+        const filter = (reaction, user) => {
+            return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
+        };
+
+        return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
+            .then(collected => {
+                const reaction = collected.first();
+                message.delete();
+
+                const index = choices.findIndex(x => x === reaction.emoji.name);
+                if (index >= 0) {
+                    return namedChoices[index];
+                }
+
+                return null;
+            })
+            .catch(async collected => {
+                const message = await msg.reply(`Command timed out`);
+                message.delete({ timeout: 5000 });
+                return null;
+            });
+    }
+
+    static askString(name, desc, msg) {
+        const embed = new Discord.MessageEmbed()
+            .setTimestamp()
+            .setColor("00FF00")
+            .setAuthor(name, msg.author.avatarURL())
+            .setDescription(desc)
 
         return Prompter.message(msg.channel, {
             question: embed,
@@ -273,39 +350,12 @@ class Helpers {
             // Gets the first message in the collection
             const response = responses.first();
             const content = response.content;
-            
             response.delete();
+
             return content;
         });
     }
 
-    static asktimeout(msg) {
-        const embed = new Discord.MessageEmbed()
-            .setTimestamp()
-            .setColor("00FF00")
-            .setAuthor('Timeout', msg.author.avatarURL())
-            .setDescription('give the timeout amount\nperm\nrounds\nseconds')
-
-        return Prompter.message(msg.channel, {
-            question: embed,
-            userId: msg.author.id,
-            max: 1,
-            timeout: 60 * 1000,
-        }).then(async responses => {
-            // If no responses, the time ran out
-            if (!responses.size) {
-                return null
-            }
-
-            // Gets the first message in the collection
-            const response = responses.first();
-            const content = response.content;
-            
-            response.delete();
-            return content;
-        });
-    }
-    
     static askbanReason(msg) {
         const embed = new Discord.MessageEmbed()
             .setTimestamp()
@@ -327,7 +377,7 @@ class Helpers {
             // Gets the first message in the collection
             const response = responses.first();
             const content = response.content;
-           
+
             response.delete();
             return content;
         });

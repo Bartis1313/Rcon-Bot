@@ -1,12 +1,13 @@
 import config from "config";
 import { createConnection } from 'mysql';
+//import geoip from 'geoip-country';
 const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
 
-module.exports = class link {
+module.exports = class check {
     constructor() {
-        this.name = 'link';
-        this.alias = ['linksoldier'];
+        this.name = 'check';
+        this.alias = ['checkplayer'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
 
         this.dbsConfig = [];
@@ -30,45 +31,39 @@ module.exports = class link {
         }
     }
 
-    async findLinkedAccounts(connection, playerName, callback) {
+    async findInfoAccounts(connection, playerName, callback) {
         return new Promise((resolve, reject) => {
             const query = `
-              SELECT t1.SoldierName, t1.IP_Address, t1.GameID
-              FROM tbl_playerdata t1
-              JOIN tbl_playerdata t2 ON SUBSTRING_INDEX(t1.IP_Address, '.', 3) = SUBSTRING_INDEX(t2.IP_Address, '.', 3)
-              WHERE LOWER(t2.SoldierName) = LOWER(?)
-              ORDER BY
-                CASE
-                  WHEN t1.IP_Address = t2.IP_Address AND t1.GameID = t2.GameID THEN 1  -- Exact IP, Exact Game ID
-                  WHEN t1.IP_Address = t2.IP_Address THEN 2  -- Exact IP, Different Game ID
-                  ELSE 3  -- Same octet
-                END
+            SELECT PlayerID, SoldierName, GlobalRank, PBGUID, EAGUID, IP_Address, CountryCode, GameID
+            FROM tbl_playerdata
+            WHERE SoldierName = ?
             `;
 
             connection.query(query, [playerName.toLowerCase()], (error, results) => {
                 if (error) {
                     reject(error);
                 } else {
-                    const linkedAccounts = [];
+                    const infos = [];
                     const uniqueAccounts = new Set();
 
                     results.forEach((row) => {
                         const accountKey = `${row.SoldierName}-${row.IP_Address}-${row.GameID}`;
 
                         if (!uniqueAccounts.has(accountKey)) {
-                            linkedAccounts.push(
-                                `${row.IP_Address === results[0].IP_Address && row.GameID === results[0].GameID
-                                    ? 'Exact IP, Exact Game ID'
-                                    : row.IP_Address === results[0].IP_Address
-                                        ? 'Exact IP, Different Game ID'
-                                        : 'Same Octet'
-                                }: ${row.SoldierName} (IP: ${row.IP_Address}, Game ID: ${row.GameID})`
-                            );
+                            infos.push({
+                                SoldierName: row.SoldierName,
+                                GlobalRank: row.GlobalRank,
+                                PBGUID: row.PBGUID,
+                                EAGUID: row.EAGUID,
+                                IP_Address: row.IP_Address,
+                                CountryCode: row.CountryCode,
+                                GameID: row.GameID,
+                            });
                             uniqueAccounts.add(accountKey);
                         }
                     });
 
-                    resolve(linkedAccounts);
+                    resolve(infos);
                 }
             });
         });
@@ -80,11 +75,11 @@ module.exports = class link {
         connection.connect();
 
         try {
-            const linkedAccounts = await this.findLinkedAccounts(connection, playerName);
+            const infosAccounts = await this.findInfoAccounts(connection, playerName);
 
             connection.end();
 
-            return linkedAccounts;
+            return infosAccounts;
         } catch (error) {
             console.error('Database error:', error);
             connection.end();
@@ -113,26 +108,31 @@ module.exports = class link {
             break;
         }
 
-        const linkedAccountsPromises = this.dbsConfig.map((serverConfig) => this.processServer(serverConfig, playerName));
-        const linkedAccountsArrays = await Promise.all(linkedAccountsPromises);
-        const linkedAccounts = linkedAccountsArrays.flat();
+        const infosAccountsPromises = this.dbsConfig.map((serverConfig) => this.processServer(serverConfig, playerName));
+        const infosAccountsArrays = await Promise.all(infosAccountsPromises);
+        const infosAccounts = infosAccountsArrays.flat();
 
-        if (linkedAccounts.length === 0) {
-            message.reply("linkedAccounts is empty");
+        if (infosAccounts.length === 0) {
+            message.reply("infos is empty");
             return;
         }
 
         const embed = new Discord.MessageEmbed()
             .setColor('00FF00')
-            .setTitle('Linked Accounts')
-            .addFields(
-                linkedAccounts.map((account) => ({
-                    name: 'Account',
-                    value: account,
-                }))
-            )
-            .setFooter(`Requested by ${message.author.username}`)
-            .setTimestamp();
+        infosAccounts.forEach((playerInfo) => {
+            embed.addField('Soldier Name', playerInfo.SoldierName, true); // 1
+            embed.addField('Global Rank', playerInfo.GlobalRank, true); // 2
+            embed.addField('EA GUID', playerInfo.EAGUID, true); // 3
+            embed.addField('PB GUID', playerInfo.PBGUID, true); // 1
+            embed.addField('IP Address', playerInfo.IP_Address, true); // 2
+            embed.addField('Country Code', playerInfo.CountryCode, true); // 3
+            embed.addField('GameID', playerInfo.GameID, true); // 1
+            embed.addField('\u200b', '\u200b', true); // 2
+            embed.addField('\u200b', '\u200b', true); // 3
+        });
+        embed.setTimestamp()
+        embed.setAuthor('Check', message.author.avatarURL())
+        embed.setFooter('Author: Bartis')
 
         message.channel.send(embed);
     };

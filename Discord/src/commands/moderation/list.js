@@ -17,6 +17,7 @@ module.exports = class list {
         this.clearMessages = [];
         this.maplistRaw = [];
         this.maplistArr = [];
+        this.messagesToDelete = [];
     }
 
     async getCount(server) {
@@ -241,7 +242,7 @@ module.exports = class list {
         if (!server) {
             message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            clearMessages();
+            this.clearMessages();
             return;
         }
 

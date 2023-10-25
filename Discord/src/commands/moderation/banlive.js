@@ -23,7 +23,7 @@ module.exports = class banLive {
         if (!server) {
             message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            clearMessages();
+            this.clearMessages();
             return;
         }
 
@@ -88,6 +88,11 @@ module.exports = class banLive {
                     return reject(Error("Couldn't get the ban Type"))
                 }
                 break;
+            }
+
+            if(banType !== "name") {
+                message.reply("There is no reason to use ``!banlive`` with this type, use ``!ban``")
+                return;
             }
 
             askPlayerName: while (true) {
@@ -172,7 +177,7 @@ module.exports = class banLive {
                     break;
                 case "seconds":
                     asktimeout: while (true) {
-                        timeout += " " + await Helpers.asktimeout(message);
+                        timeout += " " + await Helpers.askString("Timeout", "Specify amount of seconds for ban", message);
                         if (!timeout) {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
@@ -184,7 +189,7 @@ module.exports = class banLive {
                     break;
                 case "rounds":
                     asktimeout: while (true) {
-                        timeout += " " + await Helpers.asktimeout(message);
+                        timeout += " " + await Helpers.askString("Timeout", "Specify amount of rounds for ban", message);
                         if (!timeout) {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
@@ -209,7 +214,7 @@ module.exports = class banLive {
                 break;
             }
 
-            msg.delete();
+            //msg.delete();
             const confirmEmbed = new Discord.MessageEmbed()
                 .setTimestamp()
                 .setColor("00FF00")

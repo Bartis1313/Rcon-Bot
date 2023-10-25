@@ -2,8 +2,8 @@ import Levenshtein from 'fast-levenshtein'
 
 class PlayerMatching {
     static getBestPlayerMatch(playerName, players) {
-        console.log(playerName)
-        console.log(players)
+        //console.log(playerName)
+        //console.log(players)
         const matches = []
         const filteredPlayers = players.filter(player => player.toLowerCase().includes(playerName.toLowerCase()));
         const playersBeginning = players.filter(player => player.toLowerCase().startsWith(playerName.toLowerCase()));

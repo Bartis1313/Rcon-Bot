@@ -23,7 +23,7 @@ module.exports = class psay {
         if (!server) {
             message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            clearMessages();
+            this.clearMessages();
             return;
         }
 

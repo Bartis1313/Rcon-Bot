@@ -5,9 +5,9 @@ import Helpers from '../../helpers/helpers'
 
 module.exports = class ban {
     constructor() {
-        this.name = 'ban',
-            this.alias = ['bankiller'],
-            this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`
+        this.name = 'ban';
+        this.alias = ['bankiller'];
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
         this.messagesToDelete = [];
     }
 
@@ -22,7 +22,7 @@ module.exports = class ban {
         if (!server) {
             message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            clearMessages();
+            this.clearMessages();
             return;
         }
 
@@ -126,7 +126,7 @@ module.exports = class ban {
                     break;
                 case "seconds":
                     asktimeout: while (true) {
-                        timeout += " " + await Helpers.asktimeout(message);
+                        timeout += " " + await Helpers.askString("Timeout", "Specify amount of seconds for ban", message);
                         if (!timeout) {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
@@ -138,7 +138,7 @@ module.exports = class ban {
                     break;
                 case "rounds":
                     asktimeout: while (true) {
-                        timeout += " " + await Helpers.asktimeout(message);
+                        timeout += " " + await Helpers.askString("Timeout", "Specify amount of rounds for ban", message);
                         if (!timeout) {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
@@ -163,7 +163,7 @@ module.exports = class ban {
                 break;
             }
 
-            msg.delete();
+            //msg.delete();
             const confirmEmbed = new Discord.MessageEmbed()
                 .setTimestamp()
                 .setColor("00FF00")

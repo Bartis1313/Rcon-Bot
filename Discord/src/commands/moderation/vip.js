@@ -5,9 +5,9 @@ import Helpers from '../../helpers/helpers'
 
 module.exports = class vip {
     constructor() {
-        this.name = 'vip',
-            this.alias = ['reservedslots'],
-            this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name} <soldierName>`
+        this.name = 'vip';
+        this.alias = ['reservedslots'];
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
     }
 
     async run(bot, message, args) {
@@ -22,7 +22,7 @@ module.exports = class vip {
         if (!server) {
             message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            clearMessages();
+            //this.clearMessages();
             return;
         }
 
