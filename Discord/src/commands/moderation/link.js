@@ -96,8 +96,10 @@ module.exports = class link {
                     const linkedAccounts = [];
 
                     results.forEach((row) => {
-                        const accountInfo = `${row.SoldierName} (IP: ${row.IP_Address}, Game ID: ${row.GameID})`;
-                        linkedAccounts.push(accountInfo);
+                        if(row.IP_Address) {
+                            const accountInfo = `${row.SoldierName} (IP: ${row.IP_Address}, Game ID: ${row.GameID})`;
+                            linkedAccounts.push(accountInfo);
+                        }
                     });
 
                     resolve(linkedAccounts);
