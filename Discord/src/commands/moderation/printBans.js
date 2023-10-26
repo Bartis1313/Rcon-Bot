@@ -138,7 +138,7 @@ module.exports = class printBans {
                 JOIN adkats_records_main AS r ON b.latest_record_id = r.record_id;
               `;
 
-              connection.query(query, (error, results) => {
+              connection.query(query, async(error, results) => {
                 if (error) {
                   console.error('Error querying the database:', error);
                   message.reply('An error occurred while fetching ban information.');
@@ -160,16 +160,14 @@ module.exports = class printBans {
                     )).join('');
               
                     fs.writeFileSync(fileName, fileContent, 'utf-8');
-                    message.channel.send({ files: [fileName] });
-                    fs.unlinkSync(fileName);
+                    await message.channel.send({ files: [fileName] });
+                    await fs.promises.unlink(fileName);
                   }
                 }
               });
 
               connection.end();
             })
-
-            indexDB++;
         }
     }
 }

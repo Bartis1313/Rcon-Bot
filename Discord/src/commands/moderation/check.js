@@ -3,6 +3,7 @@ import { createConnection } from 'mysql';
 //import geoip from 'geoip-country';
 const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
+import geoip from 'geoip-lite'
 
 module.exports = class check {
     constructor() {
@@ -120,13 +121,20 @@ module.exports = class check {
         const embed = new Discord.MessageEmbed()
             .setColor('00FF00')
         infosAccounts.forEach((playerInfo) => {
-            embed.addField('Soldier Name', playerInfo.SoldierName, true); // 1
-            embed.addField('Global Rank', playerInfo.GlobalRank, true); // 2
-            embed.addField('EA GUID', playerInfo.EAGUID, true); // 3
-            embed.addField('PB GUID', playerInfo.PBGUID, true); // 1
-            embed.addField('IP Address', playerInfo.IP_Address, true); // 2
-            embed.addField('Country Code', playerInfo.CountryCode, true); // 3
-            embed.addField('GameID', playerInfo.GameID, true); // 1
+            console.log(playerInfo);
+            const lookup = geoip.lookup(playerInfo.IP_Address);
+            let country = "Err";
+            if(lookup) {
+                country = lookup.country;
+            }
+
+            embed.addField('Soldier Name', playerInfo.SoldierName || 'N/A', true); // 1
+            embed.addField('Global Rank', playerInfo.GlobalRank || 'N/A', true); // 2
+            embed.addField('EA GUID', playerInfo.EAGUID || 'N/A', true); // 3
+            embed.addField('PB GUID', playerInfo.PBGUID || 'N/A', true); // 1
+            embed.addField('IP Address', playerInfo.IP_Address || 'N/A', true); // 2
+            embed.addField('Country Code', /*playerInfo.CountryCode*/country || 'N/A', true); // 3 // crashign sometimes, country code is empty for some ppl
+            embed.addField('GameID', playerInfo.GameID || 'N/A', true); // 1
             embed.addField('\u200b', '\u200b', true); // 2
             embed.addField('\u200b', '\u200b', true); // 3
         });

@@ -255,14 +255,18 @@ module.exports = class list {
                 .setDescription(`Scores    K   D    Names\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
             message.channel.send(embed)
                 .then(msg => {
-                    setInterval(async () => {
-                        let embedNew = new Discord.MessageEmbed()
-                            .setTitle(`There are ${await this.getCount(server)}/64 players\nMap: ${await this.mapName(server)} Mode: ${await this.modeName(server)}\nNext Map: ${await this.getNext(server)}`)
-                            .setTimestamp()
-                            .setColor('GREEN')
-                            .setFooter('Author: Bartis')
-                            .setDescription(`Scores    K   D    Names\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
-                        msg.edit(embedNew)
+                    const interval = setInterval(async () => {
+                        if (msg.deleted) {
+                            clearInterval(interval);
+                        } else {
+                            let embedNew = new Discord.MessageEmbed()
+                                .setTitle(`There are ${await this.getCount(server)}/64 players\nMap: ${await this.mapName(server)} Mode: ${await this.modeName(server)}\nNext Map: ${await this.getNext(server)}`)
+                                .setTimestamp()
+                                .setColor('GREEN')
+                                .setFooter('Author: Bartis')
+                                .setDescription(`Scores    K   D    Names\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
+                            msg.edit(embedNew)
+                        }
                     }, 5000)
                 })
         } catch (error) {

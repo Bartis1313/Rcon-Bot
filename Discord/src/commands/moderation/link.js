@@ -30,7 +30,7 @@ module.exports = class link {
         }
     }
 
-    async findLinkedAccounts(connection, playerName, callback) {
+    async findLinkedAccountsOctet3(connection, playerName, callback) {
         return new Promise((resolve, reject) => {
             const query = `
               SELECT t1.SoldierName, t1.IP_Address, t1.GameID
@@ -68,6 +68,31 @@ module.exports = class link {
                         }
                     });
 
+                    resolve(linkedAccounts);
+                }
+            });
+        });
+    }
+
+    async findLinkedAccounts(connection, playerName, callback) {
+        return new Promise((resolve, reject) => {
+            const query = `
+                SELECT SoldierName, IP_Address, GameID
+                FROM tbl_playerdata
+                WHERE LOWER(SoldierName) = LOWER(?)
+            `;
+    
+            connection.query(query, [playerName.toLowerCase()], (error, results) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    const linkedAccounts = [];
+    
+                    results.forEach((row) => {
+                        const accountInfo = `${row.SoldierName} (IP: ${row.IP_Address}, Game ID: ${row.GameID})`;
+                        linkedAccounts.push(accountInfo);
+                    });
+    
                     resolve(linkedAccounts);
                 }
             });
