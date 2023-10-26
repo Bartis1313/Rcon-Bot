@@ -96,6 +96,13 @@ module.exports = class check {
         }
         message.delete();
 
+        let serverDB = await Helpers.selectDBServer(message, this.dbsConfig)
+        if (!serverDB) {
+            message.reply("Unknown error");
+            message.delete({ timeout: 5000 });
+            return;
+        }
+
         let playerName = '';
         askPlayerName: while (true) {
             playerName = await Helpers.askPlayerName(message);
@@ -109,8 +116,8 @@ module.exports = class check {
             break;
         }
 
-        const infosAccountsPromises = this.dbsConfig.map((serverConfig) => this.processServer(serverConfig, playerName));
-        const infosAccountsArrays = await Promise.all(infosAccountsPromises);
+        const infosAccountsPromises = this.processServer(serverDB, playerName);
+        const infosAccountsArrays = await infosAccountsPromises;
         const infosAccounts = infosAccountsArrays.flat();
 
         if (infosAccounts.length === 0) {
@@ -139,7 +146,7 @@ module.exports = class check {
             embed.addField('\u200b', '\u200b', true); // 3
         });
         embed.setTimestamp()
-        embed.setAuthor('Check', message.author.avatarURL())
+        embed.setAuthor(`Check for ${serverDB.database}`, message.author.avatarURL())
         embed.setFooter('Author: Bartis')
 
         message.channel.send(embed);

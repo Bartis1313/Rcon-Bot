@@ -176,16 +176,14 @@ module.exports = class unban {
             message.delete()
             return
         }
+        message.delete();
 
-        // should we do that?
-        // ORDER BY r.record_time DESC
-        // LIMIT 1;
-        const query = `
-        UPDATE adkats_bans AS b
-        JOIN adkats_records_main AS r ON b.latest_record_id = r.record_id
-        SET b.ban_status = ?
-        WHERE r.target_name = ?;
-        `;
+        let serverDB = await Helpers.selectDBServer(message, this.dbsConfig)
+        if (!serverDB) {
+            message.reply("Unknown error");
+            message.delete({ timeout: 5000 });
+            return;
+        }
 
         let playerName = '';
         askPlayerName: while (true) {
@@ -201,30 +199,39 @@ module.exports = class unban {
         }
         const newBanStatus = "Expired";
 
-        for (const serverConfig of this.dbsConfig) {
-            const connection = createConnection(serverConfig);
 
-            connection.connect((err) => {
-                if (err) {
-                    console.error('Error connecting to MySQL:', err);
-                    return;
-                }
+        const connection = createConnection(serverDB);
 
-                connection.query(query, [newBanStatus, playerName], (error, result) => {
-                    if (error) {
-                        console.error('Error updating ban status:', error);
-                        message.reply('An error occurred while updating the ban status.');
+        connection.connect((err) => {
+            if (err) {
+                console.error('Error connecting to MySQL:', err);
+                return;
+            }
+
+            // should we do that?
+            // ORDER BY r.record_time DESC
+            // LIMIT 1;
+            const query = `
+            UPDATE adkats_bans AS b
+            JOIN adkats_records_main AS r ON b.latest_record_id = r.record_id
+            SET b.ban_status = ?
+            WHERE r.target_name = ?;
+            `;
+
+            connection.query(query, [newBanStatus, playerName], (error, result) => {
+                if (error) {
+                    console.error('Error updating ban status:', error);
+                    message.reply('An error occurred while updating the ban status.');
+                } else {
+                    if (result.affectedRows === 0) {
+                        message.reply(`Server ${serverConfig.database}, no active bans found for player name: ${playerName}.`);
                     } else {
-                        if (result.affectedRows === 0) {
-                            message.reply(`Server ${serverConfig.database}, no active bans found for player name: ${playerName}.`);
-                        } else {
-                            message.reply(`Server ${serverConfig.database}, the ban for player name: ${playerName} has been marked as expired.`);
-                        }
+                        message.reply(`Server ${serverConfig.database}, the ban for player name: ${playerName} has been marked as expired.`);
                     }
-                });
+                }
+            });
 
-                connection.end();
-            })
-        }
+            connection.end();
+        })
     }
 }

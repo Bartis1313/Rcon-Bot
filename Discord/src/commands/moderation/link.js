@@ -77,22 +77,29 @@ module.exports = class link {
     async findLinkedAccounts(connection, playerName, callback) {
         return new Promise((resolve, reject) => {
             const query = `
-                SELECT SoldierName, IP_Address, GameID
-                FROM tbl_playerdata
-                WHERE LOWER(SoldierName) = LOWER(?)
+            SELECT t1.SoldierName, t1.IP_Address, t1.GameID
+            FROM tbl_playerdata t1
+            JOIN tbl_playerdata t2 ON t1.IP_Address = t2.IP_Address
+            WHERE LOWER(t2.SoldierName) = LOWER(?)
+            ORDER BY
+              CASE
+                WHEN t1.IP_Address = t2.IP_Address AND t1.GameID = t2.GameID THEN 1  -- Exact IP, Exact Game ID
+                WHEN t1.IP_Address = t2.IP_Address THEN 2  -- Exact IP, Different Game ID
+                ELSE 3  -- Different IP
+              END
             `;
-    
+
             connection.query(query, [playerName.toLowerCase()], (error, results) => {
                 if (error) {
                     reject(error);
                 } else {
                     const linkedAccounts = [];
-    
+
                     results.forEach((row) => {
                         const accountInfo = `${row.SoldierName} (IP: ${row.IP_Address}, Game ID: ${row.GameID})`;
                         linkedAccounts.push(accountInfo);
                     });
-    
+
                     resolve(linkedAccounts);
                 }
             });
@@ -125,6 +132,13 @@ module.exports = class link {
         }
         message.delete();
 
+        let serverDB = await Helpers.selectDBServer(message, this.dbsConfig)
+        if (!serverDB) {
+            message.reply("Unknown error");
+            message.delete({ timeout: 5000 });
+            return;
+        }
+
         let playerName = '';
         askPlayerName: while (true) {
             playerName = await Helpers.askPlayerName(message);
@@ -138,8 +152,8 @@ module.exports = class link {
             break;
         }
 
-        const linkedAccountsPromises = this.dbsConfig.map((serverConfig) => this.processServer(serverConfig, playerName));
-        const linkedAccountsArrays = await Promise.all(linkedAccountsPromises);
+        const linkedAccountsPromises = this.processServer(serverDB, playerName);
+        const linkedAccountsArrays = await linkedAccountsPromises;
         const linkedAccounts = linkedAccountsArrays.flat();
 
         if (linkedAccounts.length === 0) {
@@ -149,7 +163,7 @@ module.exports = class link {
 
         const embed = new Discord.MessageEmbed()
             .setColor('00FF00')
-            .setTitle('Linked Accounts')
+            .setTitle(`Linked Accounts ${serverDB.database} DB`)
             .addFields(
                 linkedAccounts.map((account) => ({
                     name: 'Account',

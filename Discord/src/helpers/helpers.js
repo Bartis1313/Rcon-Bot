@@ -101,6 +101,49 @@ class Helpers {
             });
     }
 
+    static async selectDBServer(msg, dbs) {
+        // TODO: Add checks for if there are more than 10 servers? Though who has that many?
+        const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+
+        const embed = new Discord.MessageEmbed()
+            .setTimestamp()
+            .setColor("00FF00")
+            .setAuthor('Select DB Server', msg.author.avatarURL())
+
+        const len = dbs.length;
+
+        for(let index = 0; index < len; index++) {
+            embed.addField(choices[index], `**${dbs[index].database}**`, false)
+        }
+
+        const message = await msg.channel.send(embed);
+        for(let index = 0; index < len; index++) {
+            await message.react(choices[index]);
+        }
+
+        const filter = (reaction, user) => {
+            return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
+        };
+
+        return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
+            .then(collected => {
+                const reaction = collected.first();
+                message.delete();
+
+                const index = choices.findIndex(x => x === reaction.emoji.name);
+                if (index >= 0) {
+                    return dbs[index];
+                }
+
+                return null;
+            })
+            .catch(async collected => {
+                const message = await msg.reply(`Command timed out`);
+                message.delete({ timeout: 5000 });
+                return null;
+            });
+    }
+
     static async selectPlayerName(msg, players) {
         const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
         const embed = new Discord.MessageEmbed()
@@ -122,7 +165,7 @@ class Helpers {
         const message = await msg.channel.send(embed);
         // React with possible choices
         for (const choice of possibleChoices) {
-            message.react(choice);
+            await message.react(choice);
         }
 
         const filter = (reaction, user) => {
