@@ -44,6 +44,11 @@ services:
       - DISCORD_RCON_ROLEID=
       - BATTLECON_API_URLS=http://server1:3000,http://server2:3001
       - BATTLECON_GAMES=BF3,BF4
+      - DBS_HOST=1.1.1.1,2.2.2.2
+      - DBS_NAME=one,two
+      - DBS_USER=adam1,adam2
+      - DBS_PASS=pass1,pass2
+      - DBS_PORT=3098,3099
 ```
 
 And then use the command `docker-compose up`
