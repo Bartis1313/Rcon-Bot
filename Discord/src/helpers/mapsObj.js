@@ -73,4 +73,22 @@ const getMapObj = (ver) => {
     return '';
 }
 
-export default getMapObj
+const getModesObj = () => {
+    return {
+        ConquestLarge0: 'Conquest Large',
+        ConquestSmall0: 'Conquest Small',
+        Domination0: 'Domination',
+        Elimination0: 'Defuse',
+        Obliteration: 'Obliteration',
+        RushLarge0: 'Rush',
+        SquadDeathMatch0: 'Squad Deathmatch',
+        TeamDeathMatch0: 'Team Deathmatch',
+        SquadObliteration0: 'Squad Obliteration',
+        GunMaster0: 'Gun Master',
+        Chainlink0: 'Chain Link',
+        Capturetheflag0: 'Capture the flag',
+        AirSuperiority0: 'Air Superiority'
+    }
+}
+
+export { getMapObj, getModesObj }

@@ -4,7 +4,8 @@ const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers';
 import format from '../../format'
 import getVer from '../../helpers/ver';
-import getMapObj from '../../helpers/mapsObj'
+import { getMapObj, getModesObj } from '../../helpers/mapsObj'
+import fTime from '../../helpers/timeFormat'
 
 // all of this code could be done better, to split functions to other files
 // same goes to retry in the functions for server information, could be done way better
@@ -18,25 +19,6 @@ module.exports = class list {
         this.maplistRaw = [];
         this.maplistArr = [];
         this.messagesToDelete = [];
-    }
-
-    async getCount(server) {
-        return fetch(`${server}/count`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            }
-        })
-            .then(response => response.json())
-            .then(json => {
-                const long = json.data.players.length
-                return long;
-            })
-            .catch(error => {
-
-            })
     }
 
     async team1(server) {
@@ -91,9 +73,23 @@ module.exports = class list {
 
             })
     }
-    async getMap(server) {
-        const maps = getMapObj(getVer(server));
 
+    formatInfo(data) {
+        return {
+            ServerName: data[0],
+            Players: data[1],
+            MaxPlayers: data[2],
+            ModeName: data[3],
+            MapName: data[4],
+            RoundsPlayed: data[5],
+            RoundsTotal: data[6],
+            Scores: { Team1: data[8], Team2: data[9] },
+            ServerUpTime: data[15],
+            RoundUpTime: data[16]
+        }
+    }
+
+    async getInfo(server) {
         return fetch(`${server}/getInfo`, {
             method: "post",
             headers: {
@@ -104,45 +100,17 @@ module.exports = class list {
         })
             .then(response => response.json())
             .then(json => {
-                return maps[json.data[4]]
+                if (json.status !== "OK") {
+                    return null;
+                }
+                return this.formatInfo(json.data);
             })
             .catch(error => {
-
+                return null;
             })
     }
 
-    async getMode(server) {
-        const modes = {
-            ConquestLarge0: 'Conquest Large',
-            ConquestSmall0: 'Conquest Small',
-            Domination0: 'Domination',
-            Elimination0: 'Defuse',
-            Obliteration: 'Obliteration',
-            RushLarge0: 'Rush',
-            SquadDeathMatch0: 'Squad Deathmatch',
-            TeamDeathMatch0: 'Team Deathmatch',
-            SquadObliteration0: 'Squad Obliteration',
-            GunMaster0: 'Gun Master',
-        };
-
-        return fetch(`${server}/getInfo`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-        })
-            .then(response => response.json())
-            .then(json => {
-                return modes[json.data[3]]
-            })
-            .catch(error => {
-
-            })
-    }
-
-    async getIndex(server) {
+    async getNextIndex(server) {
         return fetch(`${server}/getIndices`, {
             method: "post",
             headers: {
@@ -162,9 +130,6 @@ module.exports = class list {
     }
 
     async getMapArray(server) {
-        const maps = getMapObj(getVer(server));
-
-        let arr = []
         return fetch(`${server}/listOfMaps`, {
             method: "post",
             headers: {
@@ -175,19 +140,26 @@ module.exports = class list {
         })
             .then(response => response.json())
             .then(json => {
-                const len = json.data.length;
-                for (let i = 2; i < len; i += 3) {
-                    arr.push(maps[json.data[i]]);
+                let arr = [];
+                const data = json.data;
+                for (let i = 0; i < data.length; i++) {
+                    if (!isNaN(data[i])) {
+                        continue;
+                    }
+
+                    const mapName = getMapObj(getVer(server))[data[i]];
+                    const modeName = getModesObj(getVer(server))[data[i + 1]];
+
+                    arr.push({ mapName: mapName, modeName: modeName });
+                    i++;
                 }
+
                 return arr;
             })
             .catch(error => {
 
             })
     }
-
-
-
 
     async update(server) {
         try {
@@ -209,23 +181,12 @@ module.exports = class list {
         }
     }
 
-    async modeName(server) {
-        let mode = await this.getMode(server);
-        return mode;
-    }
-
-    async mapName(server) {
-        let map = await this.getMap(server);
-        return map;
-    }
-
     async getNext(server) {
         try {
-            let maps = await this.getMapArray(server)
-            //console.log(maps);
-            let index = await this.getIndex(server);
-            //console.log(index);
-            return maps[index];
+            const maps = await this.getMapArray(server);
+            const index = await this.getNextIndex(server);
+
+            return { mapName: maps[index].mapName, modeName: maps[index].modeName };
         }
         catch (err) {
             console.log('error ', err);
@@ -247,27 +208,54 @@ module.exports = class list {
         }
 
         try {
-            let embed = new Discord.MessageEmbed()
-                .setTitle(`There are ${await this.getCount(server)}/64 players\nMap: ${await this.mapName(server)} Mode: ${await this.modeName(server)}\nNext Map: ${await this.getNext(server)}`)
+            const info = await this.getInfo(server);
+            if (info === null) {
+                return;
+            }
+            const map = getMapObj(getVer(server))[info.MapName];
+            const mode = getModesObj(getVer(server))[info.ModeName];
+            const tickets1 = parseFloat(info.Scores.Team1).toFixed(0);
+            const tickets2 = parseFloat(info.Scores.Team2).toFixed(0);
+            const maxPlayers = info.MaxPlayers;
+            const rtime = fTime(info.RoundUpTime);
+            const playerCount = info.Players;
+            const next = await this.getNext(server)
+
+            const embed = new Discord.MessageEmbed()
+                .setTitle(`Players: ${playerCount}/${maxPlayers} Tickets ${tickets1}:${tickets2} Time: ${rtime}\nMap: ${map} Mode: ${mode}\nNext Map: ${next.mapName} Mode: ${next.modeName}`)
                 .setTimestamp()
                 .setColor('GREEN')
                 .setFooter('Author: Bartis')
-                .setDescription(`Scores    K   D    Names\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
+                .setDescription(`Scores\tK\tD\tNames\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
             message.channel.send(embed)
                 .then(msg => {
                     const interval = setInterval(async () => {
                         if (msg.deleted) {
                             clearInterval(interval);
                         } else {
-                            let embedNew = new Discord.MessageEmbed()
-                                .setTitle(`There are ${await this.getCount(server)}/64 players\nMap: ${await this.mapName(server)} Mode: ${await this.modeName(server)}\nNext Map: ${await this.getNext(server)}`)
+                            const info = await this.getInfo(server);
+                            if (info === null) {
+                                return;
+                            }
+
+                            const map = getMapObj(getVer(server))[info.MapName];
+                            const mode = getModesObj(getVer(server))[info.ModeName];
+                            const tickets1 = parseFloat(info.Scores.Team1).toFixed(0);
+                            const tickets2 = parseFloat(info.Scores.Team2).toFixed(0);
+                            const maxPlayers = info.MaxPlayers;
+                            const rtime = fTime(info.RoundUpTime);
+                            const playerCount = info.Players;
+                            const next = await this.getNext(server)
+
+                            const embedNew = new Discord.MessageEmbed()
+                                .setTitle(`Players: ${playerCount}/${maxPlayers} Tickets ${tickets1}:${tickets2} Time: ${rtime}\nMap: ${map} Mode: ${mode}\nNext Map: ${next.mapName} Mode: ${next.modeName}`)
                                 .setTimestamp()
                                 .setColor('GREEN')
                                 .setFooter('Author: Bartis')
-                                .setDescription(`Scores    K   D    Names\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
-                            msg.edit(embedNew)
+                                .setDescription(`Scores\tK\tD\tNames\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
+                            msg.edit(embedNew);
                         }
-                    }, 5000)
+                    }, 15_000) // 15 secs
                 })
         } catch (error) {
             console.log("ERROR", error)
