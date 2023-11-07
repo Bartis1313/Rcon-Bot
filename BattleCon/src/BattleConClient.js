@@ -54,7 +54,7 @@ class BattleConClient {
       if (reconnectInterval === null) {
         reconnectInterval = setInterval(() => {
           this._connection.connect();
-          //console.log("Retried to connect");
+          console.log("Retried to connect");
         }, 60_000); // 60secs
       }
     });
