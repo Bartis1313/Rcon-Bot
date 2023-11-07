@@ -1,11 +1,10 @@
-var config = require("config")
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers';
-import format from '../../format'
-import getVer from '../../helpers/ver';
-import { getMapObj, getModesObj } from '../../helpers/mapsObj'
-import fTime from '../../helpers/timeFormat'
+import Helpers from '../../helpers/helpers.js';
+import format from '../../helpers/format.js'
+import getVer from '../../helpers/ver.js';
+import { getMapObj, getModesObj } from '../../helpers/mapsObj.js'
+import fTime from '../../helpers/timeFormat.js'
 
 // all of this code could be done better, to split functions to other files
 // same goes to retry in the functions for server information, could be done way better
@@ -14,7 +13,7 @@ module.exports = class list {
     constructor() {
         this.name = 'list';
         this.alias = ['listplayers'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
         this.clearMessages = [];
         this.maplistRaw = [];
         this.maplistArr = [];
@@ -193,8 +192,63 @@ module.exports = class list {
         }
     }
 
+    async createInfoEmbed(info, server) {
+        const map = getMapObj(getVer(server))[info.MapName];
+        const mode = getModesObj(getVer(server))[info.ModeName];
+        const tickets1 = parseFloat(info.Scores.Team1).toFixed(0);
+        const tickets2 = parseFloat(info.Scores.Team2).toFixed(0);
+        const maxPlayers = info.MaxPlayers;
+        const rtime = fTime(info.RoundUpTime);
+        const playerCount = info.Players;
+        const next = await this.getNext(server);
+
+        const embed = new Discord.MessageEmbed()
+            .setTitle(`Players: ${playerCount}/${maxPlayers} Tickets ${tickets1}:${tickets2} Time: ${rtime}\nMap: ${map} Mode: ${mode}\nNext Map: ${next.mapName} Mode: ${next.modeName}`)
+            .setTimestamp()
+            .setColor('GREEN')
+            .setFooter('Author: Bartis')
+            .setDescription(`Scores\tK\tD\tNames\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``);
+
+        return embed;
+    }
+
+    async sendEmbedWithInterval(message, server) {
+        try {
+            const info = await this.getInfo(server);
+            if (info === null) {
+                return;
+            }
+
+            const embed = await this.createInfoEmbed(info, server);
+
+            const msg = await message.channel.send(embed);
+
+            const interval = setInterval(async () => {
+                if (!msg) {
+                    console.log('Possible discord api error');
+                    return;
+                }
+
+                if (msg.deleted) {
+                    clearInterval(interval);
+                } else {
+                    const newInfo = await this.getInfo(server);
+                    if (newInfo === null) {
+                        return;
+                    }
+
+                    const newEmbed = await this.createInfoEmbed(newInfo, server);
+
+                    msg.edit(newEmbed);
+                }
+            }, 15_000); // 15 seconds
+        } catch (error) {
+            console.error("Error sending initial message:", error);
+        }
+    }
+
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID || config.rconRoleId))) {
+        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
             message.reply("You don't have permission to use this command.")
             return
         }
@@ -207,59 +261,7 @@ module.exports = class list {
             return;
         }
 
-        try {
-            const info = await this.getInfo(server);
-            if (info === null) {
-                return;
-            }
-            const map = getMapObj(getVer(server))[info.MapName];
-            const mode = getModesObj(getVer(server))[info.ModeName];
-            const tickets1 = parseFloat(info.Scores.Team1).toFixed(0);
-            const tickets2 = parseFloat(info.Scores.Team2).toFixed(0);
-            const maxPlayers = info.MaxPlayers;
-            const rtime = fTime(info.RoundUpTime);
-            const playerCount = info.Players;
-            const next = await this.getNext(server)
-
-            const embed = new Discord.MessageEmbed()
-                .setTitle(`Players: ${playerCount}/${maxPlayers} Tickets ${tickets1}:${tickets2} Time: ${rtime}\nMap: ${map} Mode: ${mode}\nNext Map: ${next.mapName} Mode: ${next.modeName}`)
-                .setTimestamp()
-                .setColor('GREEN')
-                .setFooter('Author: Bartis')
-                .setDescription(`Scores\tK\tD\tNames\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
-            message.channel.send(embed)
-                .then(msg => {
-                    const interval = setInterval(async () => {
-                        if (msg.deleted) {
-                            clearInterval(interval);
-                        } else {
-                            const info = await this.getInfo(server);
-                            if (info === null) {
-                                return;
-                            }
-
-                            const map = getMapObj(getVer(server))[info.MapName];
-                            const mode = getModesObj(getVer(server))[info.ModeName];
-                            const tickets1 = parseFloat(info.Scores.Team1).toFixed(0);
-                            const tickets2 = parseFloat(info.Scores.Team2).toFixed(0);
-                            const maxPlayers = info.MaxPlayers;
-                            const rtime = fTime(info.RoundUpTime);
-                            const playerCount = info.Players;
-                            const next = await this.getNext(server)
-
-                            const embedNew = new Discord.MessageEmbed()
-                                .setTitle(`Players: ${playerCount}/${maxPlayers} Tickets ${tickets1}:${tickets2} Time: ${rtime}\nMap: ${map} Mode: ${mode}\nNext Map: ${next.mapName} Mode: ${next.modeName}`)
-                                .setTimestamp()
-                                .setColor('GREEN')
-                                .setFooter('Author: Bartis')
-                                .setDescription(`Scores\tK\tD\tNames\`\`\`c\n${await this.update(server)}\n\n${await this.update2(server)}\`\`\``)
-                            msg.edit(embedNew);
-                        }
-                    }, 15_000) // 15 secs
-                })
-        } catch (error) {
-            console.log("ERROR", error)
-        }
+        this.sendEmbedWithInterval(message, server);
     }
     clearMessages() {
         for (const message of this.messagesToDelete) {

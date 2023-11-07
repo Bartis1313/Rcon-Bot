@@ -4,7 +4,7 @@ module.exports = class help {
     constructor() {
         this.name = 'help';
         this.alias = ['helpme'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
     }
 
     async run(bot, message, args) {

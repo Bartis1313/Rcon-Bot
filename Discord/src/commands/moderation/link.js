@@ -1,4 +1,3 @@
-import config from "config";
 import { createConnection } from 'mysql';
 const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
@@ -7,7 +6,7 @@ module.exports = class link {
     constructor() {
         this.name = 'link';
         this.alias = ['linksoldier'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
 
         this.dbsConfig = [];
         if (process.env.DBS_NAME) {
@@ -127,7 +126,7 @@ module.exports = class link {
     }
 
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID || config.rconRoleId))) {
+        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
             message.reply("You don't have permission to use this command.")
             message.delete()
             return

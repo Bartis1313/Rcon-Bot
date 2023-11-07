@@ -1,5 +1,3 @@
-var config = require("config")
-
 const getVer = (url) => {
     const match = url.match(/\d+/);
     if(match) {

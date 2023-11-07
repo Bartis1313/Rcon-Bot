@@ -1,17 +1,19 @@
-const config = require('config');
 const Discord = require('discord.js');
 const client = new Discord.Client();
+const BanAnnouncer = require('./misc/banChecker.js').default;
+const banAnnouncer = new BanAnnouncer();
 
 const { CommandHandler } = require("djs-commands")
 const CH = new CommandHandler({
     folder: __dirname + '/commands/',
-    prefix: [`${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}`]
+    prefix: [`${process.env.DISCORD_COMMAND_PREFIX}`]
 });
 
 
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
-    client.user.setActivity('Watching Servers')
+    client.user.setActivity('Watching Servers');
+    banAnnouncer.startBanAnnouncement(60_000); // check DB every minute
 });
 
 client.on('message', message => {
@@ -30,4 +32,4 @@ client.on('message', message => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN || config.discordToken);
+client.login(process.env.DISCORD_TOKEN);

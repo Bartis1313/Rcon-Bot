@@ -1,4 +1,4 @@
-function format(str) {
+const format = (str) => {
     let arr = [];
 
     // Divides array into chunks of 4

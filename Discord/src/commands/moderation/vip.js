@@ -1,4 +1,3 @@
-var config = require("config")
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
@@ -7,11 +6,11 @@ module.exports = class vip {
     constructor() {
         this.name = 'vip';
         this.alias = ['reservedslots'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}`;
     }
 
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID || config.rconRoleId))) {
+        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEI))) {
             message.reply("You don't have permission to use this command.")
             return
         }

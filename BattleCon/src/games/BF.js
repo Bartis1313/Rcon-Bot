@@ -33,7 +33,7 @@ module.exports = function(bc) {
                 bc.emit("player.authenticated", /* name */ msg.data[1]);
                 break;
             case "player.onLeave":
-                bc.emit("player.leave", /* name */ msg.data[1], /* info */ bc.tabulate(msg.data, 2)[0]);
+                bc.emit("player.leave", /* name */ msg.data[1], /* info */);
                 break;
             case "player.onSpawn":
                 bc.emit("player.spawn", /* name */ msg.data[1], /* team */ parseInt(msg[2], 10));
@@ -49,6 +49,9 @@ module.exports = function(bc) {
                 break;
             case "player.onChat":
                 bc.emit("player.chat", /* name */ msg.data[1], /* text */ msg.data[2], /* player subset */ msg.data.slice(3));
+                break;
+            case "player.onDisconnect":
+                bc.emit("player.disconnect", /* name */ msg.data[1], /* reason */ msg.data[2]);
                 break;
             case "server.onLevelLoaded":
                 bc.emit("server.levelLoaded", /* name */ msg.data[1], /* mode name */ msg.data[2], /* round no. */ parseInt(msg.data[3], 10), /* of total rounds */ parseInt(msg.data[4], 10));

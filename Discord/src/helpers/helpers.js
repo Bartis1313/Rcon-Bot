@@ -1,5 +1,4 @@
 import Prompter from "discordjs-prompter"
-import config from "config"
 import fetch from "node-fetch";
 import Discord from 'discord.js';
 
@@ -24,7 +23,7 @@ class Helpers {
 
     static selectServer(msg) {
         let promises = []
-        let apiUrls = config.bconApiUrls
+        let apiUrls = [];
         if (process.env.BATTLECON_API_URLS) { // Should probs add some validation here
             apiUrls = process.env.BATTLECON_API_URLS.split(',')
         }

@@ -1,13 +1,11 @@
 import BattleCon from "../src/BattleCon";
-// import Discord from 'discord.js'; - was used for chat webhook
-const config = require("config")
+import webHookSender from './webHook.js'
 
 class BattleConClient {
   constructor(host, port, password) {
-    this._connection = new BattleCon(host, port, password).use(process.env.GAME || config.game);
+    this._connection = new BattleCon(host, port, password).use(process.env.GAME);
     this.initialize()
   }
-
 
   initialize() {
     let reconnectInterval = null;
@@ -43,18 +41,12 @@ class BattleConClient {
 
         }
       });
-
-      // Handle raw events:
-      connection.on("event", function (msg) {
-      });
-      // Handle module events (BF.js):
-      connection.on("player.join", function (name, guid) {
-      });
-
-      connection.on("player.leave", function (name, info) {
-      });
     });
-    
+
+    this._connection.on("player.disconnect", function (name, reason) {
+      webHookSender(name, reason);
+    });
+
     this._connection.on("close", () => {
       const date = new Date();
       console.log(`Disconnect: ${date.toLocaleString()}`);
@@ -62,22 +54,19 @@ class BattleConClient {
       if (reconnectInterval === null) {
         reconnectInterval = setInterval(() => {
           this._connection.connect();
-          console.log("Retried to connect");
+          //console.log("Retried to connect");
         }, 60_000); // 60secs
       }
     });
 
     this._connection.on("error", (err) => {
-      console.log("# Error: " + err.message, err.stack);
+      //console.log("# Error: " + err.message, err.stack);
     });
   }
 
   connect() {
 
     this._connection.connect(); // Connects and logs in
-  }
-  getBool() {
-    return restart;
   }
 
   version() {

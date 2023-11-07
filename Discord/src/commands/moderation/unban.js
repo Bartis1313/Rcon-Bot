@@ -1,13 +1,13 @@
-var config = require("config")
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
+import { createConnection } from 'mysql'
 
 module.exports = class unban {
     constructor() {
         this.name = 'unban';
         this.alias = ['ub'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX || config.commandPrefix}${this.name}`;
+        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
         this.messagesToDelete = [];
 
         this.dbsConfig = [];
@@ -33,7 +33,7 @@ module.exports = class unban {
 
     // code for NO adkats db relation to server
     // async run(bot, message, args) {
-    //     if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID || config.rconRoleId))) {
+    //     if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
     //         message.reply("You don't have permission to use this command.")
     //         return
     //     }
@@ -171,7 +171,7 @@ module.exports = class unban {
 
     // code for adkats relation
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID || config.rconRoleId))) {
+        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
             message.reply("You don't have permission to use this command.")
             message.delete()
             return
@@ -197,8 +197,6 @@ module.exports = class unban {
             }
             break;
         }
-        const newBanStatus = "Expired";
-
 
         const connection = createConnection(serverDB);
 
@@ -214,19 +212,29 @@ module.exports = class unban {
             const query = `
             UPDATE adkats_bans AS b
             JOIN adkats_records_main AS r ON b.latest_record_id = r.record_id
-            SET b.ban_status = ?
+            SET b.ban_status = 'Expired'
             WHERE r.target_name = ?;
             `;
 
-            connection.query(query, [newBanStatus, playerName], (error, result) => {
+            connection.query(query, [playerName], (error, result) => {
                 if (error) {
                     console.error('Error updating ban status:', error);
                     message.reply('An error occurred while updating the ban status.');
                 } else {
                     if (result.affectedRows === 0) {
-                        message.reply(`Server ${serverConfig.database}, no active bans found for player name: ${playerName}.`);
+                        message.reply(`Server ${serverDB.database}, no active bans found for player name: ${playerName}.`);
+                    } else if (result.changedRows === 0) {
+                        message.reply(`Player ${playerName} is already unbanned.`);
                     } else {
-                        message.reply(`Server ${serverConfig.database}, the ban for player name: ${playerName} has been marked as expired.`);
+                        const embed = new Discord.MessageEmbed()
+                            .setTimestamp()
+                            .setColor("00FF00")
+                            .setFooter('Author: Bartis')
+                            .setAuthor('Player Unban', message.author.avatarURL())
+                            .addField('Issuer', message.author.username, true)
+                            .addField('Target', `**${playerName}**`, true)
+                            .addField('Server', `${serverDB.database}`, false);
+                        message.channel.send(embed);
                     }
                 }
             });

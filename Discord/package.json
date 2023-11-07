@@ -27,7 +27,6 @@
   },
   "dependencies": {
     "@babel/plugin-transform-async-to-generator": "^7.22.5",
-    "config": "^3.3.9",
     "core-js": "^3.31.1",
     "discord.js": "^12.0.1",
     "discordjs-prompter": "^2.0.4",

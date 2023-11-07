@@ -1,12 +1,10 @@
-var config = require("config")
 var express = require("express");
 var bodyParser = require("body-parser");
 var app = express();
 import BattleConClient from "./BattleConClient"
 
-
 var serverName = null
-var client = new BattleConClient(process.env.RCON_HOST || config.host, process.env.RCON_PORT || config.port, process.env.RCON_PASS || config.pass)
+var client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, process.env.RCON_PASS)
 
 client.connect()
 
