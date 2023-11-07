@@ -141,7 +141,7 @@ module.exports = class map {
                     if (await Helpers.askTryAgain(message)) {
                         continue askIndex;
                     }
-                    return reject(Error("Couldn't the index number"))
+                    return reject(console.error("Couldn't the index number"))
                 }
                 break;
             }
@@ -163,7 +163,7 @@ module.exports = class map {
                 });
             }
             else {
-                return reject(Error("Map interrupted!"))
+                return reject(console.error("Map interrupted!"))
             }
         })
     }

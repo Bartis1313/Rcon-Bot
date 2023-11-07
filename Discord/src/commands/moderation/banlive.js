@@ -69,7 +69,7 @@ module.exports = class banLive {
     getParameters(message, server) {
         return new Promise(async (resolve, reject) => {
             const response = await Helpers.getPlayers(server)
-            if (!response.data.players) return reject(Error("No players in the server."))
+            if (!response.data.players) return reject(console.error("No players in the server."))
             const playerNames = response.data.players.map((player) => player.name);
 
             let banType;
@@ -84,7 +84,7 @@ module.exports = class banLive {
                         continue askbanType;
                     }
 
-                    return reject(Error("Couldn't get the ban Type"))
+                    return reject(console.error("Couldn't get the ban Type"))
                 }
                 break;
             }
@@ -101,7 +101,7 @@ module.exports = class banLive {
                         continue askPlayerName;
                     }
 
-                    return reject(Error("Couldn't get the banId"))
+                    return reject(console.error("Couldn't get the banId"))
                 }
 
                 // Do matching
@@ -111,7 +111,7 @@ module.exports = class banLive {
                         continue askPlayerName;
                     }
 
-                    return reject(Error("Couldn't match the player to any player in the server."))
+                    return reject(console.error("Couldn't match the player to any player in the server."))
                 }
 
                 switch (matchedPlayer.type) {
@@ -164,7 +164,7 @@ module.exports = class banLive {
                     if (await Helpers.askTryAgain(message)) {
                         continue asktimeout;
                     }
-                    return reject(Error("Couldn't get the ban type"))
+                    return reject(console.error("Couldn't get the ban type"))
                 }
                 break;
             }
@@ -181,7 +181,7 @@ module.exports = class banLive {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
                             }
-                            return reject(Error("Couldn't get ban duration in seconds"))
+                            return reject(console.error("Couldn't get ban duration in seconds"))
                         }
                         break;
                     }
@@ -193,7 +193,7 @@ module.exports = class banLive {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
                             }
-                            return reject(Error("Couldn't get ban duration in rounds"))
+                            return reject(console.error("Couldn't get ban duration in rounds"))
                         }
                         break;
                     }
@@ -207,7 +207,7 @@ module.exports = class banLive {
                         continue askReason;
                     }
 
-                    return reject(Error("Couldn't get the reason"))
+                    return reject(console.error("Couldn't get the reason"))
                 }
 
                 break;
@@ -234,7 +234,7 @@ module.exports = class banLive {
                 });
             }
             else {
-                return reject(Error("Ban interrupted!"))
+                return reject(console.error("Ban interrupted!"))
             }
         })
     }

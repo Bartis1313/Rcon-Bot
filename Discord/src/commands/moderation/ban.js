@@ -80,7 +80,7 @@ module.exports = class ban {
                         continue askbanType;
                     }
 
-                    return reject(Error("Couldn't get the ban Type"))
+                    return reject(console.error("Couldn't get the ban Type"))
                 }
                 break;
             }
@@ -92,7 +92,7 @@ module.exports = class ban {
                         continue askPlayerName;
                     }
 
-                    return reject(Error("Couldn't get the banId"))
+                    return reject(console.error("Couldn't get the banId"))
                 }
                 break;
             }
@@ -113,7 +113,7 @@ module.exports = class ban {
                     if (await Helpers.askTryAgain(message)) {
                         continue asktimeout;
                     }
-                    return reject(Error("Couldn't get the ban type"))
+                    return reject(console.error("Couldn't get the ban type"))
                 }
                 break;
             }
@@ -130,7 +130,7 @@ module.exports = class ban {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
                             }
-                            return reject(Error("Couldn't get ban duration in seconds"))
+                            return reject(console.error("Couldn't get ban duration in seconds"))
                         }
                         break;
                     }
@@ -142,7 +142,7 @@ module.exports = class ban {
                             if (await Helpers.askTryAgain(message)) {
                                 continue asktimeout;
                             }
-                            return reject(Error("Couldn't get ban duration in rounds"))
+                            return reject(console.error("Couldn't get ban duration in rounds"))
                         }
                         break;
                     }
@@ -156,7 +156,7 @@ module.exports = class ban {
                         continue askReason;
                     }
 
-                    return reject(Error("Couldn't get the reason"))
+                    return reject(console.error("Couldn't get the reason"))
                 }
 
                 break;
@@ -183,7 +183,7 @@ module.exports = class ban {
                 });
             }
             else {
-                return reject(Error("Ban interrupted!"))
+                return reject(console.error("Ban interrupted!"))
             }
         })
     }

@@ -69,7 +69,7 @@ module.exports = class vip {
                         continue askPlayerName;
                     }
 
-                    return reject(Error("Couldn't get the soldierName"))
+                    return reject(console.error("Couldn't get the soldierName"))
                 }
                 break;
             }
@@ -87,7 +87,7 @@ module.exports = class vip {
                 });
             }
             else {
-                return reject(Error("Vip interrupted!"))
+                return reject(console.error("Vip interrupted!"))
             }
         })
     }

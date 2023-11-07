@@ -76,7 +76,7 @@ module.exports = class say {
                     if(await Helpers.askTryAgain(message)) {
                         continue askMessage;
                     }
-                    return reject(Error("Couldn't get the message"))
+                    return reject(console.error("Couldn't get the message"))
                 }
                 break;
             }
@@ -104,7 +104,7 @@ module.exports = class say {
             }
             else {
                 msg.delete();
-                return reject(Error("say interrupted!"))
+                return reject(console.error("say interrupted!"))
             }
         })
     }

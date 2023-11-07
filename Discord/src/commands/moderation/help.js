@@ -8,6 +8,8 @@ module.exports = class help {
     }
 
     async run(bot, message, args) {
+        message.delete();
+
         const prefix = process.env.DISCORD_COMMAND_PREFIX;
 
         // yes, manually, too lazy to make some reader for it
@@ -21,7 +23,8 @@ module.exports = class help {
             `${prefix}list - lists players from the server, you better create seperate channel for it. The list is updated per 5 secs`,
             `${prefix}map - sets next map index, votemap might overwrite it!`,
             `${prefix}printbans - print all bans in the text file`,
-            `${prefix}psay - say the message to player`,
+            `${prefix}psay - say the message to the player`,
+            `${prefix}say - say the message to the server`,
             `${prefix}fps - checks serverTickTime variable`,
             `${prefix}unban - unbans selected player`,
             `${prefix}vip - adds vip slot to the player`,

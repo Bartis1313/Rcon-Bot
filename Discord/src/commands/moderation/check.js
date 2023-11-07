@@ -110,7 +110,7 @@ module.exports = class check {
                     continue askPlayerName;
                 }
 
-                return reject(Error("Couldn't get the playerName"))
+                return console.error("Couldn't get the playerName");
             }
             break;
         }

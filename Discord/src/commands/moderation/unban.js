@@ -99,7 +99,7 @@ module.exports = class unban {
     //                     continue askbanType;
     //                 }
 
-    //                 return reject(Error("Couldn't get the ban Type"))
+    //                 return reject(console.error("Couldn't get the ban Type"))
     //             }
     //             break;
     //         }
@@ -111,7 +111,7 @@ module.exports = class unban {
     //                     continue askPlayerName;
     //                 }
 
-    //                 return reject(Error("Couldn't get the banId"))
+    //                 return reject(console.error("Couldn't get the banId"))
     //             }
     //             break;
     //         }
@@ -143,7 +143,7 @@ module.exports = class unban {
     //             });
     //         }
     //         else {
-    //             return reject(Error("Unban interrupted!"))
+    //             return reject(console.error("Unban interrupted!"))
     //         }
     //     })
     // }
@@ -193,7 +193,7 @@ module.exports = class unban {
                     continue askPlayerName;
                 }
 
-                return reject(Error("Couldn't get the playerName"))
+                return console.error("Couldn't get playername");
             }
             break;
         }

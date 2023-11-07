@@ -69,7 +69,7 @@ module.exports = class psay {
     getParameters(message, server) {
         return new Promise(async (resolve, reject) => {
             const response = await Helpers.getPlayers(server)
-            if (!response.data.players) return reject(Error("No players in the server."))
+            if (!response.data.players) return reject(console.error("No players in the server."))
             const playerNames = response.data.players.map((player) => player.name);
 
             let what;
@@ -82,7 +82,7 @@ module.exports = class psay {
                         continue askPlayerName;
                     }
 
-                    return reject(Error("Couldn't get the playerName"))
+                    return reject(console.error("Couldn't get the playerName"))
                 }
 
                 // Do matching
@@ -92,7 +92,7 @@ module.exports = class psay {
                         continue askPlayerName;
                     }
 
-                    return reject(Error("Couldn't match the player to any player in the server."))
+                    return reject(console.error("Couldn't match the player to any player in the server."))
                 }
 
                 switch (matchedPlayer.type) {
@@ -136,7 +136,7 @@ module.exports = class psay {
                     if(await Helpers.askTryAgain(message)) {
                         continue askMessage;
                     }
-                    return reject(Error("Couldn't get the message"))
+                    return reject(console.error("Couldn't get the message"))
                 }
                 break;
             }
@@ -166,7 +166,7 @@ module.exports = class psay {
                 });
             }
             else {
-                return reject(Error("Psay interrupted!"))
+                return reject(console.error("Psay interrupted!"))
             }
         })
     }
