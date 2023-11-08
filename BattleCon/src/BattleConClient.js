@@ -35,6 +35,10 @@ class BattleConClient {
         }
       });
 
+      connection.on("event", function (msg) {
+        //console.log("event", msg);
+      });
+
       connection.listPlayers(function (err, players) {
         console.log("There are " + players.length + " connected players:");
         for (var i = 0; i < players.length; i++) {
@@ -44,7 +48,7 @@ class BattleConClient {
     });
 
     this._connection.on("player.disconnect", function (name, reason) {
-      webHookSender(name, reason);
+      webHookSender(connection, name, reason);
     });
 
     this._connection.on("close", () => {
@@ -104,7 +108,7 @@ class BattleConClient {
       if (!playerName) reject('Player name is required.')
       reason = reason ? reason : "Kicked by administrator"
 
-      connection.exec(["admin.kickPlayer", playerName], function (err, msg) {
+      connection.exec(["admin.kickPlayer", playerName, reason], function (err, msg) {
         err ? reject(err.message) : resolve({ playerName: playerName, reason: reason })
       });
     })
@@ -281,6 +285,17 @@ class BattleConClient {
       if (!what || !playerName) reject('admin say failed.')
       let player = "player";
       connection.exec(["admin.say", what, player, playerName], function (err, msg) {
+        err ? reject(err.message) : resolve(msg)
+      });
+    })
+  }
+
+  customCommand(command, params) {
+    let connection = this._connection
+    return new Promise(function (resolve, reject) {
+      if (!command) reject('command name is required.')
+
+      connection.exec(command, params ? params : null, function (err, msg) {
         err ? reject(err.message) : resolve(msg)
       });
     })

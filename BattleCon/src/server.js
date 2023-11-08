@@ -316,3 +316,17 @@ app.post("/admin/psay", (req, res, next) => {
         })
 })
 
+app.post("/custom", (req, res, next) => {
+    let command = req.body.command;
+    let params = req.body.params;
+
+    client.customCommand(command, params)
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response })
+        })
+        .catch(err => {
+
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+        })
+})
+

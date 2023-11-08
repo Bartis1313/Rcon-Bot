@@ -212,7 +212,10 @@ module.exports = class unban {
             const query = `
             UPDATE adkats_bans AS b
             JOIN adkats_records_main AS r ON b.latest_record_id = r.record_id
-            SET b.ban_status = 'Expired'
+            SET b.ban_status = CASE
+                WHEN b.ban_status = 'Disabled' THEN 'Disabled'
+                ELSE 'Disabled' -- what's the logic in these? Disabled equals manual ub? else just do 'Expired'
+            END
             WHERE r.target_name = ?;
             `;
 

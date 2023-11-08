@@ -1,6 +1,12 @@
 import { createConnection } from 'mysql';
 import fetch from 'node-fetch';
 
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 export default class BanAnnouncer {
     constructor() {
         this.dbsConfig = [];
@@ -64,13 +70,14 @@ export default class BanAnnouncer {
         const lastProcessedBanId = this.lastProcessedBanIds[index];
 
         const query = `
-        SELECT rcd.record_id, target_name, ban_startTime, ban_endTime, record_message, source_name
-        FROM adkats_bans AS ab, tbl_playerdata AS tp, adkats_records_main AS rcd
+        SELECT rcd.record_id, target_name, ban_startTime, ban_endTime, record_message, source_name, ServerName
+        FROM adkats_bans AS ab
+        INNER JOIN tbl_playerdata AS tp ON ab.player_id = tp.PlayerID
+        INNER JOIN adkats_records_main AS rcd ON ab.latest_record_id = rcd.record_id
+        INNER JOIN tbl_server AS s ON rcd.server_id = s.ServerID
         WHERE ab.ban_status = 'Active'
-        AND ab.player_id = tp.PlayerID
         AND ab.ban_startTime <= NOW()
         AND ab.ban_endTime > NOW()
-        AND ab.latest_record_id = rcd.record_id
         AND rcd.record_id > ${lastProcessedBanId}
         ORDER BY rcd.record_id DESC LIMIT 5;
         `;
@@ -86,6 +93,7 @@ export default class BanAnnouncer {
                     PlayerName: row.target_name,
                     Reason: row.record_message,
                     AdminName: row.source_name,
+                    ServerName: row.ServerName,
                     StartTime: new Date(row.ban_startTime),
                     EndTime: new Date(row.ban_endTime),
                 };
@@ -101,6 +109,17 @@ export default class BanAnnouncer {
     async sendBansToWebhook(webhookURL, bans) {
         if (bans.length === 0) return;
 
+        const banImgUrls = [
+            "https://ep-team.ru/baner/ban6.gif",
+            "https://ep-team.ru/baner/ban1.gif",
+            "https://ep-team.ru/baner/ban2.gif",
+            "https://ep-team.ru/baner/ban3.gif",
+            "https://ep-team.ru/baner/ban4.gif",
+            "https://ep-team.ru/baner/ban5.gif"
+        ];
+
+        const randomUrl = banImgUrls[getRandomInt(0, banImgUrls.length - 1)];
+
         const embeds = bans.map((ban) => {
             return {
                 title: 'New Ban',
@@ -110,8 +129,10 @@ export default class BanAnnouncer {
                     { name: 'Admin', value: ban.AdminName, inline: true },
                     { name: 'Start Time', value: ban.StartTime.toString(), inline: true },
                     { name: 'End Time', value: ban.EndTime.toString(), inline: true },
+                    { name: 'Server', value: ban.ServerName, inline: true },
                 ],
-                color: 0xFF0000, // RED
+                color: 0xFF0000, // RED,
+                thumbnail: { url: randomUrl }
             };
         });
 
