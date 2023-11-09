@@ -2,6 +2,13 @@ import { createConnection } from 'mysql';
 const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
 
+function truncateString(str, maxLength) {
+    if (str.length > maxLength) {
+        return str.substring(0, maxLength - 3) + '...';
+    }
+    return str;
+}
+
 module.exports = class link {
     constructor() {
         this.name = 'link';
@@ -27,81 +34,81 @@ module.exports = class link {
                 });
             }
         }
-    }
 
-    async findLinkedAccountsOctet3(connection, playerName, callback) {
-        return new Promise((resolve, reject) => {
-            const query = `
-              SELECT t1.SoldierName, t1.IP_Address, t1.GameID
-              FROM tbl_playerdata t1
-              JOIN tbl_playerdata t2 ON SUBSTRING_INDEX(t1.IP_Address, '.', 3) = SUBSTRING_INDEX(t2.IP_Address, '.', 3)
-              WHERE LOWER(t2.SoldierName) = LOWER(?)
-              ORDER BY
-                CASE
-                  WHEN t1.IP_Address = t2.IP_Address AND t1.GameID = t2.GameID THEN 1  -- Exact IP, Exact Game ID
-                  WHEN t1.IP_Address = t2.IP_Address THEN 2  -- Exact IP, Different Game ID
-                  ELSE 3  -- Same octet
-                END
+        this.mapNames = new Map();
+        this.mapNames.set(1, 'BF3')
+        this.mapNames.set(2, 'BF4')
+        this.mapNames.set(3, 'BF?')
+    }
+    
+    async findLinkedAccounts(connection, playerName, callback) {
+        try {
+            const query1 = `
+                WITH
+                ActID AS (
+                    SELECT PlayerID
+                    FROM tbl_playerdata
+                    WHERE SoldierName = ?
+                ),
+                HistID AS (
+                    SELECT PlayerID
+                    FROM SoldierName_history
+                    WHERE Old_SoldierName = ?
+                )
+                SELECT PlayerID
+                FROM ActID
+                UNION
+                SELECT PlayerID
+                FROM HistID;
             `;
 
-            connection.query(query, [playerName.toLowerCase()], (error, results) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    const linkedAccounts = [];
-                    const uniqueAccounts = new Set();
+            const results1 = await this.query(connection, query1, [playerName, playerName]);
 
-                    results.forEach((row) => {
-                        const accountKey = `${row.SoldierName}-${row.IP_Address}-${row.GameID}`;
+            if (results1.length === 0) {
+                return [];
+            }
 
-                        if (!uniqueAccounts.has(accountKey)) {
-                            linkedAccounts.push(
-                                `${row.IP_Address === results[0].IP_Address && row.GameID === results[0].GameID
-                                    ? 'Exact IP, Exact Game ID'
-                                    : row.IP_Address === results[0].IP_Address
-                                        ? 'Exact IP, Different Game ID'
-                                        : 'Same Octet'
-                                }: ${row.SoldierName} (IP: ${row.IP_Address}, Game ID: ${row.GameID})`
-                            );
-                            uniqueAccounts.add(accountKey);
-                        }
-                    });
+            const linkedPlayerIDs = results1.map(row => row.PlayerID);
 
-                    resolve(linkedAccounts);
+            if (linkedPlayerIDs.length === 0) {
+                return [];
+            }
+
+            const query2 = `
+                SELECT DISTINCT
+                pd.SoldierName AS original_soldierName,
+                pd_linked.SoldierName AS linked_soldierName,
+                ih.PlayerID,
+                ih.IP_Address,
+                pd.GameID
+                FROM ip_history ih
+                JOIN tbl_playerdata pd ON ih.PlayerID = pd.PlayerID
+                JOIN ip_history ih_linked ON ih.IP_Address = ih_linked.IP_Address
+                JOIN tbl_playerdata pd_linked ON ih_linked.PlayerID = pd_linked.PlayerID
+                WHERE ih.PlayerID IN (?);
+            `;
+
+            const results2 = await this.query(connection, query2, [linkedPlayerIDs]);
+
+            const linkedAccounts = results2.map(row => {
+                if (row.original_soldierName !== row.linked_soldierName) {
+                    return `${row.linked_soldierName} (IP: ${row.IP_Address}, Game ID: ${this.mapNames.get(row.GameID)})`;
                 }
             });
-        });
+
+            return linkedAccounts.filter(Boolean);
+        } catch (error) {
+            console.error(error);
+        }
     }
 
-    async findLinkedAccounts(connection, playerName, callback) {
+    query(connection, sql, values) {
         return new Promise((resolve, reject) => {
-            const query = `
-            SELECT t1.SoldierName, t1.IP_Address, t1.GameID
-            FROM tbl_playerdata t1
-            JOIN tbl_playerdata t2 ON t1.IP_Address = t2.IP_Address
-            WHERE LOWER(t2.SoldierName) = LOWER(?)
-            ORDER BY
-              CASE
-                WHEN t1.IP_Address = t2.IP_Address AND t1.GameID = t2.GameID THEN 1  -- Exact IP, Exact Game ID
-                WHEN t1.IP_Address = t2.IP_Address THEN 2  -- Exact IP, Different Game ID
-                ELSE 3  -- Different IP
-              END
-            `;
-
-            connection.query(query, [playerName.toLowerCase()], (error, results) => {
+            connection.query(sql, values, (error, results) => {
                 if (error) {
                     reject(error);
                 } else {
-                    const linkedAccounts = [];
-
-                    results.forEach((row) => {
-                        if(row.IP_Address) {
-                            const accountInfo = `${row.SoldierName} (IP: ${row.IP_Address}, Game ID: ${row.GameID})`;
-                            linkedAccounts.push(accountInfo);
-                        }
-                    });
-
-                    resolve(linkedAccounts);
+                    resolve(results);
                 }
             });
         });
@@ -166,10 +173,10 @@ module.exports = class link {
             .setColor('00FF00')
             .setTitle(`Linked Accounts ${serverDB.database} DB`)
             .addFields(
-                linkedAccounts.map((account) => ({
-                    name: 'Account',
-                    value: account,
-                }))
+                {
+                    name: 'Accounts',
+                    value: truncateString(linkedAccounts.map(account => `• ${account}`).join('\n'), 1024),
+                }
             )
             .setFooter(`Requested by ${message.author.username}`)
             .setTimestamp();

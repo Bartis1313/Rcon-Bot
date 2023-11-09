@@ -4,6 +4,13 @@ const Discord = require('discord.js');
 import Helpers from '../../helpers/helpers'
 import geoip from 'geoip-lite'
 
+function truncateString(str, maxLength) {
+    if (str.length > maxLength) {
+        return str.substring(0, maxLength - 3) + '...';
+    }
+    return str;
+}
+
 module.exports = class check {
     constructor() {
         this.name = 'check';
@@ -29,41 +36,90 @@ module.exports = class check {
                 });
             }
         }
+
+        this.mapNames = new Map();
+        this.mapNames.set(1, 'BF3')
+        this.mapNames.set(2, 'BF4')
+        this.mapNames.set(3, 'BF?')
     }
 
     async findInfoAccounts(connection, playerName, callback) {
-        return new Promise((resolve, reject) => {
+        try {
             const query = `
-            SELECT PlayerID, SoldierName, GlobalRank, PBGUID, EAGUID, IP_Address, CountryCode, GameID
-            FROM tbl_playerdata
-            WHERE SoldierName = ?
+            SELECT
+                pd.PlayerID,
+                COALESCE(pd.SoldierName, snh.New_SoldierName) AS SoldierName,
+                pd.GlobalRank,
+                pd.PBGUID,
+                pd.EAGUID,
+                pd.IP_Address,
+                pd.CountryCode,
+                pd.GameID,
+                snh.New_SoldierName AS New_SoldierName,
+                snh.Old_SoldierName,
+                snh.RecStamp
+            FROM SoldierName_history snh
+            LEFT JOIN tbl_playerdata pd ON pd.PlayerID = snh.PlayerID
+            WHERE pd.SoldierName = ? OR snh.New_SoldierName = ?
+            ORDER BY snh.RecStamp;
             `;
 
-            connection.query(query, [playerName.toLowerCase()], (error, results) => {
+            const results = await this.query(connection, query, [playerName, playerName]);
+
+            const infos = [];
+            const uniqueAccounts = new Set();
+
+            results.forEach((row) => {
+                const accountKey = `${row.SoldierName}-${row.IP_Address}-${row.GameID}`;
+
+                if (!uniqueAccounts.has(accountKey)) {
+                    const accountInfo = {
+                        SoldierName: row.SoldierName,
+                        GlobalRank: row.GlobalRank,
+                        PBGUID: row.PBGUID,
+                        EAGUID: row.EAGUID,
+                        IP_Address: row.IP_Address,
+                        CountryCode: row.CountryCode,
+                        GameID: row.GameID,
+                        NicknameHistory: []
+                    };
+
+                    if (row.New_SoldierName || row.Old_SoldierName) {
+                        accountInfo.NicknameHistory.push({
+                            New_SoldierName: row.New_SoldierName,
+                            Old_SoldierName: row.Old_SoldierName,
+                            RecStamp: row.RecStamp
+                        });
+                    }
+
+                    infos.push(accountInfo);
+                    uniqueAccounts.add(accountKey);
+                } else {
+                    // if the account is already added, just update the nickname history
+                    const existingAccount = infos.find(account => account.SoldierName === row.SoldierName);
+                    if (row.New_SoldierName || row.Old_SoldierName) {
+                        existingAccount.NicknameHistory.push({
+                            New_SoldierName: row.New_SoldierName,
+                            Old_SoldierName: row.Old_SoldierName,
+                            RecStamp: row.RecStamp
+                        });
+                    }
+                }
+            });
+
+            return infos;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    query(connection, sql, values) {
+        return new Promise((resolve, reject) => {
+            connection.query(sql, values, (error, results) => {
                 if (error) {
                     reject(error);
                 } else {
-                    const infos = [];
-                    const uniqueAccounts = new Set();
-
-                    results.forEach((row) => {
-                        const accountKey = `${row.SoldierName}-${row.IP_Address}-${row.GameID}`;
-
-                        if (!uniqueAccounts.has(accountKey)) {
-                            infos.push({
-                                SoldierName: row.SoldierName,
-                                GlobalRank: row.GlobalRank,
-                                PBGUID: row.PBGUID,
-                                EAGUID: row.EAGUID,
-                                IP_Address: row.IP_Address,
-                                CountryCode: row.CountryCode,
-                                GameID: row.GameID,
-                            });
-                            uniqueAccounts.add(accountKey);
-                        }
-                    });
-
-                    resolve(infos);
+                    resolve(results);
                 }
             });
         });
@@ -126,27 +182,49 @@ module.exports = class check {
 
         const embed = new Discord.MessageEmbed()
             .setColor('00FF00')
-        infosAccounts.forEach((playerInfo) => {
-            console.log(playerInfo);
-            const lookup = geoip.lookup(playerInfo.IP_Address);
-            let country = "Err";
-            if(lookup) {
-                country = lookup.country;
-            }
+            .setTimestamp()
+            .setAuthor(`Check for ${serverDB.database}`, message.author.avatarURL())
+            .setFooter('Author: Bartis');
 
-            embed.addField('Soldier Name', playerInfo.SoldierName || 'N/A', true); // 1
-            embed.addField('Global Rank', playerInfo.GlobalRank || 'N/A', true); // 2
-            embed.addField('EA GUID', playerInfo.EAGUID || 'N/A', true); // 3
-            embed.addField('PB GUID', playerInfo.PBGUID || 'N/A', true); // 1
-            embed.addField('IP Address', playerInfo.IP_Address || 'N/A', true); // 2
-            embed.addField('Country Code', /*playerInfo.CountryCode*/country || 'N/A', true); // 3 // crashign sometimes, country code is empty for some ppl
-            embed.addField('GameID', playerInfo.GameID || 'N/A', true); // 1
-            embed.addField('\u200b', '\u200b', true); // 2
-            embed.addField('\u200b', '\u200b', true); // 3
+        infosAccounts.forEach((playerInfo) => {
+            const lookup = geoip.lookup(playerInfo.IP_Address);
+            const country = lookup ? lookup.country : 'Err';
+
+            embed.addFields(
+                { name: 'Soldier Name', value: playerInfo.SoldierName || 'N/A', inline: true },
+                { name: 'Global Rank', value: playerInfo.GlobalRank || 'N/A', inline: true },
+                { name: 'EA GUID', value: playerInfo.EAGUID || 'N/A', inline: true },
+                { name: 'PB GUID', value: playerInfo.PBGUID || 'N/A', inline: true },
+                { name: 'IP Address', value: playerInfo.IP_Address || 'N/A', inline: true },
+                { name: 'Country Code', value: country || 'N/A', inline: true }, // country code might be empty for some people
+                { name: 'GameID', value: this.mapNames.get(playerInfo.GameID) || 'N/A', inline: true },
+                { name: '\u200b', value: '\u200b', inline: true },
+                { name: '\u200b', value: '\u200b', inline: true }
+            );
+
+            const uniqueHistoryAccounts = new Map();
+
+            if (playerInfo.NicknameHistory && playerInfo.NicknameHistory.length > 0) {
+                playerInfo.NicknameHistory.forEach(history => {
+                    const newKey = history.New_SoldierName;
+                    const oldKey = history.Old_SoldierName;
+
+                    if (!uniqueHistoryAccounts.has(newKey) && !uniqueHistoryAccounts.has(oldKey)) {
+                        uniqueHistoryAccounts.set(newKey, history.RecStamp);
+                        uniqueHistoryAccounts.set(oldKey, history.RecStamp);
+                    }
+                });
+
+                const historyAccountsList = Array.from(uniqueHistoryAccounts).map(([nickname, date]) => {
+                    const dateObject = new Date(date);
+                    return `• ${nickname} (Date: ${dateObject.toLocaleDateString()})`;
+                }).join('\n');
+
+                const truncated = truncateString(historyAccountsList, 1024);
+
+                embed.addField('Name history', truncated, false);
+            }
         });
-        embed.setTimestamp()
-        embed.setAuthor(`Check for ${serverDB.database}`, message.author.avatarURL())
-        embed.setFooter('Author: Bartis')
 
         message.channel.send(embed);
     };
