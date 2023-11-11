@@ -1,6 +1,6 @@
 import { createConnection } from 'mysql';
 const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers'
+import { Helpers } from '../../helpers/helpers'
 
 function truncateString(str, maxLength) {
     if (str.length > maxLength) {
@@ -138,14 +138,14 @@ module.exports = class link {
             message.delete()
             return
         }
-        message.delete();
 
         let serverDB = await Helpers.selectDBServer(message, this.dbsConfig)
         if (!serverDB) {
-            message.reply("Unknown error");
             message.delete({ timeout: 5000 });
             return;
         }
+
+        message.delete();
 
         let playerName = '';
         askPlayerName: while (true) {

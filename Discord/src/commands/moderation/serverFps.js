@@ -1,6 +1,6 @@
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers'
+import { Helpers } from '../../helpers/helpers'
 
 module.exports = class serverFps {
     constructor() {
@@ -15,15 +15,15 @@ module.exports = class serverFps {
             message.reply("You don't have permission to use this command.")
             return
         }
-        await message.delete()
 
         let server = await Helpers.selectServer(message)
         if (!server) {
-            message.reply("Unknown error");
             message.delete({ timeout: 5000 });
             this.clearMessages();
             return;
         }
+
+        message.delete();
 
         return fetch(`${server}/serverfps`, {
             method: "post",

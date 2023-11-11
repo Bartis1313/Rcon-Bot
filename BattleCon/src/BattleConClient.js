@@ -1,5 +1,5 @@
 import BattleCon from "../src/BattleCon";
-import webHookSender from './webHook.js'
+import { webHookKickSenderBF4, webHookKickSenderBF3 } from './webHook.js'
 
 class BattleConClient {
   constructor(host, port, password) {
@@ -48,7 +48,7 @@ class BattleConClient {
     });
 
     this._connection.on("player.disconnect", function (name, reason) {
-      webHookSender(connection, name, reason);
+      webHookKickSenderBF4(connection, name, reason);
     });
 
     this._connection.on("close", () => {
@@ -66,6 +66,11 @@ class BattleConClient {
     this._connection.on("error", (err) => {
       //console.log("# Error: " + err.message, err.stack);
     });
+
+    connection.on("player.chat", function(name, text, subset) {
+      //console.log("# "+name+" -> "+subset.join(' ')+": "+text);
+      webHookKickSenderBF3(connection, name, text, subset);
+  });
   }
 
   connect() {
@@ -279,12 +284,39 @@ class BattleConClient {
       });
     })
   }
+
+  adminYellall(what, duration) {
+    let connection = this._connection
+    if(duration < 0) duration = 0;
+    let d = duration >>> 0;
+    return new Promise(function (resolve, reject) {
+      if (!what || !duration) reject('admin yell failed.')
+      connection.exec(["admin.yell", what, d.toString(), "all"], function (err, msg) {
+        err ? reject(err.message) : resolve(msg)
+      });
+    })
+  }
+
   adminSayPlayer(what, playerName) {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
       if (!what || !playerName) reject('admin say failed.')
       let player = "player";
       connection.exec(["admin.say", what, player, playerName], function (err, msg) {
+        err ? reject(err.message) : resolve(msg)
+      });
+    })
+  }
+
+  adminYellPlayer(what, duration, playerName) {
+    let du = Number(duration);
+    if(du < 0) du = 0;
+    let d = du >>> 0;
+    let connection = this._connection
+    return new Promise(function (resolve, reject) {
+      if (!what || !playerName) reject('admin yell failed.')
+      let player = "player";
+      connection.exec(["admin.yell", what, d.toString(), player, playerName], function (err, msg) {
         err ? reject(err.message) : resolve(msg)
       });
     })

@@ -2,6 +2,12 @@ import Prompter from "discordjs-prompter"
 import fetch from "node-fetch";
 import Discord from 'discord.js';
 
+class ActionType {
+    static BAN = 'BANNED';
+    static KICK = 'KICKED';
+    static KILL = 'KILLED';
+    static UNKNOWN = 'UNKNOWN';
+};
 
 class Helpers {
     static async getPlayers(apiUrl) {
@@ -90,8 +96,9 @@ class Helpers {
                         return null;
                     })
                     .catch(async collected => {
-                        const message = await msg.reply(`Command timed out`);
-                        message.delete({ timeout: 5000 });
+                        message.delete();
+                        const m = await msg.reply(`Command timed out`);
+                        m.delete({ timeout: 5000 });
                         return null;
                     });
             })
@@ -111,12 +118,12 @@ class Helpers {
 
         const len = dbs.length;
 
-        for(let index = 0; index < len; index++) {
+        for (let index = 0; index < len; index++) {
             embed.addField(choices[index], `**${dbs[index].database}**`, false)
         }
 
         const message = await msg.channel.send(embed);
-        for(let index = 0; index < len; index++) {
+        for (let index = 0; index < len; index++) {
             await message.react(choices[index]);
         }
 
@@ -137,8 +144,9 @@ class Helpers {
                 return null;
             })
             .catch(async collected => {
-                const message = await msg.reply(`Command timed out`);
-                message.delete({ timeout: 5000 });
+                message.delete();
+                const m = await msg.reply(`Command timed out`);
+                m.delete({ timeout: 5000 });
                 return null;
             });
     }
@@ -188,8 +196,9 @@ class Helpers {
                 return null;
             })
             .catch(async collected => {
-                const message = await msg.reply(`Command timed out`);
-                message.delete({ timeout: 5000 });
+                message.delete();
+                const m = await msg.reply(`Command timed out`);
+                m.delete({ timeout: 5000 });
                 return null;
             });
     }
@@ -326,8 +335,9 @@ class Helpers {
                 return null;
             })
             .catch(async collected => {
-                const message = await msg.reply(`Command timed out`);
-                message.delete({ timeout: 5000 });
+                message.delete();
+                const m = await msg.reply(`Command timed out`);
+                m.delete({ timeout: 5000 });
                 return null;
             });
     }
@@ -365,8 +375,9 @@ class Helpers {
                 return null;
             })
             .catch(async collected => {
-                const message = await msg.reply(`Command timed out`);
-                message.delete({ timeout: 5000 });
+                message.delete();
+                const m = await msg.reply(`Command timed out`);
+                m.delete({ timeout: 5000 });
                 return null;
             });
     }
@@ -505,6 +516,60 @@ class Helpers {
             return content;
         });
     }
-}
 
-export default Helpers
+    static async sendDisconnectInfo(actionType, server, parameters, delay) {
+        const sleep = (ms) => {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        };
+
+        const callbackYell = async () => {
+            const params = {
+                what: `YOU ARE ${actionType} for ${parameters.reason}`,
+                duration: delay / 1000,
+                playerName: parameters.playerName
+            };
+
+            await fetch(`${server}/admin/pyell`, {
+                method: "post",
+                headers: {
+                    "Content-type": "application/json",
+                    "Accept": "application/json",
+                    "Accept-Charset": "utf-8"
+                },
+                body: JSON.stringify(params)
+            })
+                .then(response => response.json())
+                .catch(error => {
+                    console.log(error)
+                    return false
+                })
+        }
+
+        const callbackSend = async () => {
+            const params = {
+                what: `Rcon-Bot ${actionType} ${parameters.playerName} by Rcon-Bot for ${parameters.reason}` // try to send smth like other plugins
+            };
+
+            await fetch(`${server}/admin/sayall`, {
+                method: "post",
+                headers: {
+                    "Content-type": "application/json",
+                    "Accept": "application/json",
+                    "Accept-Charset": "utf-8"
+                },
+                body: JSON.stringify(params)
+            })
+                .then(response => response.json())
+                .catch(error => {
+                    console.log(error)
+                    return false
+                })
+        }
+
+        await callbackYell();
+        await callbackSend();
+        await sleep(delay);
+    }
+};
+
+export { Helpers, ActionType };

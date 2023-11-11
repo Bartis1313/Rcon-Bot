@@ -1,6 +1,6 @@
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers'
+import { Helpers } from '../../helpers/helpers'
 import getVer from '../../helpers/ver';
 import getMapObj from '../../helpers/mapsObj'
 
@@ -23,17 +23,17 @@ module.exports = class map {
         if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
             message.reply("You don't have permission to use this command.")
             return
-        }
-        await message.delete()
+        }       
 
         let server = await Helpers.selectServer(message)
         this.serverUrl = server;
         if (!server) {
-            message.reply("Unknown error");
             message.delete({ timeout: 5000 });
             this.clearMessages();
             return;
         }
+
+        message.delete()
 
         let parameters = await this.getParameters(message, server)
             .then(parameters => {

@@ -1,6 +1,3 @@
-const fetch = require("node-fetch");
-const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers'
 import { createConnection } from 'mysql';
 import fs from 'fs'
 
@@ -113,6 +110,8 @@ module.exports = class printBans {
       message.reply("You don't have permission to use this command.")
       return
     }
+
+    message.delete();
 
     for (const serverConfig of this.dbsConfig) {
       const connection = createConnection(serverConfig);

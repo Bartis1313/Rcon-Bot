@@ -1,7 +1,7 @@
 import { createConnection } from 'mysql';
 //import geoip from 'geoip-country';
 const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers'
+import { Helpers } from '../../helpers/helpers'
 import geoip from 'geoip-lite'
 
 function truncateString(str, maxLength) {
@@ -149,14 +149,14 @@ module.exports = class check {
             message.delete()
             return
         }
-        message.delete();
 
         let serverDB = await Helpers.selectDBServer(message, this.dbsConfig)
         if (!serverDB) {
-            message.reply("Unknown error");
             message.delete({ timeout: 5000 });
             return;
         }
+
+        message.delete();
 
         let playerName = '';
         askPlayerName: while (true) {

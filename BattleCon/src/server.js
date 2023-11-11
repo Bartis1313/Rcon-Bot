@@ -316,6 +316,45 @@ app.post("/admin/psay", (req, res, next) => {
         })
 })
 
+app.post("/admin/yellall", (req, res, next) => {
+    let what = req.body.what;
+    let duration = req.body.duration;
+    client.adminYellall(what, duration)
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response })
+        })
+        .catch(err => {
+            console.log(err)
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+        })
+})
+
+app.post("/admin/pyell", (req, res, next) => {
+    let what = req.body.what;
+    let duration = req.body.duration;
+    let playerName = req.body.playerName;
+    client.adminYellPlayer(what, duration, playerName)
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response })
+        })
+        .catch(err => {
+            console.log(err)
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+        })
+})
+
+app.post("/admin/sayall", (req, res, next) => {
+    let what = req.body.what;
+    client.adminSayall(what)
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response })
+        })
+        .catch(err => {
+            console.log(err)
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+        })
+})
+
 app.post("/custom", (req, res, next) => {
     let command = req.body.command;
     let params = req.body.params;

@@ -1,6 +1,6 @@
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers.js';
+import { Helpers } from '../../helpers/helpers'
 import format from '../../helpers/format.js'
 import getVer from '../../helpers/ver.js';
 import { getMapObj, getModesObj } from '../../helpers/mapsObj.js'
@@ -255,9 +255,7 @@ module.exports = class list {
         await message.delete()
         let server = await Helpers.selectServer(message)
         if (!server) {
-            message.reply("Unknown error");
             message.delete({ timeout: 5000 });
-            this.clearMessages();
             return;
         }
 

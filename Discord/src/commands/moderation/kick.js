@@ -1,6 +1,6 @@
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
-import Helpers from '../../helpers/helpers'
+import { Helpers, ActionType } from '../../helpers/helpers'
 import PlayerMatching from '../../helpers/playerMatching'
 
 module.exports = class kick {
@@ -16,15 +16,15 @@ module.exports = class kick {
             message.reply("You don't have permission to use this command.")
             return
         }
-        await message.delete();
 
         let server = await Helpers.selectServer(message)
         if (!server) {
-            message.reply("Unknown error");
             message.delete({ timeout: 5000 });
             this.clearMessages();
             return;
         }
+
+        message.delete();
 
         let parameters = await this.getParameters(message, server)
             .then(parameters => {
@@ -41,6 +41,8 @@ module.exports = class kick {
             return
         }
 
+        await Helpers.sendDisconnectInfo(ActionType.KICK, server, parameters, 10000);
+
         return fetch(`${server}/admin/kick`, {
             method: "post",
             headers: {
@@ -51,7 +53,8 @@ module.exports = class kick {
             body: JSON.stringify(parameters)
         })
             .then(response => response.json())
-            .then(json => {
+            .then(async json => {
+
                 return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
             })
             .catch(error => {
@@ -186,7 +189,7 @@ module.exports = class kick {
         if (response?.data?.reason) {
             embed.addField('Reason', response.data.reason, true)
         }
-        
+
         embed.addField('Status', response.status, true)
         if (response.status === "FAILED") {
             embed.addField('Reason for failing', response.error, true)
