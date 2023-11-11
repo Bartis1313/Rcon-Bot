@@ -19,7 +19,6 @@ module.exports = class vip {
         this.serverUrl = server;
         if (!server) {
             message.delete({ timeout: 5000 });
-            //this.clearMessages();
             return;
         }
 

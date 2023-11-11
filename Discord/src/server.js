@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
-const BanAnnouncer = require('./misc/banChecker.js').default;
+const BanAnnouncer = require('./misc/banChecker.js');
 const banAnnouncer = new BanAnnouncer();
 
 const { CommandHandler } = require("djs-commands")

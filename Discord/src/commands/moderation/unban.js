@@ -7,7 +7,6 @@ module.exports = class unban {
         this.name = 'unban';
         this.alias = ['ub'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.messagesToDelete = [];
 
         this.dbsConfig = [];
         if (process.env.DBS_NAME) {
@@ -42,18 +41,15 @@ module.exports = class unban {
     //     if (!server) {
     //         message.reply("Unknown error");
     //         message.delete({ timeout: 5000 });
-    //         this.clearMessages();
     //         return;
     //     }
 
     //     let parameters = await this.getParameters(message, server)
     //         .then(parameters => {
-    //             this.clearMessages();
     //             return parameters;
     //         })
     //         .catch(err => {
     //             console.log(err);
-    //             this.clearMessages();
     //             return null;
     //         })
 
@@ -78,12 +74,6 @@ module.exports = class unban {
     //             console.log(error)
     //             return false
     //         })
-    // }
-
-    // clearMessages() {
-    //     for (const message of this.messagesToDelete) {
-    //         message.delete();
-    //     }
     // }
 
     // getParameters(message) {

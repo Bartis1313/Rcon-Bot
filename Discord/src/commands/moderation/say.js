@@ -7,7 +7,6 @@ module.exports = class say {
         this.name = 'say';
         this.alias = ['sayall'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.messagesToDelete = [];
     }
 
     async run(bot, message, args) {
@@ -19,7 +18,6 @@ module.exports = class say {
         let server = await Helpers.selectServer(message)
         if (!server) {
             message.delete({ timeout: 5000 });
-            this.clearMessages();
             return;
         }
 
@@ -27,12 +25,10 @@ module.exports = class say {
 
         let parameters = await this.getParameters(message, server)
             .then(parameters => {
-                this.clearMessages();
                 return parameters;
             })
             .catch(err => {
                 console.log(err);
-                this.clearMessages();
                 return null;
             })
 

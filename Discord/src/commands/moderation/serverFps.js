@@ -7,7 +7,6 @@ module.exports = class serverFps {
         this.name = 'fps';
         this.alias = ['serverfps'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.messagesToDelete = [];
     }
 
     async run(bot, message, args) {
@@ -19,7 +18,6 @@ module.exports = class serverFps {
         let server = await Helpers.selectServer(message)
         if (!server) {
             message.delete({ timeout: 5000 });
-            this.clearMessages();
             return;
         }
 
@@ -41,12 +39,6 @@ module.exports = class serverFps {
                 console.log(error)
                 return false
             })
-    }
-
-    clearMessages() {
-        for (const message of this.messagesToDelete) {
-            message.delete();
-        }
     }
 
     buildEmbed(message, response) {

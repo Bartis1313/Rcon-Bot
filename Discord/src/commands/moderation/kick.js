@@ -8,7 +8,6 @@ module.exports = class kick {
         this.name = 'kick';
         this.alias = ['kickplayer'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.messagesToDelete = [];
     }
 
     async run(bot, message, args) {
@@ -20,7 +19,6 @@ module.exports = class kick {
         let server = await Helpers.selectServer(message)
         if (!server) {
             message.delete({ timeout: 5000 });
-            this.clearMessages();
             return;
         }
 
@@ -28,12 +26,10 @@ module.exports = class kick {
 
         let parameters = await this.getParameters(message, server)
             .then(parameters => {
-                this.clearMessages();
                 return parameters;
             })
             .catch(err => {
                 console.log(err);
-                this.clearMessages();
                 return null;
             })
 
@@ -61,12 +57,6 @@ module.exports = class kick {
                 console.log(error)
                 return false
             })
-    }
-
-    clearMessages() {
-        for (const message of this.messagesToDelete) {
-            message.delete();
-        }
     }
 
     getParameters(message, server) {

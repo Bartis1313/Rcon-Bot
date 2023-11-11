@@ -1,1 +1,0 @@
-[banType], [banId], [timeout], [seconds-timeout], [rounds-timeout], [reason]

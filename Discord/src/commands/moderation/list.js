@@ -6,18 +6,13 @@ import getVer from '../../helpers/ver.js';
 import { getMapObj, getModesObj } from '../../helpers/mapsObj.js'
 import fTime from '../../helpers/timeFormat.js'
 
-// all of this code could be done better, to split functions to other files
-// same goes to retry in the functions for server information, could be done way better
-
 module.exports = class list {
     constructor() {
         this.name = 'list';
         this.alias = ['listplayers'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.clearMessages = [];
         this.maplistRaw = [];
         this.maplistArr = [];
-        this.messagesToDelete = [];
     }
 
     async team1(server) {
@@ -260,10 +255,5 @@ module.exports = class list {
         }
 
         this.sendEmbedWithInterval(message, server);
-    }
-    clearMessages() {
-        for (const message of this.messagesToDelete) {
-            message.delete();
-        }
     }
 }

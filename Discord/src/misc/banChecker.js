@@ -7,7 +7,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export default class BanAnnouncer {
+module.exports = class BanAnnouncer {
     constructor() {
         this.dbsConfig = [];
         if (process.env.DBS_NAME) {

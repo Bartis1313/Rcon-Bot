@@ -8,7 +8,6 @@ module.exports = class banLive {
         this.name = 'banlive';
         this.alias = ['banliveplayer'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.messagesToDelete = [];
     }
 
     async run(bot, message, args) {
@@ -20,7 +19,6 @@ module.exports = class banLive {
         let server = await Helpers.selectServer(message)
         if (!server) {
             message.delete({ timeout: 5000 });
-            this.clearMessages();
             return;
         }
 
@@ -28,12 +26,10 @@ module.exports = class banLive {
 
         let parameters = await this.getParameters(message, server)
             .then(parameters => {
-                this.clearMessages();
                 return parameters;
             })
             .catch(err => {
                 console.log(err);
-                this.clearMessages();
                 return null;
             })
 
@@ -60,12 +56,6 @@ module.exports = class banLive {
                 console.log(error)
                 return false
             })
-    }
-
-    clearMessages() {
-        for (const message of this.messagesToDelete) {
-            message.delete();
-        }
     }
 
     getParameters(message, server) {

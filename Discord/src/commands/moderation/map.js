@@ -1,21 +1,19 @@
 const fetch = require("node-fetch");
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
-import getVer from '../../helpers/ver';
-import getMapObj from '../../helpers/mapsObj'
+import getVer from '../../helpers/ver.js';
+import { getMapObj, getModesObj } from '../../helpers/mapsObj.js'
 
 module.exports = class map {
     constructor() {
         this.name = 'map';
         this.alias = ['mapindex'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.messagesToDelete = [];
+        this.maplistArr = [];
+        this.modelistArr = [];
+        this.maplistRaw = [];
         this.lenMap;
         this.serverUrl;
-        this.maplistArr = [];
-        this.maplistRaw = [];
-        this.embedDesc;
-        this.indexNumber;
     }
 
 
@@ -29,7 +27,6 @@ module.exports = class map {
         this.serverUrl = server;
         if (!server) {
             message.delete({ timeout: 5000 });
-            this.clearMessages();
             return;
         }
 
@@ -37,12 +34,10 @@ module.exports = class map {
 
         let parameters = await this.getParameters(message, server)
             .then(parameters => {
-                this.clearMessages();
                 return parameters;
             })
             .catch(err => {
                 console.log(err);
-                this.clearMessages();
                 return null;
             })
 
@@ -61,7 +56,6 @@ module.exports = class map {
         })
             .then(response => response.json())
             .then(json => {
-                //console.log(json)
                 return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
             })
             .catch(error => {
@@ -72,8 +66,11 @@ module.exports = class map {
 
     getMapArray() {
         const maps = getMapObj(getVer(this.serverUrl));
+        const modes = getModesObj(getVer(this.serverUrl));
+        this.maplistArr = [];
+        this.modelistArr = [];
+        this.maplistRaw = [];
 
-        let arr = []
         return fetch(`${this.serverUrl}/listOfMaps`, {
             method: "post",
             headers: {
@@ -84,15 +81,19 @@ module.exports = class map {
         })
             .then(response => response.json())
             .then(json => {
-                const len = json.data.length;
-                for (let i = 2; i < len; i += 3) {
-                    arr.push(json.data[i]);
-                    this.maplistRaw.push(json.data[i])
-                    this.maplistArr.push(maps[json.data[i]])
+                const array = json.data;
+
+                for (let i = 2; i < array.length; i += 3) {
+                    const mapCode = array[i];
+                    const mapMode = array[i + 1];
+
+                    this.maplistRaw.push(mapCode);
+                    this.maplistArr.push(maps[mapCode]);
+                    this.modelistArr.push(modes[mapMode]);
                 }
-                //console.log(arr)
-                this.lenMap = arr.length;
-                return arr;
+
+                this.lenMap = this.maplistRaw.length;
+                return true;
             })
             .catch(error => {
                 console.error(error)
@@ -100,38 +101,30 @@ module.exports = class map {
             })
     }
 
-    clearMessages() {
-        for (const message of this.messagesToDelete) {
-            message.delete();
-        }
-    }
-
     generateDesc() {
         const len = this.lenMap
         let ready_str = `\`\`\`c\n`;
-        const content = this.maplistArr;
+        const mapname = this.maplistArr;
+        const modename = this.modelistArr;
+
         for (let i = 0; i < len; i++) {
-            ready_str += `Number: ${i} Name: "${content[i]}"` + '\n';
+            ready_str += `Number: ${i} Name: "${mapname[i]}" Mode "${modename[i]}"` + '\n';
         }
+
         ready_str += `\`\`\``
-        this.embedDesc = ready_str;
-        //console.log(ready_str)
         return ready_str;
     }
 
     getParameters(message) {
         return new Promise(async (resolve, reject) => {
             let indexNum;
-            this.indexNumber = indexNum;
             await this.getMapArray()
-            this.generateDesc()
-
-            this.generateDesc()
+            const desc = this.generateDesc()
 
             const embed = new Discord.MessageEmbed()
                 .setTimestamp()
                 .setColor("00FF00")
-                .setDescription(this.embedDesc)
+                .setDescription(desc)
 
             const msg = await message.channel.send(embed)
 
@@ -141,7 +134,7 @@ module.exports = class map {
                     if (await Helpers.askTryAgain(message)) {
                         continue askIndex;
                     }
-                    return reject(console.error("Couldn't the index number"))
+                    return reject(console.error("Couldn't get the index number"))
                 }
                 break;
             }

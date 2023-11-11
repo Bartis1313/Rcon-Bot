@@ -44,7 +44,6 @@ module.exports = class printBans {
   //     if (!server) {
   //         message.reply("Unknown error");
   //         message.delete({ timeout: 5000 });
-  //         this.clearMessages();
   //         return;
   //     }
 
@@ -79,12 +78,6 @@ module.exports = class printBans {
   //             console.log(error)
   //             return false
   //         })
-  // }
-
-  // clearMessages() {
-  //     for (const message of this.messagesToDelete) {
-  //         message.delete();
-  //     }
   // }
 
   // buildEmbed(message, response) {
