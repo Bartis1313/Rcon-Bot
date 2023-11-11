@@ -59,13 +59,15 @@ module.exports = class BanAnnouncer {
                     this.lastProcessedBanIds[index] = results[0].maxRecordId || 9999999;
                 });
 
+                connection.end();
             });
 
-            return { connection, webhookURL: this.webhookURLs[index] };
+            return { config, webhookURL: this.webhookURLs[index] };
         });
     }
 
-    getRecentBans(connection, webhookURL, index) {
+    getRecentBans(connectionConfig, webhookURL, index) {
+        const connection = createConnection(connectionConfig);
 
         const lastProcessedBanId = this.lastProcessedBanIds[index];
 
@@ -82,27 +84,35 @@ module.exports = class BanAnnouncer {
         ORDER BY rcd.record_id DESC LIMIT 5;
         `;
 
-        connection.query(query, (error, results) => {
-            if (error) {
-                console.error('Error querying database:', error);
+        connection.connect((err) => {
+            if (err) {
+                console.error('Error connecting to MySQL:', err);
                 return;
             }
-            const bans = results.map((row) => {
-                return {
-                    ID: row.record_id,
-                    PlayerName: row.target_name,
-                    Reason: row.record_message,
-                    AdminName: row.source_name,
-                    ServerName: row.ServerName,
-                    StartTime: new Date(row.ban_startTime),
-                    EndTime: new Date(row.ban_endTime),
-                };
+            connection.query(query, (error, results) => {
+                if (error) {
+                    console.error('Error querying database:', error);
+                    return;
+                }
+                const bans = results.map((row) => {
+                    return {
+                        ID: row.record_id,
+                        PlayerName: row.target_name,
+                        Reason: row.record_message,
+                        AdminName: row.source_name,
+                        ServerName: row.ServerName,
+                        StartTime: new Date(row.ban_startTime),
+                        EndTime: new Date(row.ban_endTime),
+                    };
+                });
+
+                if (bans.length > 0) {
+                    this.lastProcessedBanIds[index] = bans[0].ID; // update the last processed ban ID, to prevent same data
+                    this.sendBansToWebhook(webhookURL, bans);
+                }
             });
 
-            if (bans.length > 0) {
-                this.lastProcessedBanIds[index] = bans[0].ID; // update the last processed ban ID, to prevent same data
-                this.sendBansToWebhook(webhookURL, bans);
-            }
+            connection.end();
         });
     }
 
@@ -159,7 +169,7 @@ module.exports = class BanAnnouncer {
 
     checkForNewBans() {
         this.connections.forEach((connection, index) => {
-            this.getRecentBans(connection.connection, connection.webhookURL, index);
+            this.getRecentBans(connection.config, connection.webhookURL, index);
         });
     }
 
