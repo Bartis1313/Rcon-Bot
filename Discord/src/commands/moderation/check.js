@@ -58,8 +58,8 @@ module.exports = class check {
                 snh.New_SoldierName AS New_SoldierName,
                 snh.Old_SoldierName,
                 snh.RecStamp
-            FROM SoldierName_history snh
-            LEFT JOIN tbl_playerdata pd ON pd.PlayerID = snh.PlayerID
+            FROM tbl_playerdata pd
+            LEFT JOIN SoldierName_history snh ON pd.PlayerID = snh.PlayerID
             WHERE pd.SoldierName = ? OR snh.New_SoldierName = ?
             ORDER BY snh.RecStamp;
             `;
