@@ -60,11 +60,11 @@ module.exports = class check {
                 snh.RecStamp
             FROM tbl_playerdata pd
             LEFT JOIN SoldierName_history snh ON pd.PlayerID = snh.PlayerID
-            WHERE pd.SoldierName = ? OR snh.New_SoldierName = ?
+            WHERE pd.SoldierName = ? OR snh.New_SoldierName = ? OR snh.Old_SoldierName = ?
             ORDER BY snh.RecStamp;
             `;
 
-            const results = await this.query(connection, query, [playerName, playerName]);
+            const results = await this.query(connection, query, [playerName, playerName, playerName]);
 
             const infos = [];
             const uniqueAccounts = new Set();
