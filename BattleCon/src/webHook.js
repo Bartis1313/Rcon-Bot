@@ -109,12 +109,12 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
 
     let kicker, kicked, reason;
     if (youKickedRegex) {
-        [, kicker, kicked, reason] = match;
+        [, kicker, kicked, reason] = youKickedRegex;
     }
     else if(enforceMatch) {
         kicker = "Enforcer";
-        kicked = match[2];
-        reason = `[${match[1]}] ${match[3]}`;
+        kicked = enforceMatch[2];
+        reason = `[${enforceMatch[1]}] ${enforceMatch[3]}`;
     }
     // BA bans
     // else if (text.startsWith("[Battle")) {
