@@ -4,7 +4,6 @@ import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook
 class BattleConClient {
   constructor(host, port, password) {
     this._connection = new BattleCon(host, port, password).use(process.env.GAME);
-    this.version = '';
     this.initialize()
   }
 
@@ -12,6 +11,7 @@ class BattleConClient {
     let reconnectInterval = null;
 
     let connection = this._connection
+    let version = '';
     this._connection.on("connect", function () {
       console.log("# Connected to " + connection.host + ":" + connection.port);
       if (reconnectInterval !== null) {
@@ -28,7 +28,7 @@ class BattleConClient {
       // Execute raw commands:
       connection.exec("version", function (err, msg) {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
-        this.version = msg[1];
+        version = msg[1];
       });
 
       // Execute module commands (core.js):
@@ -75,7 +75,7 @@ class BattleConClient {
     });
 
     connection.on("pb.message", function (msg) {
-      webHookPB(connection, this.version, msg);
+      webHookPB(connection, version, msg);
     });
   }
 
