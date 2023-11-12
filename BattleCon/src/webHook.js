@@ -104,14 +104,17 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     // we match first group as issuer, the issuer there won't have any tag. It's from subset
     const youKickedRegex = fixedText.match(/([A-Za-z0-9-]+): You KICKED (\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]*).*?for (.+)/);
     // this will show in bans, therefore we'll log only rejoin attempts
-    //const kickedRegex = fixedText.match(/(\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]+) KICKED by (\S+) for (.+)/);
+    const kickedRegex = fixedText.match(/(\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]+) KICKED by (\S+) for (.+)/);
     const enforceMatch = fixedText.match(/Enforcing (\S+(?: \(.+?\))? ban) on (\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]+) for (.+)/);
 
     let kicker, kicked, reason;
     if (youKickedRegex) {
         [, kicker, kicked, reason] = youKickedRegex;
     }
-    else if(enforceMatch) {
+    else if (kickedRegex) {
+        [, kicked, kicker, reason] = kickedRegex;
+    }
+    else if (enforceMatch) {
         kicker = "Enforcer";
         kicked = enforceMatch[2];
         reason = `[${enforceMatch[1]}] ${enforceMatch[3]}`;
@@ -196,8 +199,11 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
 }
 
 const webHookPB = async (connection, version, msg) => {
-    if(version !== '3065862') return; // r40, luckily zlo using r38, so we won't log here PBSdk_DropCLient spam
-    if(!msg.startsWith("Kick Command Issued (Player")) return; // catch only good message, ignore packet flows etc... !BC2 - manual
+    if (version !== '3065862') return; // r40, luckily zlo using r38, so we won't log here PBSdk_DropCLient spam
+
+    msg = msg.substring(msg.indexOf(": ") + 2);
+
+    if (!msg.startsWith("Kick Command Issued (Player")) return; // catch only good message, ignore packet flows etc... !BC2 - manual
 
     const startIndex = msg.indexOf("(");
     const endIndex = msg.indexOf(")");
@@ -205,7 +211,7 @@ const webHookPB = async (connection, version, msg) => {
     const extractedText = msg.substring(startIndex + 1, endIndex);
 
     const kicker = "PB";
-    const kicked =  extractedText.split(' ')[1];
+    const kicked = extractedText.split(' ')[1];
     const reason = extractedText;
 
     let serverName = 'Unknown';

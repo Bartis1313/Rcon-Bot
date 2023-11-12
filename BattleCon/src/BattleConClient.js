@@ -75,6 +75,7 @@ class BattleConClient {
     });
 
     connection.on("pb.message", function (msg) {
+      //console.log(msg)
       webHookPB(connection, version, msg);
     });
   }
