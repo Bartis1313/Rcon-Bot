@@ -106,7 +106,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     // this will show in bans, therefore we'll log only rejoin attempts
     //const kickedRegex = fixedText.match(/(\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]+) KICKED by (\S+) for (.+)/);
     const enforceMatch = fixedText.match(/Enforcing (\S+(?: \(.+?\))? ban) on (\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]+) for (.+)/);
-    
+
     let kicker, kicked, reason;
     if (youKickedRegex) {
         [, kicker, kicked, reason] = match;
@@ -195,7 +195,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
         });
 }
 
-const webHookPB = async (version, msg) => {
+const webHookPB = async (connection, version, msg) => {
     if(version !== '3065862') return; // r40, luckily zlo using r38, so we won't log here PBSdk_DropCLient spam
     if(!msg.startsWith("Kick Command Issued (Player")) return; // catch only good message, ignore packet flows etc... !BC2 - manual
 
