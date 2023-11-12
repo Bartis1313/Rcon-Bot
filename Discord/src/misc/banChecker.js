@@ -1,4 +1,4 @@
-import { createConnection } from 'mysql';
+import { createPool } from 'mysql';
 import fetch from 'node-fetch';
 
 function getRandomInt(min, max) {
@@ -36,12 +36,11 @@ module.exports = class BanAnnouncer {
 
         this.lastProcessedBanIds = {};
         this.connections = this.dbsConfig.map((config, index) => {
-            const connection = createConnection(config);
+            const pool = createPool(config);
 
-            connection.connect((err) => {
+            pool.getConnection((err, connection) => {
                 if (err) {
-                    console.error('Error connecting to MySQL:', err);
-                    connection.end();
+                    console.error('Error getting MySQL connection from pool:', err);
                     return;
                 }
 
@@ -51,6 +50,8 @@ module.exports = class BanAnnouncer {
                 `;
 
                 connection.query(query, (error, results) => {
+                    connection.release();
+
                     if (error) {
                         console.error('Error querying database:', error);
                         return;
@@ -59,43 +60,42 @@ module.exports = class BanAnnouncer {
                     // get correct last record id, if not found just apply crazy
                     this.lastProcessedBanIds[index] = results[0].maxRecordId || 9999999;
                 });
-
-                connection.end();
             });
 
-            return { config, webhookURL: this.webhookURLs[index] };
+            return { pool, webhookURL: this.webhookURLs[index] };
         });
     }
 
-    getRecentBans(connectionConfig, webhookURL, index) {
-        const connection = createConnection(connectionConfig);
-
-        const lastProcessedBanId = this.lastProcessedBanIds[index];
-
-        const query = `
-        SELECT rcd.record_id, target_name, ban_startTime, ban_endTime, record_message, source_name, ServerName
-        FROM adkats_bans AS ab
-        INNER JOIN tbl_playerdata AS tp ON ab.player_id = tp.PlayerID
-        INNER JOIN adkats_records_main AS rcd ON ab.latest_record_id = rcd.record_id
-        INNER JOIN tbl_server AS s ON rcd.server_id = s.ServerID
-        WHERE ab.ban_status = 'Active'
-        AND ab.ban_startTime <= NOW()
-        AND ab.ban_endTime > NOW()
-        AND rcd.record_id > ${lastProcessedBanId}
-        ORDER BY rcd.record_id DESC LIMIT 5;
-        `;
-
-        connection.connect((err) => {
+    getRecentBans(pool, webhookURL, index) {
+        pool.getConnection((err, connection) => {
             if (err) {
-                console.error('Error connecting to MySQL:', err);
-                connection.end();
+                console.error('Error getting MySQL connection from pool:', err);
                 return;
             }
+
+            const lastProcessedBanId = this.lastProcessedBanIds[index];
+
+            const query = `
+            SELECT rcd.record_id, target_name, ban_startTime, ban_endTime, record_message, source_name, ServerName
+            FROM adkats_bans AS ab
+            INNER JOIN tbl_playerdata AS tp ON ab.player_id = tp.PlayerID
+            INNER JOIN adkats_records_main AS rcd ON ab.latest_record_id = rcd.record_id
+            INNER JOIN tbl_server AS s ON rcd.server_id = s.ServerID
+            WHERE ab.ban_status = 'Active'
+            AND ab.ban_startTime <= NOW()
+            AND ab.ban_endTime > NOW()
+            AND rcd.record_id > ${lastProcessedBanId}
+            ORDER BY rcd.record_id DESC LIMIT 5;
+            `;
+
             connection.query(query, (error, results) => {
+                connection.release();
+
                 if (error) {
                     console.error('Error querying database:', error);
                     return;
                 }
+
                 const bans = results.map((row) => {
                     return {
                         ID: row.record_id,
@@ -113,8 +113,6 @@ module.exports = class BanAnnouncer {
                     this.sendBansToWebhook(webhookURL, bans);
                 }
             });
-
-            connection.end();
         });
     }
 
@@ -171,7 +169,7 @@ module.exports = class BanAnnouncer {
 
     checkForNewBans() {
         this.connections.forEach((connection, index) => {
-            this.getRecentBans(connection.config, connection.webhookURL, index);
+            this.getRecentBans(connection.pool, connection.webhookURL, index);
         });
     }
 
