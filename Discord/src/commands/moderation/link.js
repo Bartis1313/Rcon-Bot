@@ -40,7 +40,7 @@ module.exports = class link {
         this.mapNames.set(2, 'BF4')
         this.mapNames.set(3, 'BF?')
     }
-    
+
     async findLinkedAccounts(connection, playerName, callback) {
         try {
             const query1 = `
@@ -117,19 +117,25 @@ module.exports = class link {
     async processServer(serverConfig, playerName) {
         const connection = createConnection(serverConfig);
 
-        connection.connect();
+        connection.connect(async (err) => {
+            if (err) {
+                connection.end();
+                console.error('Error connecting to MySQL:', err);
+                return;
+            }
 
-        try {
-            const linkedAccounts = await this.findLinkedAccounts(connection, playerName);
+            try {
+                const linkedAccounts = await this.findLinkedAccounts(connection, playerName);
 
-            connection.end();
+                connection.end();
 
-            return linkedAccounts;
-        } catch (error) {
-            console.error('Database error:', error);
-            connection.end();
-            return [];
-        }
+                return linkedAccounts;
+            } catch (error) {
+                console.error('Database error:', error);
+                connection.end();
+                return [];
+            }
+        })
     }
 
     async run(bot, message, args) {

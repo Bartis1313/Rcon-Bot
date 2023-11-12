@@ -70,6 +70,9 @@ module.exports = function(bc) {
                 }
                 bc.emit("server.roundOverTeamScores", /* scores array */ scores, /* target score */ parseInt(msg.data[i], 10));
                 break;
+            case "punkBuster.onMessage":
+                bc.emit("pb.message", /* message */  msg.data[1]);
+                break;
         }
     });
     

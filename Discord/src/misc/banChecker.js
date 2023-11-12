@@ -41,6 +41,7 @@ module.exports = class BanAnnouncer {
             connection.connect((err) => {
                 if (err) {
                     console.error('Error connecting to MySQL:', err);
+                    connection.end();
                     return;
                 }
 
@@ -87,6 +88,7 @@ module.exports = class BanAnnouncer {
         connection.connect((err) => {
             if (err) {
                 console.error('Error connecting to MySQL:', err);
+                connection.end();
                 return;
             }
             connection.query(query, (error, results) => {
@@ -175,7 +177,5 @@ module.exports = class BanAnnouncer {
 
     startBanAnnouncement(interval) {
         setInterval(() => this.checkForNewBans(), interval);
-        // init
-        this.checkForNewBans();
     }
 }

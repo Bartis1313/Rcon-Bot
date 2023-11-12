@@ -128,19 +128,25 @@ module.exports = class check {
     async processServer(serverConfig, playerName) {
         const connection = createConnection(serverConfig);
 
-        connection.connect();
+        connection.connect(async (err) => {
+            if (err) {
+                connection.end();
+                console.error('Error connecting to MySQL:', err);
+                return;
+            }
 
-        try {
-            const infosAccounts = await this.findInfoAccounts(connection, playerName);
+            try {
+                const infosAccounts = await this.findInfoAccounts(connection, playerName);
 
-            connection.end();
+                connection.end();
 
-            return infosAccounts;
-        } catch (error) {
-            console.error('Database error:', error);
-            connection.end();
-            return [];
-        }
+                return infosAccounts;
+            } catch (error) {
+                console.error('Database error:', error);
+                connection.end();
+                return [];
+            }
+        })
     }
 
     async run(bot, message, args) {

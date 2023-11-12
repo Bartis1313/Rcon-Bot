@@ -111,6 +111,7 @@ module.exports = class printBans {
 
       connection.connect((err) => {
         if (err) {
+          connection.end();
           console.error('Error connecting to MySQL:', err);
           return;
         }

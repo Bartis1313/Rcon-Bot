@@ -1,9 +1,10 @@
 import BattleCon from "../src/BattleCon";
-import { webHookKickSenderBF4, webHookKickSenderBF3 } from './webHook.js'
+import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook.js'
 
 class BattleConClient {
   constructor(host, port, password) {
     this._connection = new BattleCon(host, port, password).use(process.env.GAME);
+    this.version = '';
     this.initialize()
   }
 
@@ -27,6 +28,7 @@ class BattleConClient {
       // Execute raw commands:
       connection.exec("version", function (err, msg) {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
+        this.version = msg[1];
       });
 
       // Execute module commands (core.js):
@@ -67,10 +69,14 @@ class BattleConClient {
       //console.log("# Error: " + err.message, err.stack);
     });
 
-    connection.on("player.chat", function(name, text, subset) {
-      //console.log("# "+name+" -> "+subset.join(' ')+": "+text);
+    connection.on("player.chat", function (name, text, subset) {
+      //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
       webHookKickSenderBF3(connection, name, text, subset);
-  });
+    });
+
+    connection.on("pb.message", function (msg) {
+      webHookPB(this.version, msg);
+    });
   }
 
   connect() {
@@ -287,7 +293,7 @@ class BattleConClient {
 
   adminYellall(what, duration) {
     let connection = this._connection
-    if(duration < 0) duration = 0;
+    if (duration < 0) duration = 0;
     let d = duration >>> 0;
     return new Promise(function (resolve, reject) {
       if (!what || !duration) reject('admin yell failed.')
@@ -310,7 +316,7 @@ class BattleConClient {
 
   adminYellPlayer(what, duration, playerName) {
     let du = Number(duration);
-    if(du < 0) du = 0;
+    if (du < 0) du = 0;
     let d = du >>> 0;
     let connection = this._connection
     return new Promise(function (resolve, reject) {

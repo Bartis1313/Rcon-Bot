@@ -191,6 +191,7 @@ module.exports = class unban {
 
         connection.connect((err) => {
             if (err) {
+                connection.end();
                 console.error('Error connecting to MySQL:', err);
                 return;
             }
