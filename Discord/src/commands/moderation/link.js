@@ -1,6 +1,7 @@
-import { createConnection } from 'mysql';
+import { createPool } from 'mysql';
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
+import geoip from 'geoip-lite'
 
 function truncateString(str, maxLength) {
     if (str.length > maxLength) {
@@ -92,7 +93,10 @@ module.exports = class link {
 
             const linkedAccounts = results2.map(row => {
                 if (row.original_soldierName !== row.linked_soldierName) {
-                    return `${row.linked_soldierName} (IP: ${row.IP_Address}, Game ID: ${this.mapNames.get(row.GameID)})`;
+                    const lookup = geoip.lookup(row.IP_Address);
+                    const country = lookup ? lookup.country : 'Err';
+
+                    return `${row.linked_soldierName} (IP: ${row.IP_Address}, Game ID: ${this.mapNames.get(row.GameID)}) Country: ${country}`;
                 }
             });
 
@@ -115,27 +119,35 @@ module.exports = class link {
     }
 
     async processServer(serverConfig, playerName) {
-        const connection = createConnection(serverConfig);
+        const pool = createPool(serverConfig);
 
-        connection.connect(async (err) => {
-            if (err) {
-                connection.end();
-                console.error('Error connecting to MySQL:', err);
-                return;
-            }
+        const getConnection = () => {
+            return new Promise((resolve, reject) => {
+                pool.getConnection((err, connection) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(connection);
+                    }
+                });
+            });
+        };
 
-            try {
-                const linkedAccounts = await this.findLinkedAccounts(connection, playerName);
+        const connection = await getConnection();
 
-                connection.end();
+        connection.connect();
 
-                return linkedAccounts;
-            } catch (error) {
-                console.error('Database error:', error);
-                connection.end();
-                return [];
-            }
-        })
+        try {
+            const linkedAccounts = await this.findLinkedAccounts(connection, playerName);
+
+            connection.release();
+
+            return linkedAccounts;
+        } catch (error) {
+            console.error('Database error:', error);
+            connection.release();
+            return [];
+        }
     }
 
     async run(bot, message, args) {

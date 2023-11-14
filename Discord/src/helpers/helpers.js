@@ -342,9 +342,49 @@ class Helpers {
             });
     }
 
-    static async asktimeout(msg) {
+    static async askTimeout(msg) {
         const namedChoices = ['perm', 'seconds', 'rounds'];
         const choices = ['1️⃣', '2️⃣', '3️⃣'];
+        const embed = new Discord.MessageEmbed()
+            .setTimestamp()
+            .setColor("00FF00")
+            .setAuthor('Timeout of the ban', msg.author.avatarURL());
+        for (let index = 0; index < namedChoices.length; index++) {
+            embed.addField(choices[index], `**${namedChoices[index]}**`, false)
+        }
+        const message = await msg.channel.send(embed);
+
+        for (const choice of choices) {
+            await message.react(choice);
+        }
+
+        const filter = (reaction, user) => {
+            return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
+        };
+
+        return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
+            .then(collected => {
+                const reaction = collected.first();
+                message.delete();
+
+                const index = choices.findIndex(x => x === reaction.emoji.name);
+                if (index >= 0) {
+                    return namedChoices[index];
+                }
+
+                return null;
+            })
+            .catch(async collected => {
+                message.delete();
+                const m = await msg.reply(`Command timed out`);
+                m.delete({ timeout: 5000 });
+                return null;
+            });
+    }
+
+    static async askTimeoutADKATS(msg) {
+        const namedChoices = ['ban', 'tban'];
+        const choices = ['1️⃣', '2️⃣'];
         const embed = new Discord.MessageEmbed()
             .setTimestamp()
             .setColor("00FF00")

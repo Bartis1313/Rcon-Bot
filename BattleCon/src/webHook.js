@@ -84,7 +84,10 @@ const webHookKickSenderBF4 = async (connection, name, reason) => {
         });
 }
 
-// I wish there would be a different way like #ifdef...
+// "static" behaviour
+let pendingEnforceMatch = null;
+let waitingForBanned = false;
+
 const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     if (process.env.GAME !== 'BF3') return;
     if (name !== 'Server') return;
@@ -107,34 +110,36 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     const kickedRegex = fixedText.match(/(\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]+) KICKED by (\S+) for (.+)/);
     const enforceMatch = fixedText.match(/Enforcing (\S+(?: \(.+?\))? ban) on (\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]+) for (.+)/);
 
+    // special case
+    if (enforceMatch) {
+        pendingEnforceMatch = enforceMatch;
+        waitingForBanned = true;
+        return; // stop there, we dont have issuer yet
+    }
+
     let kicker, kicked, reason;
-    if (youKickedRegex) {
+    if (waitingForBanned) {
+        // now can grab the issuer
+        const bannedMatch = fixedText.match(/BANNED for (.+) \[([^[\]]+)\]\[(\S+)\]/);
+        if (bannedMatch) { // we are doing it that way, because the bannedMatch will be executed many times, the enforce not
+            let duration;
+            [, reason, duration, kicker] = bannedMatch;
+            [, kicked] = pendingEnforceMatch;
+
+            reason = `${duration} ${reason}`;
+
+            waitingForBanned = false;
+            pendingEnforceMatch = null;
+        }
+    } else if (youKickedRegex) {
         [, kicker, kicked, reason] = youKickedRegex;
-    }
-    else if (kickedRegex) {
+    } else if (kickedRegex) {
         [, kicked, kicker, reason] = kickedRegex;
-    }
-    else if (enforceMatch) {
-        kicker = "Enforcer";
-        kicked = enforceMatch[2];
-        reason = `[${enforceMatch[1]}] ${enforceMatch[3]}`;
-    }
-    // BA bans
-    // else if (text.startsWith("[Battle")) {
-    //     const splited = text.split(' ');
-    //     kicker = `${splited[0]} ${splited[1]}`.replace(/[\[\]]/g, '');
-    //     kicked = splited[3].replace(/[\[\]]/g, '');
-    //     reason = splited.slice(4).join(' ');
-    // }
-    // else if(text.startsWith("CheatDetector")) {
-    //     const splited = text.split(' ');
-    //     kicker = splited[0];
-    //     kicked = splited[4];
-    //     reason = `${splited[2]} ${splited[3]} ${splited.slice(5).join(' ')}`
-    // }
-    else {
+    } else {
         return;
     }
+
+    if (!kicker || !kicked || !reason) return;
 
     const kickImgUrls = [
         "https://ep-team.ru/baner/ban6.gif",
@@ -201,14 +206,16 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
 const webHookPB = async (connection, version, msg) => {
     if (version !== '3065862') return; // r40, luckily zlo using r38, so we won't log here PBSdk_DropCLient spam
 
+    if (msg.includes("VPN-VPN use blocked")) return; // ignore as requested
+
     msg = msg.substring(msg.indexOf(": ") + 2);
 
     if (!msg.startsWith("Kick Command Issued (Player")) return; // catch only good message, ignore packet flows etc... !BC2 - manual
 
     const startIndex = msg.indexOf("(");
-    const endIndex = msg.indexOf(")");
+    const endIndex = msg.indexOf("n])")
 
-    const extractedText = msg.substring(startIndex + 1, endIndex);
+    const extractedText = msg.substring(startIndex + 1, endIndex + 2);
 
     const kicker = "PB";
     const kicked = extractedText.split(' ')[1];

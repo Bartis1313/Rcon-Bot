@@ -15,7 +15,6 @@ module.exports = class help {
         // yes, manually, too lazy to make some reader for it
         const desc = [
             `${prefix}ban - bans player from the server`,
-            `${prefix}banlive - bans player from the server (use for current playername match)`,
             `${prefix}check - checks player information from DB`,
             `${prefix}kick - kicks player from the server`,
             `${prefix}kill - kills player`,

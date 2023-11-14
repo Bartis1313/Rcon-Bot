@@ -50,7 +50,7 @@ class BattleConClient {
     });
 
     this._connection.on("player.disconnect", function (name, reason) {
-      webHookKickSenderBF4(connection, name, reason);
+      //webHookKickSenderBF4(connection, name, reason);
     });
 
     this._connection.on("close", () => {
@@ -70,7 +70,7 @@ class BattleConClient {
     });
 
     connection.on("player.chat", function (name, text, subset) {
-      //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
+      console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
       webHookKickSenderBF3(connection, name, text, subset);
     });
 
@@ -126,16 +126,16 @@ class BattleConClient {
     })
   }
 
-  banPlayer(banType, banId, timeout, reason) {
+  banPlayer(banType, playerName, timeout, reason) {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
       if (!banType) reject('Ban Type is required.')
-      if (!banId) reject('Ban ID is required.')
+      if (!playerName) reject('Ban ID is required.')
       if (!timeout) reject('Timeout is required.')
       let banTimeoutType = timeout
       let banTimeout = null
 
-      let command = ["banList.add", banType, banId]
+      let command = ["banList.add", banType, playerName]
 
       if (timeout === "perm") command.push("perm")
       else if (timeout.startsWith("seconds") || timeout.startsWith("rounds")) {
@@ -156,10 +156,10 @@ class BattleConClient {
         connection.exec(["banList.save"], function (err, msg) {
           err ? reject(err.message) : resolve({
             banType: banType,
-            banId: banId,
+            playerName: playerName,
             banTimeoutType: banTimeoutType,
             banTimeout: banTimeout,
-            banReason: reason
+            reason: reason
           })
         });
       });

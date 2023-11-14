@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
-import { createConnection } from 'mysql'
+import { createPool } from 'mysql'
 
 module.exports = class unban {
     constructor() {
@@ -159,6 +159,19 @@ module.exports = class unban {
     // }
 
     // code for adkats relation
+
+    query(connection, sql, values) {
+        return new Promise((resolve, reject) => {
+            connection.query(sql, values, (error, results) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(results);
+                }
+            });
+        });
+    }
+
     async run(bot, message, args) {
         if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
             message.reply("You don't have permission to use this command.")
@@ -187,15 +200,25 @@ module.exports = class unban {
             break;
         }
 
-        const connection = createConnection(serverDB);
+        const pool = createPool(serverDB);
 
-        connection.connect((err) => {
-            if (err) {
-                connection.end();
-                console.error('Error connecting to MySQL:', err);
-                return;
-            }
+        const getConnection = () => {
+            return new Promise((resolve, reject) => {
+                pool.getConnection((err, connection) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(connection);
+                    }
+                });
+            });
+        };
 
+        const connection = await getConnection();
+
+        connection.connect();
+
+        try {
             // should we do that?
             // ORDER BY r.record_time DESC
             // LIMIT 1;
@@ -204,35 +227,33 @@ module.exports = class unban {
             JOIN adkats_records_main AS r ON b.latest_record_id = r.record_id
             SET b.ban_status = CASE
                 WHEN b.ban_status = 'Disabled' THEN 'Disabled'
-                ELSE 'Disabled' -- what's the logic in these? Disabled equals manual ub? else just do 'Expired'
+                ELSE 'Disabled'
             END
             WHERE r.target_name = ?;
             `;
 
-            connection.query(query, [playerName], (error, result) => {
-                if (error) {
-                    console.error('Error updating ban status:', error);
-                    message.reply('An error occurred while updating the ban status.');
-                } else {
-                    if (result.affectedRows === 0) {
-                        message.reply(`Server ${serverDB.database}, no active bans found for player name: ${playerName}.`);
-                    } else if (result.changedRows === 0) {
-                        message.reply(`Player ${playerName} is already unbanned.`);
-                    } else {
-                        const embed = new Discord.MessageEmbed()
-                            .setTimestamp()
-                            .setColor("00FF00")
-                            .setFooter('Author: Bartis')
-                            .setAuthor('Player Unban', message.author.avatarURL())
-                            .addField('Issuer', message.author.username, true)
-                            .addField('Target', `**${playerName}**`, true)
-                            .addField('Server', `${serverDB.database}`, false);
-                        message.channel.send(embed);
-                    }
-                }
-            });
+            const result = await this.query(connection, query, [playerName]);
 
-            connection.end();
-        })
+
+            if (result.affectedRows === 0) {
+                message.reply(`Server ${serverDB.database}, no active bans found for player name: ${playerName}.`);
+            } else if (result.changedRows === 0) {
+                message.reply(`Player ${playerName} is already unbanned.`);
+            } else {
+                const embed = new Discord.MessageEmbed()
+                    .setTimestamp()
+                    .setColor("00FF00")
+                    .setFooter('Author: Bartis')
+                    .setAuthor('Player Unban', message.author.avatarURL())
+                    .addField('Issuer', message.author.username, true)
+                    .addField('Target', `**${playerName}**`, true)
+                    .addField('Server', `${serverDB.database}`, false);
+                message.channel.send(embed);
+            }
+            connection.release();
+        } catch (error) {
+            console.error('Database error:', error);
+            connection.release();
+        }
     }
 }

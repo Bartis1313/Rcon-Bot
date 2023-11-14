@@ -1,4 +1,4 @@
-import { createConnection } from 'mysql';
+import { createPool } from 'mysql';
 import fs from 'fs'
 
 // notice I don't use offset for the printing bans, I print 0-100 bans. If you want more or add all, use number that will
@@ -98,6 +98,18 @@ module.exports = class printBans {
   // }
 
   // code for adkats relation
+  query(connection, sql, values) {
+    return new Promise((resolve, reject) => {
+      connection.query(sql, values, (error, results) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+  }
+
   async run(bot, message, args) {
     if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
       message.reply("You don't have permission to use this command.")
@@ -107,14 +119,25 @@ module.exports = class printBans {
     message.delete();
 
     for (const serverConfig of this.dbsConfig) {
-      const connection = createConnection(serverConfig);
+      const pool = createPool(serverConfig);
 
-      connection.connect((err) => {
-        if (err) {
-          connection.end();
-          console.error('Error connecting to MySQL:', err);
-          return;
-        }
+      const getConnection = () => {
+        return new Promise((resolve, reject) => {
+          pool.getConnection((err, connection) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(connection);
+            }
+          });
+        });
+      };
+
+      const connection = await getConnection();
+
+      connection.connect();
+
+      try {
 
         const query = `
                 SELECT rcd.record_id, target_name, ban_id, ban_status, ban_notes, ban_startTime, ban_endTime, record_message, source_name, ServerName
@@ -124,37 +147,38 @@ module.exports = class printBans {
                 INNER JOIN tbl_server AS s ON rcd.server_id = s.ServerID
                 `;
 
-        connection.query(query, async (error, results) => {
-          if (error) {
-            console.error('Error querying the database:', error);
-            message.reply('An error occurred while fetching ban information.');
-          } else {
-            if (results.length === 0) {
-              message.reply('No bans found in the ban list.');
-            } else {
-              const fileName = `bans_${serverConfig.database}.txt`;
 
-              const fileContent = results.map(row => (
-                `Ban ID: ${row.ban_id}\n`
-                + `Ban Notes: ${row.ban_notes}\n`
-                + `Ban Status: ${row.ban_status}\n`
-                + `Ban Start Time: ${row.ban_startTime}\n`
-                + `Ban End Time: ${row.ban_endTime}\n`
-                + `Target Name: ${row.target_name}\n`
-                + `Record Message: ${row.record_message}\n`
-                + `Banned by: ${row.source_name}\n`
-                + `Server: ${row.ServerName}\n\n`
-              )).join('');
+        const results = await this.query(connection, query);
 
-              fs.writeFileSync(fileName, fileContent, 'utf-8');
-              await message.channel.send({ files: [fileName] });
-              await fs.promises.unlink(fileName);
-            }
-          }
-        });
+        if (results.length === 0) {
+          message.reply('No bans found in the ban list.');
+          return;
+        }
+        else {
+          const fileName = `bans_${serverConfig.database}.txt`;
 
-        connection.end();
-      })
+          const fileContent = results.map(row => (
+            `Ban ID: ${row.ban_id}\n`
+            + `Ban Notes: ${row.ban_notes}\n`
+            + `Ban Status: ${row.ban_status}\n`
+            + `Ban Start Time: ${row.ban_startTime}\n`
+            + `Ban End Time: ${row.ban_endTime}\n`
+            + `Target Name: ${row.target_name}\n`
+            + `Record Message: ${row.record_message}\n`
+            + `Banned by: ${row.source_name}\n`
+            + `Server: ${row.ServerName}\n\n`
+          )).join('');
+
+          fs.writeFileSync(fileName, fileContent, 'utf-8');
+          await message.channel.send({ files: [fileName] });
+          await fs.promises.unlink(fileName);
+        }
+        connection.release();
+
+      } catch (error) {
+        console.error('Database error:', error);
+        connection.release();
+      }
     }
   }
 }

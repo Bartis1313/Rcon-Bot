@@ -102,11 +102,11 @@ app.post("/admin/kick", (req, res, next) => {
 
 app.post("/admin/ban", (req, res, next) => {
     let banType = req.body.banType;
-    let banId = req.body.banId;
+    let playerName = req.body.playerName;
     let timeout = req.body.timeout;
-    let banReason = req.body.banReason;
+    let reason = req.body.reason;
 
-    client.banPlayer(banType, banId, timeout, banReason)
+    client.banPlayer(banType, playerName, timeout, reason)
         .then((response) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
