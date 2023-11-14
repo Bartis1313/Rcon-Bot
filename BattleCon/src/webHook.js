@@ -125,9 +125,9 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
         if (bannedMatch) { // we are doing it that way, because the bannedMatch will be executed many times, the enforce not
             let duration;
             [, reason, duration, kicker] = bannedMatch;
-            [, kicked] = issuer;
+            kicked = issuer;
 
-            reason = `${duration} ${reason}`;
+            reason = `[${duration}] ${reason}`;
 
             waitingForBanned = false;
             pendingEnforceMatch = null;
