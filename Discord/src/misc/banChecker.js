@@ -41,24 +41,23 @@ module.exports = class BanAnnouncer {
             pool.getConnection((err, connection) => {
                 if (err) {
                     console.error('Error getting MySQL connection from pool:', err);
+                    connection.release();
                     return;
                 }
 
-                const query = `
-                SELECT MAX(record_id) AS maxRecordId
-                FROM adkats_records_main;
-                `;
+                const query = `SELECT MAX(ban_id) AS last_ban_id FROM adkats_bans`
 
                 connection.query(query, (error, results) => {
-                    connection.release();
-
                     if (error) {
                         console.error('Error querying database:', error);
+                        connection.release();
                         return;
                     }
 
-                    // get correct last record id, if not found just apply crazy
-                    this.lastProcessedBanIds[index] = results[0].maxRecordId || 9999999;
+                    // get correct last record id
+                    this.lastProcessedBanIds[index] = results[0].last_ban_id || 0;
+
+                    connection.release();
                 });
             });
 
@@ -70,6 +69,7 @@ module.exports = class BanAnnouncer {
         pool.getConnection((err, connection) => {
             if (err) {
                 console.error('Error getting MySQL connection from pool:', err);
+                connection.release();
                 return;
             }
 
@@ -84,21 +84,20 @@ module.exports = class BanAnnouncer {
             WHERE ab.ban_status = 'Active'
             AND ab.ban_startTime <= NOW()
             AND ab.ban_endTime > NOW()
-            AND rcd.record_id > ${lastProcessedBanId}
+            AND ab.ban_id > ${lastProcessedBanId}
             ORDER BY rcd.record_id DESC LIMIT 5;
             `;
 
             connection.query(query, (error, results) => {
-                connection.release();
-
                 if (error) {
                     console.error('Error querying database:', error);
+                    connection.release();
                     return;
                 }
 
                 const bans = results.map((row) => {
                     return {
-                        ID: row.record_id,
+                        ID: row.ban_id,
                         PlayerName: row.target_name,
                         Reason: row.record_message,
                         AdminName: row.source_name,
@@ -109,9 +108,11 @@ module.exports = class BanAnnouncer {
                 });
 
                 if (bans.length > 0) {
-                    this.lastProcessedBanIds[index] = bans[0].ID; // update the last processed ban ID, to prevent same data
+                    this.lastProcessedBanIds[index] = bans[bans.length - 1].ID; // update the last processed ban ID, to prevent same data
                     this.sendBansToWebhook(webhookURL, bans);
                 }
+
+                connection.release();
             });
         });
     }

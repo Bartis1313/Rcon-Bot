@@ -101,6 +101,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     if (text.includes("ping")) return;
     // don't log ChatManager
     if (text.includes("ChatManager")) return;
+    if (text.includes("PlayerMuteSystem")) return;
 
     const fixedText = issuer ? `${issuer} ${text}` : text;
 
@@ -124,7 +125,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
         if (bannedMatch) { // we are doing it that way, because the bannedMatch will be executed many times, the enforce not
             let duration;
             [, reason, duration, kicker] = bannedMatch;
-            [, kicked] = pendingEnforceMatch;
+            [, kicked] = issuer;
 
             reason = `${duration} ${reason}`;
 
