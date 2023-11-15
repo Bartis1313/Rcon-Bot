@@ -34,32 +34,9 @@ module.exports = class BanAnnouncer {
             this.webhookURLs = process.env.WEBHOOK_TOKENS.split(',');
         }
 
-        this.lastProcessedBanIds = {};
+        this.lastProcessedTime = new Date();
         this.connections = this.dbsConfig.map((config, index) => {
             const pool = createPool(config);
-
-            pool.getConnection((err, connection) => {
-                if (err) {
-                    console.error('Error getting MySQL connection from pool:', err);
-                    connection.release();
-                    return;
-                }
-
-                const query = `SELECT MAX(ban_id) AS last_ban_id FROM adkats_bans`
-
-                connection.query(query, (error, results) => {
-                    if (error) {
-                        console.error('Error querying database:', error);
-                        connection.release();
-                        return;
-                    }
-
-                    // get correct last record id
-                    this.lastProcessedBanIds[index] = results[0].last_ban_id || 0;
-
-                    connection.release();
-                });
-            });
 
             return { pool, webhookURL: this.webhookURLs[index] };
         });
@@ -73,8 +50,6 @@ module.exports = class BanAnnouncer {
                 return;
             }
 
-            const lastProcessedBanId = this.lastProcessedBanIds[index];
-
             const query = `
             SELECT rcd.record_id, target_name, ban_startTime, ban_endTime, record_message, source_name, ServerName
             FROM adkats_bans AS ab
@@ -82,10 +57,7 @@ module.exports = class BanAnnouncer {
             INNER JOIN adkats_records_main AS rcd ON ab.latest_record_id = rcd.record_id
             INNER JOIN tbl_server AS s ON rcd.server_id = s.ServerID
             WHERE ab.ban_status = 'Active'
-            AND ab.ban_startTime <= NOW()
-            AND ab.ban_endTime > NOW()
-            AND ab.ban_id > ${lastProcessedBanId}
-            ORDER BY rcd.record_id DESC LIMIT 5;
+            AND ab.ban_startTime >= '${this.lastProcessedTime.toISOString()}'
             `;
 
             connection.query(query, (error, results) => {
@@ -108,7 +80,7 @@ module.exports = class BanAnnouncer {
                 });
 
                 if (bans.length > 0) {
-                    this.lastProcessedBanIds[index] = bans[bans.length - 1].ID; // update the last processed ban ID, to prevent same data
+                    this.lastProcessedTime = new Date();
                     this.sendBansToWebhook(webhookURL, bans);
                 }
 
@@ -175,6 +147,8 @@ module.exports = class BanAnnouncer {
     }
 
     startBanAnnouncement(interval) {
+        this.checkForNewBans();
+
         setInterval(() => this.checkForNewBans(), interval);
     }
 }

@@ -92,9 +92,9 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
     if (process.env.GAME !== 'BF3') return;
     if (name !== 'Server') return;
 
-    let issuer = '';
+    let playerNameSay = '';
     if (subset[0] === 'player') { // or even check squad? who does provide info like that?
-        issuer = subset[1];
+        playerNameSay = subset[1];
     }
 
     // don't log ping kicks
@@ -108,7 +108,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
         return;
     }
 
-    const fixedText = issuer ? `${issuer} ${text}` : text;
+    const fixedText = playerNameSay ? `${playerNameSay} ${text}` : text;
 
     // we match first group as issuer, the issuer there won't have any tag. It's from subset
     const youKickedRegex = fixedText.match(/([A-Za-z0-9-]+): You KICKED (\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]*).*?for (.+)/);
@@ -127,11 +127,11 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
     let link;
     if (waitingForBanned) {
         // now can grab the issuer
-        const bannedMatch = fixedText.match(/BANNED for (.+) \[([^[\]]+)\]\[(.+)\]/);
+        const bannedMatch = fixedText.match(/BANNED for (.+?) \[([^\]]+)\]\[([^\]]+)\]/);
         if (bannedMatch) { // we are doing it that way, because the bannedMatch will be executed many times, the enforce not
             let duration;
             [, reason, duration, kicker] = bannedMatch;
-            kicked = issuer;
+            kicked = playerNameSay;
             if (reason.includes("banned by BA")) {
                 link = `https://battlefield.agency/player/by-guid/${map.get(kicked)}`
             }
@@ -143,6 +143,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
         }
     } else if (youKickedRegex) {
         [, kicker, kicked, reason] = youKickedRegex;
+
     } else if (kickedRegex) {
         [, kicked, kicker, reason] = kickedRegex;
     } else {
