@@ -67,7 +67,7 @@ class BattleConClient {
     });
 
     connection.on("player.chat", (name, text, subset) => {
-      console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
+      //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
       webHookKickSenderBF3(connection, name, text, subset, this.playerMap);
     });
 
@@ -77,12 +77,10 @@ class BattleConClient {
     });
 
     connection.on("player.join", (name, guid) => {
-      console.log("join");
       this.playerMap.set(name, guid);
     })
 
     connection.on("player.leave", (name) => {
-      console.log("leave");
       this.playerMap.delete(name);
     })
   }
