@@ -134,9 +134,7 @@ module.exports = class link {
         };
 
         const connection = await getConnection();
-
-        connection.connect();
-
+        
         try {
             const linkedAccounts = await this.findLinkedAccounts(connection, playerName);
 

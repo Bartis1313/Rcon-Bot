@@ -88,7 +88,7 @@ const webHookKickSenderBF4 = async (connection, name, reason) => {
 let pendingEnforceMatch = null;
 let waitingForBanned = false;
 
-const webHookKickSenderBF3 = async (connection, name, text, subset) => {
+const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
     if (process.env.GAME !== 'BF3') return;
     if (name !== 'Server') return;
 
@@ -102,6 +102,11 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     // don't log ChatManager
     if (text.includes("ChatManager")) return;
     if (text.includes("PlayerMuteSystem")) return;
+
+    if (text.includes("banned by BA")) {
+        await sayAll(`/ban ${kicked} ${reason}`);
+        return;
+    }
 
     const fixedText = issuer ? `${issuer} ${text}` : text;
 
@@ -119,13 +124,17 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     }
 
     let kicker, kicked, reason;
+    let link;
     if (waitingForBanned) {
         // now can grab the issuer
-        const bannedMatch = fixedText.match(/BANNED for (.+) \[([^[\]]+)\]\[(\S+)\]/);
+        const bannedMatch = fixedText.match(/BANNED for (.+) \[([^[\]]+)\]\[(.+)\]/);
         if (bannedMatch) { // we are doing it that way, because the bannedMatch will be executed many times, the enforce not
             let duration;
             [, reason, duration, kicker] = bannedMatch;
             kicked = issuer;
+            if (reason.includes("banned by BA")) {
+                link = `https://battlefield.agency/player/by-guid/${map.get(kicked)}`
+            }
 
             reason = `[${duration}] ${reason}`;
 
@@ -141,6 +150,19 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
     }
 
     if (!kicker || !kicked || !reason) return;
+
+    const sayAll = (str) => {
+        return new Promise((resolve, reject) => {
+            connection.exec("admin.say", str, function (err, msg) {
+                if (err) {
+                    console.error(err);
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    };
 
     const kickImgUrls = [
         "https://ep-team.ru/baner/ban6.gif",
@@ -174,7 +196,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset) => {
         embeds: [
             {
                 title: 'Kicked Player',
-                description: `**Name**: ${kicked}\n**Reason**: ${reason}\n**Issuer**: ${kicker}`,
+                description: `**Name**: ${kicked}\n**Reason**: ${reason}\n**Issuer**: ${kicker}${link ? `\n**Link**: ${link}` : ''}`,
                 fields: [
                     {
                         name: 'Server',
@@ -237,7 +259,21 @@ const webHookPB = async (connection, version, msg) => {
         });
     };
 
+    const sayAll = (str) => {
+        return new Promise((resolve, reject) => {
+            connection.exec("admin.say", str, function (err, msg) {
+                if (err) {
+                    console.error(err);
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    };
+
     await getServerName();
+    await sayAll(`/ban ${kicked} ${reason}`);
 
     const kickImgUrls = [
         "https://ep-team.ru/baner/ban6.gif",

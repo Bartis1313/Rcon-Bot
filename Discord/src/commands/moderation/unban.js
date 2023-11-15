@@ -216,8 +216,6 @@ module.exports = class unban {
 
         const connection = await getConnection();
 
-        connection.connect();
-
         try {
             // should we do that?
             // ORDER BY r.record_time DESC

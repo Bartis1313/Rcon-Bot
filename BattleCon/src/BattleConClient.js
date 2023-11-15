@@ -4,15 +4,16 @@ import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook
 class BattleConClient {
   constructor(host, port, password) {
     this._connection = new BattleCon(host, port, password).use(process.env.GAME);
-    this.initialize()
+    this.playerMap = new Map();
+    this.initialize();
   }
 
   initialize() {
     let reconnectInterval = null;
-
-    let connection = this._connection
+    const connection = this._connection
     let version = '';
-    this._connection.on("connect", function () {
+
+    connection.on("connect", () => {
       console.log("# Connected to " + connection.host + ":" + connection.port);
       if (reconnectInterval !== null) {
         clearInterval(reconnectInterval);
@@ -20,40 +21,36 @@ class BattleConClient {
       }
     });
 
-    this._connection.on("login", function () {
+    connection.on("login", () => {
       console.log("# Login successful");
     });
 
-    this._connection.on("ready", function () {
+    connection.on("ready", () => {
       // Execute raw commands:
-      connection.exec("version", function (err, msg) {
+      connection.exec("version", (err, msg) => {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
         version = msg[1];
       });
 
       // Execute module commands (core.js):
-      connection.serverInfo(function (err, info) {
-        if (process.env.NODE_ENV === 'development') {
-        }
+      connection.serverInfo((err, info) => {
+
       });
 
-      connection.on("event", function (msg) {
+      connection.on("event", (msg) => {
         //console.log("event", msg);
       });
 
-      connection.listPlayers(function (err, players) {
-        console.log("There are " + players.length + " connected players:");
-        for (var i = 0; i < players.length; i++) {
-
-        }
+      connection.listPlayers((err, players) => {
+        console.log("There are " + players.length + " connected players");
       });
     });
 
-    this._connection.on("player.disconnect", function (name, reason) {
-      //webHookKickSenderBF4(connection, name, reason);
+    connection.on("player.disconnect", (name, reason) => {
+      webHookKickSenderBF4(connection, name, reason);
     });
 
-    this._connection.on("close", () => {
+    connection.on("close", () => {
       const date = new Date();
       console.log(`Disconnect: ${date.toLocaleString()}`);
       this._connection.disconnect();
@@ -65,23 +62,32 @@ class BattleConClient {
       }
     });
 
-    this._connection.on("error", (err) => {
+    connection.on("error", (err) => {
       //console.log("# Error: " + err.message, err.stack);
     });
 
-    connection.on("player.chat", function (name, text, subset) {
+    connection.on("player.chat", (name, text, subset) => {
       console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
-      webHookKickSenderBF3(connection, name, text, subset);
+      webHookKickSenderBF3(connection, name, text, subset, this.playerMap);
     });
 
-    connection.on("pb.message", function (msg) {
+    connection.on("pb.message", (msg) => {
       //console.log(msg)
       webHookPB(connection, version, msg);
     });
+
+    connection.on("player.join", (name, guid) => {
+      console.log("join");
+      this.playerMap.set(name, guid);
+    })
+
+    connection.on("player.leave", (name) => {
+      console.log("leave");
+      this.playerMap.delete(name);
+    })
   }
 
   connect() {
-
     this._connection.connect(); // Connects and logs in
   }
 

@@ -13,6 +13,9 @@ module.exports = class list {
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
         this.maplistRaw = [];
         this.maplistArr = [];
+
+        this.scoreboardMessage = null;
+        this.scoreboardChannelId = null;
     }
 
     async team1(server) {
@@ -218,15 +221,14 @@ module.exports = class list {
 
             const msg = await message.channel.send(embed);
 
-            const interval = setInterval(async () => {
-                if (!msg) {
-                    console.log('Possible discord api error');
-                    return;
-                }
+            this.scoreboardMessage = msg.id;
+            this.scoreboardChannelId = message.channel.id;
 
-                if (msg.deleted) {
-                    clearInterval(interval);
-                } else {
+            const interval = setInterval(async () => {
+                try {
+                    const channel = message.guild.channels.cache.get(this.scoreboardChannelId);
+                    const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage);
+
                     const newInfo = await this.getInfo(server);
                     if (newInfo === null) {
                         return;
@@ -234,7 +236,10 @@ module.exports = class list {
 
                     const newEmbed = await this.createInfoEmbed(newInfo, server);
 
-                    msg.edit(newEmbed);
+                    fetchedMsg.edit(newEmbed);
+                } catch (error) {
+                    console.error("Error editing message:", error);
+                    clearInterval(interval);
                 }
             }, 15_000); // 15 seconds
         } catch (error) {

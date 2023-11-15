@@ -135,8 +135,6 @@ module.exports = class printBans {
 
       const connection = await getConnection();
 
-      connection.connect();
-
       try {
 
         const query = `

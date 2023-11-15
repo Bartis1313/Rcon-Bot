@@ -142,8 +142,6 @@ module.exports = class check {
 
         const connection = await getConnection();
 
-        connection.connect();
-
         try {
             const infosAccounts = await this.findInfoAccounts(connection, playerName);
 

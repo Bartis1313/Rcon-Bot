@@ -87,7 +87,14 @@ const getModesObj = () => {
         GunMaster0: 'Gun Master',
         Chainlink0: 'Chain Link',
         Capturetheflag0: 'Capture the flag',
-        AirSuperiority0: 'Air Superiority'
+        AirSuperiority0: 'Air Superiority',
+        TankSuperiority0: 'Tank Superiority',
+        Scavenger0: 'Scavenger',
+        TeamDeathMatchC0: 'Team Deathmatch (Close Quarters)',
+        ConquestAssaultSmall1: 'Assault #2',
+        ConquestAssaultLarge0: 'Assault Large',
+        ConquestAssaultSmall0: 'Assault Small',
+        SquadRush0: 'Squad Rush'
     }
 }
 
