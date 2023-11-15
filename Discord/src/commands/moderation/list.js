@@ -14,8 +14,11 @@ module.exports = class list {
         this.maplistRaw = [];
         this.maplistArr = [];
 
-        this.scoreboardMessage = null;
-        this.scoreboardChannelId = null;
+        this.scoreboardMessage = {};
+        this.scoreboardChannelId = {};
+        this.intervalIds = {};
+        this.consecutiveErrors = {};
+        this.maxConsecutiveErrors = 3;
     }
 
     async team1(server) {
@@ -210,7 +213,7 @@ module.exports = class list {
         return embed;
     }
 
-    async sendEmbedWithInterval(message, server) {
+    async sendEmbedWithInterval(bot, message, server) {
         try {
             const info = await this.getInfo(server);
             if (info === null) {
@@ -221,13 +224,18 @@ module.exports = class list {
 
             const msg = await message.channel.send(embed);
 
-            this.scoreboardMessage = msg.id;
-            this.scoreboardChannelId = message.channel.id;
+            this.scoreboardMessage[server] = msg.id;
+            this.scoreboardChannelId[server] = message.channel.id;
 
-            const interval = setInterval(async () => {
+            const channel = bot.channels.cache.get(this.scoreboardChannelId[server]);
+
+            this.intervalIds[server] = setInterval(async () => {
                 try {
-                    const channel = message.guild.channels.cache.get(this.scoreboardChannelId);
-                    const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage);
+                    if (!channel.messages.cache.has(this.scoreboardMessage[server])) { // deleted msg
+                        console.log("Message not found in cache. Stopped interval.");
+                        clearInterval(this.intervalIds[server]);
+                        return;
+                    }
 
                     const newInfo = await this.getInfo(server);
                     if (newInfo === null) {
@@ -236,10 +244,12 @@ module.exports = class list {
 
                     const newEmbed = await this.createInfoEmbed(newInfo, server);
 
+                    const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
                     fetchedMsg.edit(newEmbed);
+
+                    this.consecutiveErrors[server] = 0;
                 } catch (error) {
                     console.error("Error editing message:", error);
-                    clearInterval(interval);
                 }
             }, 15_000); // 15 seconds
         } catch (error) {
@@ -259,6 +269,6 @@ module.exports = class list {
             return;
         }
 
-        this.sendEmbedWithInterval(message, server);
+        this.sendEmbedWithInterval(bot, message, server);
     }
 }
