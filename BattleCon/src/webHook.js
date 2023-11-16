@@ -36,7 +36,7 @@ const webHookKickSenderBF4 = async (connection, name, reason) => {
     let serverName = 'Unknown';
     const getServerName = () => {
         return new Promise((resolve, reject) => {
-            connection.exec("serverInfo", function (err, msg) {
+            connection.exec("serverInfo", (err, msg) => {
                 if (err) {
                     console.error(err);
                     reject(err);
@@ -154,7 +154,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
 
     const sayAll = (str) => {
         return new Promise((resolve, reject) => {
-            connection.exec("admin.say", str, function (err, msg) {
+            connection.exec(["admin.say", str, "all"], (err, msg) => {
                 if (err) {
                     console.error(err);
                     reject(err);
@@ -262,7 +262,7 @@ const webHookPB = async (connection, version, msg) => {
 
     const sayAll = (str) => {
         return new Promise((resolve, reject) => {
-            connection.exec("admin.say", str, function (err, msg) {
+            connection.exec(["admin.say", str, "all"], (err, msg) => {
                 if (err) {
                     console.error(err);
                     reject(err);
