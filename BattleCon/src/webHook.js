@@ -103,6 +103,19 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
     if (text.includes("ChatManager")) return;
     if (text.includes("PlayerMuteSystem")) return;
 
+    const sayAll = (str) => {
+        return new Promise((resolve, reject) => {
+            connection.exec(["admin.say", str, "all"], (err, msg) => {
+                if (err) {
+                    console.error(err);
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    };
+
     if (text.includes("banned by BA")) {
         await sayAll(`/ban ${kicked} ${reason}`);
         return;
@@ -151,19 +164,6 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
     }
 
     if (!kicker || !kicked || !reason) return;
-
-    const sayAll = (str) => {
-        return new Promise((resolve, reject) => {
-            connection.exec(["admin.say", str, "all"], (err, msg) => {
-                if (err) {
-                    console.error(err);
-                    reject(err);
-                } else {
-                    resolve();
-                }
-            });
-        });
-    };
 
     const kickImgUrls = [
         "https://ep-team.ru/baner/ban6.gif",
