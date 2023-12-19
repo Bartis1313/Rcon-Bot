@@ -97,11 +97,15 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
         playerNameSay = subset[1];
     }
 
+    const fixedText = playerNameSay ? `${playerNameSay} ${text}` : text;
+
     // don't log ping kicks
     if (text.includes("ping")) return;
     // don't log ChatManager
     if (text.includes("ChatManager")) return;
     if (text.includes("PlayerMuteSystem")) return;
+    if (text.includes("Challenge P")) return;
+    if (text.includes("/AdKatsInstanceCheck")) return;
 
     const sayAll = (str) => {
         return new Promise((resolve, reject) => {
@@ -115,13 +119,6 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
             });
         });
     };
-
-    if (text.includes("banned by BA")) {
-        await sayAll(`/ban ${kicked} ${reason}`);
-        return;
-    }
-
-    const fixedText = playerNameSay ? `${playerNameSay} ${text}` : text;
 
     // we match first group as issuer, the issuer there won't have any tag. It's from subset
     const youKickedRegex = fixedText.match(/([A-Za-z0-9-]+): You KICKED (\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]*).*?for (.+)/);

@@ -25,6 +25,11 @@ module.exports = class BanAnnouncer {
                     password: sPasses[i],
                     database: sNames[i],
                     port: sPorts[i],
+                    connectionLimit: 1000,
+                    connectTimeout: 60 * 60 * 1000,
+                    acquireTimeout: 60 * 60 * 1000,
+                    timeout: 60 * 60 * 1000,
+                    waitForConnections: true
                 });
             }
         }
@@ -46,7 +51,13 @@ module.exports = class BanAnnouncer {
         pool.getConnection((err, connection) => {
             if (err) {
                 console.error('Error getting MySQL connection from pool:', err);
-                connection.release();
+                if (connection) {
+                    connection.release(error => {
+                        if (error) {
+                            console.error('Error releasing MySQL connection:', error);
+                        }
+                    });
+                }
                 return;
             }
 
@@ -63,7 +74,11 @@ module.exports = class BanAnnouncer {
             connection.query(query, (error, results) => {
                 if (error) {
                     console.error('Error querying database:', error);
-                    connection.release();
+                    connection.release(error => {
+                        if (error) {
+                            console.error('Error releasing MySQL connection:', error);
+                        }
+                    });
                     return;
                 }
 
@@ -84,7 +99,11 @@ module.exports = class BanAnnouncer {
                     this.sendBansToWebhook(webhookURL, bans);
                 }
 
-                connection.release();
+                connection.release(error => {
+                    if (error) {
+                        console.error('Error releasing MySQL connection:', error);
+                    }
+                });
             });
         });
     }
