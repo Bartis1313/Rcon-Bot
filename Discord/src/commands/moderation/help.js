@@ -27,6 +27,7 @@ module.exports = class help {
             `${prefix}fps - checks serverTickTime variable`,
             `${prefix}unban - unbans selected player`,
             `${prefix}vip - adds vip slot to the player`,
+            `${prefix}custom - executes rcon command, use with caution!`,
         ];
 
         const embed = new Discord.MessageEmbed()
