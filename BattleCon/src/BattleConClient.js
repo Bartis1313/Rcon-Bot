@@ -338,8 +338,17 @@ class BattleConClient {
     return new Promise(function (resolve, reject) {
       if (!command) reject('command name is required.')
 
-      connection.exec(command, params ? params : null, function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
+      let arr = [];
+      arr.push(command)
+      if (params) {
+        for(const el in params)
+          arr.push(el)
+      }
+
+      const commandArgs = params ? arr : command;
+
+      connection.exec(commandArgs, function (err, msg) {
+        err ? reject(err.message) : resolve(msg);
       });
     })
   }

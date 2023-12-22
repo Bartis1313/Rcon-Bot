@@ -251,7 +251,8 @@ module.exports = class list {
                 } catch (error) {
                     console.error("Error editing message:", error);
                 }
-            }, 15_000); // 15 seconds
+                // 30 seconds, below api errors critical handling
+            }, 30_000).catch(error => console.error("Interval error:", error));
         } catch (error) {
             console.error("Error sending initial message:", error);
         }

@@ -1,5 +1,5 @@
 const Discord = require('discord.js');
-const client = new Discord.Client();
+const client = new Discord.Client({ restRequestTimeout: 60_0000 });
 const BanAnnouncer = require('./misc/banChecker.js');
 const banAnnouncer = new BanAnnouncer();
 
