@@ -219,16 +219,16 @@ module.exports = class list {
             if (info === null) {
                 return;
             }
-
+        
             const embed = await this.createInfoEmbed(info, server);
-
+        
             const msg = await message.channel.send(embed);
-
+        
             this.scoreboardMessage[server] = msg.id;
             this.scoreboardChannelId[server] = message.channel.id;
-
+        
             const channel = bot.channels.cache.get(this.scoreboardChannelId[server]);
-
+        
             this.intervalIds[server] = setInterval(async () => {
                 try {
                     if (!channel.messages.cache.has(this.scoreboardMessage[server])) { // deleted msg
@@ -236,26 +236,26 @@ module.exports = class list {
                         clearInterval(this.intervalIds[server]);
                         return;
                     }
-
+        
                     const newInfo = await this.getInfo(server);
                     if (newInfo === null) {
                         return;
                     }
-
+        
                     const newEmbed = await this.createInfoEmbed(newInfo, server);
-
+        
                     const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
                     fetchedMsg.edit(newEmbed);
-
+        
                     this.consecutiveErrors[server] = 0;
                 } catch (error) {
                     console.error("Error editing message:", error);
                 }
                 // 30 seconds, below api errors critical handling
-            }, 30_000).catch(error => console.error("Interval error:", error));
+            }, 30_000);
         } catch (error) {
             console.error("Error sending initial message:", error);
-        }
+        }        
     }
 
     async run(bot, message, args) {

@@ -68,7 +68,7 @@ module.exports = class BanAnnouncer {
             INNER JOIN adkats_records_main AS rcd ON ab.latest_record_id = rcd.record_id
             INNER JOIN tbl_server AS s ON rcd.server_id = s.ServerID
             WHERE ab.ban_status = 'Active'
-            AND ab.ban_startTime >= '${this.lastProcessedTime.toISOString()}'
+            AND ab.ban_startTime > '${this.lastProcessedTime.toISOString()}'
             `;
 
             connection.query(query, (error, results) => {
