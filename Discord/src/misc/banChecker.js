@@ -10,6 +10,7 @@ function getRandomInt(min, max) {
 module.exports = class BanAnnouncer {
     constructor() {
         this.dbsConfig = [];
+        this.lastBanIds = [];
         if (process.env.DBS_NAME) {
             const sHosts = process.env.DBS_HOST.split(',');
             const sNames = process.env.DBS_NAME.split(',');
@@ -42,6 +43,8 @@ module.exports = class BanAnnouncer {
         this.lastProcessedTime = new Date();
         this.connections = this.dbsConfig.map((config, index) => {
             const pool = createPool(config);
+
+            this.lastBanIds[index] = -1;
 
             return { pool, webhookURL: this.webhookURLs[index] };
         });
@@ -83,8 +86,9 @@ module.exports = class BanAnnouncer {
                 }
 
                 const bans = results.map((row) => {
+
                     return {
-                        ID: row.ban_id,
+                        ID: row.record_id,
                         PlayerName: row.target_name,
                         Reason: row.record_message,
                         AdminName: row.source_name,
@@ -95,8 +99,13 @@ module.exports = class BanAnnouncer {
                 });
 
                 if (bans.length > 0) {
-                    this.lastProcessedTime = new Date();
-                    this.sendBansToWebhook(webhookURL, bans);
+                    const lastid = Number(bans[bans.length - 1].ID);
+                    if (lastid > this.lastBanIds[index]) {
+                        this.lastBanIds[index];
+
+                        this.lastProcessedTime = new Date();
+                        this.sendBansToWebhook(webhookURL, bans);
+                    }
                 }
 
                 connection.release(error => {
