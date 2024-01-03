@@ -231,17 +231,18 @@ module.exports = class ban {
             askPlayerName: while (true) {
                 playerName = await Helpers.askPlayerName(message);
 
-                const matchedPlayer = PlayerMatching.getBestPlayerMatch(playerName, playerNames);
-                if (!matchedPlayer) {
-                    informNotOnServer = true;
-                }
-                else if (matchedPlayer.type === "multi") {
-                    playerName = '';
-                    informWarn = true;
-                }
                 if (!playerName) {
                     if (await Helpers.askTryAgain(message, informWarn ? "Too many matches" : '')) {
                         continue askPlayerName;
+                    }
+
+                    const matchedPlayer = PlayerMatching.getBestPlayerMatch(playerName, playerNames);
+                    if (!matchedPlayer) {
+                        informNotOnServer = true;
+                    }
+                    else if (matchedPlayer.type === "multi") {
+                        playerName = '';
+                        informWarn = true;
                     }
 
                     return reject(console.error("Couldn't get the playerName"))

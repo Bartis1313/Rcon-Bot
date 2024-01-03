@@ -120,6 +120,29 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
         });
     };
 
+
+    let kicker, kicked, reason, link;
+
+    let ba = false;
+
+    if(fixedText.startsWith("[Battlefield Agency] [Kick]")) {
+        const splited = fixedText.split(' ');
+        const reason_ = splited.splice(2).join(' ');
+
+        if(!reason_.toLowerCase().includes("vpn")) {
+            const splited2 = reason_.split(' ');
+            const who = splited2[0];
+            const r = splited.splice(1).join(' ');
+
+            kicker = "BA";
+            kicked = who;
+            reason = r;
+            link = `https://battlefield.agency/player/by-guid/${map.get(kicked)}`;
+
+            ba = true;
+        }
+    }
+
     // we match first group as issuer, the issuer there won't have any tag. It's from subset
     const youKickedRegex = fixedText.match(/([A-Za-z0-9-]+): You KICKED (\[?[A-Za-z0-9-]*\]?[A-Za-z0-9-_]*).*?for (.+)/);
     // this will show in bans, therefore we'll log only rejoin attempts
@@ -133,8 +156,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
         return; // stop there, we dont have issuer yet
     }
 
-    let kicker, kicked, reason;
-    let link;
+    
     if (waitingForBanned) {
         // now can grab the issuer
         const bannedMatch = fixedText.match(/BANNED for (.+?) \[([^\]]+)\]\[([^\]]+)\]/);
@@ -142,9 +164,6 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
             let duration;
             [, reason, duration, kicker] = bannedMatch;
             kicked = playerNameSay;
-            if (reason.includes("banned by BA")) {
-                link = `https://battlefield.agency/player/by-guid/${map.get(kicked)}`
-            }
 
             reason = `[${duration}] ${reason}`;
 
@@ -156,7 +175,10 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
 
     } else if (kickedRegex) {
         [, kicked, kicker, reason] = kickedRegex;
-    } else {
+    } else if (ba) {
+        
+    }
+    else {
         return;
     }
 

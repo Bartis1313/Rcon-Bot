@@ -263,12 +263,14 @@ module.exports = class list {
             message.reply("You don't have permission to use this command.")
             return
         }
-        await message.delete()
+       
         let server = await Helpers.selectServer(message)
         if (!server) {
             message.delete({ timeout: 5000 });
             return;
         }
+
+        await message.delete()
 
         this.sendEmbedWithInterval(bot, message, server);
     }
