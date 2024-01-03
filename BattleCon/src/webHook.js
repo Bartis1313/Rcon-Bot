@@ -126,6 +126,9 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
     let ba = false;
 
     if(fixedText.startsWith("[Battlefield Agency] [Kick]")) {
+
+        console.log("Fixed text ", fixedText);
+
         const splited = fixedText.split(' ');
         const reason_ = splited.splice(2).join(' ');
 
