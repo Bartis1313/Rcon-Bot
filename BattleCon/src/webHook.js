@@ -127,20 +127,16 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
 
     if(fixedText.startsWith("[Battlefield Agency] [Kick]")) {
 
-        console.log("Fixed text ", fixedText);
-
         const splited = fixedText.split(' ');
-        const reason_ = splited.splice(2).join(' ');
+        const reason_ = splited.splice(4).join(' ');
 
         if(!reason_.toLowerCase().includes("vpn")) {
-            const splited2 = reason_.split(' ');
-            const who = splited2[0];
-            const r = splited.splice(1).join(' ');
+            const name = splited[3].replace(/\[|\]/g, '');
 
             kicker = "BA";
-            kicked = who;
-            reason = r;
-            link = `https://battlefield.agency/player/by-guid/${map.get(kicked)}`;
+            kicked = name;
+            reason = reason_;
+            link = `https://battlefield.agency/player/by-guid/${map.get(name)}`;
 
             ba = true;
         }
