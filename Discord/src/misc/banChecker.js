@@ -1,4 +1,4 @@
-import { createPool } from 'mysql';
+import { createConnection } from 'mysql';
 import fetch from 'node-fetch';
 
 function getRandomInt(min, max) {
