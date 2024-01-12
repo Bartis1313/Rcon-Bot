@@ -42,29 +42,37 @@ module.exports = class BanAnnouncer {
 
         this.lastProcessedTime = new Date();
         this.connections = this.dbsConfig.map((config, index) => {
-            const pool = createPool(config);
-
             this.lastBanIds[index] = -1;
 
-            return { pool, webhookURL: this.webhookURLs[index] };
+            return { config, webhookURL: this.webhookURLs[index] };
         });
     }
 
-    getRecentBans(pool, webhookURL, index) {
-        pool.getConnection((err, connection) => {
-            if (err) {
-                console.error('Error getting MySQL connection from pool:', err);
-                if (connection) {
-                    connection.release(error => {
-                        if (error) {
-                            console.error('Error releasing MySQL connection:', error);
-                        }
-                    });
-                }
-                return;
-            }
+    async getRecentBans(config, webhookURL, index) {
 
-            const query = `
+        const connection = createConnection(config);
+
+        const connect = () => {
+            return new Promise((resolve, reject) => {
+                connection.connect((err) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        };
+
+        const disconnect = () => {
+            return new Promise((resolve) => {
+                connection.end(() => {
+                    resolve();
+                });
+            });
+        };
+
+        const query = `
             SELECT rcd.record_id, target_name, ban_startTime, ban_endTime, record_message, source_name, ServerName
             FROM adkats_bans AS ab
             INNER JOIN tbl_playerdata AS tp ON ab.player_id = tp.PlayerID
@@ -74,14 +82,13 @@ module.exports = class BanAnnouncer {
             AND ab.ban_startTime > '${this.lastProcessedTime.toISOString()}'
             `;
 
+        try {
+            await connect();
             connection.query(query, (error, results) => {
                 if (error) {
                     console.error('Error querying database:', error);
-                    connection.release(error => {
-                        if (error) {
-                            console.error('Error releasing MySQL connection:', error);
-                        }
-                    });
+
+                    connection.end();
                     return;
                 }
 
@@ -108,13 +115,16 @@ module.exports = class BanAnnouncer {
                     }
                 }
 
-                connection.release(error => {
-                    if (error) {
-                        console.error('Error releasing MySQL connection:', error);
-                    }
-                });
             });
-        });
+
+            await disconnect();
+        }
+        catch (error) {
+            console.error('Error querying database:', error);
+            await disconnect();
+        }
+
+        await disconnect();
     }
 
     async sendBansToWebhook(webhookURL, bans) {
@@ -170,13 +180,21 @@ module.exports = class BanAnnouncer {
 
     checkForNewBans() {
         this.connections.forEach((connection, index) => {
-            this.getRecentBans(connection.pool, connection.webhookURL, index);
+            this.getRecentBans(connection.config, connection.webhookURL, index);
         });
     }
 
-    startBanAnnouncement(interval) {
-        this.checkForNewBans();
+    async startBanAnnouncement(interval, delayBetweenConnections) {
+        for (const connectionInfo of this.connections) {
+            await this.getRecentBans(connectionInfo);
+            await new Promise((resolve) => setTimeout(resolve, delayBetweenConnections));
+        }
 
-        setInterval(() => this.checkForNewBans(), interval);
+        setInterval(() => {
+            this.connections.forEach(async (connectionInfo) => {
+                await this.getRecentBans(connectionInfo);
+                await new Promise((resolve) => setTimeout(resolve, delayBetweenConnections));
+            });
+        }, interval);
     }
 }

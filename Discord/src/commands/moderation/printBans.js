@@ -1,4 +1,4 @@
-import { createPool } from 'mysql';
+import { createConnection } from 'mysql';
 import fs from 'fs'
 
 // notice I don't use offset for the printing bans, I print 0-100 bans. If you want more or add all, use number that will
@@ -119,23 +119,30 @@ module.exports = class printBans {
     message.delete();
 
     for (const serverConfig of this.dbsConfig) {
-      const pool = createPool(serverConfig);
+      const connection = createConnection(serverConfig);
 
-      const getConnection = () => {
+      const connect = () => {
         return new Promise((resolve, reject) => {
-          pool.getConnection((err, connection) => {
+          connection.connect((err) => {
             if (err) {
               reject(err);
             } else {
-              resolve(connection);
+              resolve();
             }
           });
         });
       };
 
-      const connection = await getConnection();
+      const disconnect = () => {
+        return new Promise((resolve) => {
+          connection.end(() => {
+            resolve();
+          });
+        });
+      };
 
       try {
+        await connect();
 
         const query = `
                 SELECT rcd.record_id, target_name, ban_id, ban_status, ban_notes, ban_startTime, ban_endTime, record_message, source_name, ServerName
@@ -171,11 +178,12 @@ module.exports = class printBans {
           await message.channel.send({ files: [fileName] });
           await fs.promises.unlink(fileName);
         }
-        connection.release();
+
+        await disconnect();
 
       } catch (error) {
         console.error('Database error:', error);
-        connection.release();
+        await disconnect();
       }
     }
   }

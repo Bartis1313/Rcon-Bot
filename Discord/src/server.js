@@ -13,7 +13,7 @@ const CH = new CommandHandler({
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
     client.user.setActivity('Watching Servers');
-    banAnnouncer.startBanAnnouncement(60_000); // check DB every minute
+    banAnnouncer.startBanAnnouncement(60_000, 60_000);
 });
 
 client.on('message', message => {

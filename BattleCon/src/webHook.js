@@ -54,13 +54,23 @@ const webHookKickSenderBF4 = async (connection, name, reason) => {
         embeds: [
             {
                 title: 'Kicked Player',
-                description: `**Name**: ${name}\n**Reason**: ${reason}`, // issuer will mostly show up in reason, regex '[]'
                 fields: [
+                    {
+                        name: 'Name',
+                        value: name,
+                        inline: true,
+                    },
+                    {
+                        name: 'Reason',
+                        value: reason,
+                        inline: true,
+                    },
                     {
                         name: 'Server',
                         value: serverName,
+                        inline: true,
                     },
-                ],
+                ].filter(field => field !== null), // Filter out null fields
                 color: 0x3498DB, // Light blue
                 thumbnail: { url: randomUrl }
             }
@@ -80,7 +90,7 @@ const webHookKickSenderBF4 = async (connection, name, reason) => {
             }
         })
         .catch((error) => {
-            console.error('Error:', error);
+            console.error('Error:', error, message);
         });
 }
 
@@ -150,6 +160,10 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
 
     // special case
     if (enforceMatch) {
+
+        // temp temp
+        console.log("enforematch text: ", fixedText);
+
         pendingEnforceMatch = enforceMatch;
         waitingForBanned = true;
         return; // stop there, we dont have issuer yet
@@ -157,6 +171,10 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
 
     
     if (waitingForBanned) {
+
+        // temp temp
+        console.log("waiting for banned text: ", fixedText);
+
         // now can grab the issuer
         const bannedMatch = fixedText.match(/BANNED for (.+?) \[([^\]]+)\]\[([^\]]+)\]/);
         if (bannedMatch) { // we are doing it that way, because the bannedMatch will be executed many times, the enforce not
@@ -215,13 +233,33 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
         embeds: [
             {
                 title: 'Kicked Player',
-                description: `**Name**: ${kicked}\n**Reason**: ${reason}\n**Issuer**: ${kicker}${link ? `\n**Link**: ${link}` : ''}`,
                 fields: [
+                    {
+                        name: 'Name',
+                        value: kicked,
+                        inline: true,
+                    },
+                    {
+                        name: 'Reason',
+                        value: reason,
+                        inline: true,
+                    },
+                    {
+                        name: 'Issuer',
+                        value: kicker,
+                        inline: true,
+                    },
+                    link ? {
+                        name: 'Link',
+                        value: link,
+                        inline: true,
+                    } : null,
                     {
                         name: 'Server',
                         value: serverName,
+                        inline: true,
                     },
-                ],
+                ].filter(field => field !== null), // Filter out null fields
                 color: 0x3498DB, // Light blue
                 thumbnail: { url: randomUrl }
             }
@@ -241,7 +279,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
             }
         })
         .catch((error) => {
-            console.error('Error:', error);
+            console.error('Error:', error, message);
         });
 }
 
@@ -292,7 +330,7 @@ const webHookPB = async (connection, version, msg) => {
     };
 
     await getServerName();
-    await sayAll(`/ban ${kicked} ${reason}`);
+    //await sayAll(`/ban ${kicked} ${reason}`);
 
     const kickImgUrls = [
         "https://ep-team.ru/baner/ban6.gif",
@@ -308,19 +346,35 @@ const webHookPB = async (connection, version, msg) => {
     const message = {
         embeds: [
             {
-                title: 'PB Kicked Player',
-                description: `**Name**: ${kicked}\n**Reason**: ${reason}\n**Issuer**: ${kicker}`,
+                title: 'PB banned player',
                 fields: [
+                    {
+                        name: 'Name',
+                        value: kicked,
+                        inline: true,
+                    },
+                    {
+                        name: 'Reason',
+                        value: reason,
+                        inline: true,
+                    },
+                    {
+                        name: 'Issuer',
+                        value: kicker,
+                        inline: true,
+                    },
                     {
                         name: 'Server',
                         value: serverName,
+                        inline: true,
                     },
-                ],
-                color: 0xFF0000, // RED
+                ].filter(field => field !== null),
+                color: 0xFF0000, // Red
                 thumbnail: { url: randomUrl }
             }
         ]
     };
+
 
     fetch(webhookBANUrl, {
         method: 'POST',
@@ -335,7 +389,7 @@ const webHookPB = async (connection, version, msg) => {
             }
         })
         .catch((error) => {
-            console.error('Error:', error);
+            console.error('Error:', error, message);
         });
 }
 

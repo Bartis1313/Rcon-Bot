@@ -55,6 +55,7 @@ class BattleConClient {
       console.log(`Disconnect: ${date.toLocaleString()}`);
       this._connection.disconnect();
       if (reconnectInterval === null) {
+        clearInterval(reconnectInterval);
         reconnectInterval = setInterval(() => {
           this._connection.connect();
           console.log("Retried to connect");
@@ -63,7 +64,7 @@ class BattleConClient {
     });
 
     connection.on("error", (err) => {
-      //console.log("# Error: " + err.message, err.stack);
+      console.error("# Error: " + err.message, err.stack);
     });
 
     connection.on("player.chat", (name, text, subset) => {

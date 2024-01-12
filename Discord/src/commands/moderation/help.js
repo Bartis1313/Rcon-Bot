@@ -19,7 +19,7 @@ module.exports = class help {
             `${prefix}kick - kicks player from the server`,
             `${prefix}kill - kills player`,
             `${prefix}link - links players with same IP, the name is NOT matched!`,
-            `${prefix}list - lists players from the server, you better create seperate channel for it. The list is updated per 5 secs`,
+            `${prefix}list - lists players from the server, you better create seperate channel for it. The list is updated per 30 secs`,
             `${prefix}map - sets next map index, votemap might overwrite it!`,
             `${prefix}printbans - print all bans in the text file`,
             `${prefix}psay - say the message to the player`,

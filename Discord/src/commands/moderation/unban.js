@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
-import { createPool } from 'mysql'
+import { createConnection } from 'mysql'
 
 module.exports = class unban {
     constructor() {
@@ -200,23 +200,30 @@ module.exports = class unban {
             break;
         }
 
-        const pool = createPool(serverDB);
+        const connection = createConnection(serverDB);
 
-        const getConnection = () => {
+        const connect = () => {
             return new Promise((resolve, reject) => {
-                pool.getConnection((err, connection) => {
+                connection.connect((err) => {
                     if (err) {
                         reject(err);
                     } else {
-                        resolve(connection);
+                        resolve();
                     }
                 });
             });
         };
 
-        const connection = await getConnection();
+        const disconnect = () => {
+            return new Promise((resolve) => {
+                connection.end(() => {
+                    resolve();
+                });
+            });
+        };
 
         try {
+            await connect();
             // should we do that?
             // ORDER BY r.record_time DESC
             // LIMIT 1;
@@ -248,10 +255,10 @@ module.exports = class unban {
                     .addField('Server', `${serverDB.database}`, false);
                 message.channel.send(embed);
             }
-            connection.release();
+            await disconnect();
         } catch (error) {
             console.error('Database error:', error);
-            connection.release();
+            await disconnect();
         }
     }
 }

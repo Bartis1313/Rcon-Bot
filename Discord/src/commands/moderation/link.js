@@ -1,4 +1,4 @@
-import { createPool } from 'mysql';
+import { createConnection } from 'mysql';
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 import geoip from 'geoip-lite'
@@ -119,32 +119,38 @@ module.exports = class link {
     }
 
     async processServer(serverConfig, playerName) {
-        const pool = createPool(serverConfig);
+        const connection = createConnection(serverConfig);
 
-        const getConnection = () => {
+        const connect = () => {
             return new Promise((resolve, reject) => {
-                pool.getConnection((err, connection) => {
+                connection.connect((err) => {
                     if (err) {
                         reject(err);
                     } else {
-                        resolve(connection);
+                        resolve();
                     }
                 });
             });
         };
 
-        const connection = await getConnection();
-        
+        const disconnect = () => {
+            return new Promise((resolve) => {
+                connection.end(() => {
+                    resolve();
+                });
+            });
+        };
+
         try {
+            await connect();
+
             const linkedAccounts = await this.findLinkedAccounts(connection, playerName);
 
-            connection.release();
-
+            await disconnect();
             return linkedAccounts;
         } catch (error) {
             console.error('Database error:', error);
-            connection.release();
-            return [];
+            await disconnect();
         }
     }
 

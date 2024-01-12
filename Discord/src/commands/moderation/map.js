@@ -162,8 +162,12 @@ module.exports = class map {
     }
 
     buildEmbed(message, parameters, response) {
-        const valid = this.maplistArr
-        const img = 'http://eaassets-a.akamaihd.net/bl-cdn/cdnprefix/production-5780-20210129/public/base/bf4/map_images/335x160/' + this.maplistRaw[parameters.indexNum].toLowerCase() + '.jpg'
+        const valid = this.maplistArr;
+        const urlPrefix = getVer(this.serverUrl) === 'BF4' 
+        ? 'http://eaassets-a.akamaihd.net/bl-cdn/cdnprefix/production-5780-20210129/public/base/bf4/map_images/335x160/'
+        : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/'
+
+        const img = urlPrefix + this.maplistRaw[parameters.indexNum].toLowerCase() + '.jpg'
         const embed = new Discord.MessageEmbed()
             .setTimestamp()
             .setColor(response.status === "OK" ? "00FF00" : "FF0000")
