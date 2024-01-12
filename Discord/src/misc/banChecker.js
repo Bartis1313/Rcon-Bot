@@ -185,14 +185,14 @@ module.exports = class BanAnnouncer {
     }
 
     async startBanAnnouncement(interval, delayBetweenConnections) {
-        for (const connectionInfo of this.connections) {
-            await this.getRecentBans(connectionInfo);
+        this.connections.forEach(async (connectionInfo, index) => {
+            await this.getRecentBans(connectionInfo.config, connectionInfo.webhookURL, index);
             await new Promise((resolve) => setTimeout(resolve, delayBetweenConnections));
-        }
+        })
 
         setInterval(() => {
-            this.connections.forEach(async (connectionInfo) => {
-                await this.getRecentBans(connectionInfo);
+            this.connections.forEach(async (connectionInfo, index) => {
+                await this.getRecentBans(connectionInfo.config, connectionInfo.webhookURL, index);
                 await new Promise((resolve) => setTimeout(resolve, delayBetweenConnections));
             });
         }, interval);
