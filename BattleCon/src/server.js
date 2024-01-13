@@ -3,28 +3,20 @@ var bodyParser = require("body-parser");
 var app = express();
 import BattleConClient from "./BattleConClient"
 
-var serverName = null
 var client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, process.env.RCON_PASS)
 
 client.connect()
 
-var serverNameUpdater = function (req, res, next) {
-    if (!serverName) {
-        client.serverInfo()
-            .then((response) => {
-                serverName = response[0]
-            })
-            .catch(err => {
-
-                serverName = null
-            })
-    }
-
-    next()
+const getServerName = () => {
+    client.serverInfo()
+        .then((response) => {
+            return response[0]
+        })
+        .catch(err => {
+            return 'ERR';
+        })
 }
 
-
-app.use(serverNameUpdater)
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
@@ -41,11 +33,11 @@ process.on('SIGTERM', () => {
 app.get("/serverName", (req, res, next) => {
     client.version()
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: null });
+            res.json({ status: "OK", server: getServerName(), data: null });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server name.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request server name.' })
         })
 });
 
@@ -53,22 +45,22 @@ app.get("/serverName", (req, res, next) => {
 app.get("/version", (req, res, next) => {
     client.version()
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server version.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request server version.' })
         })
 });
 
 app.get("/serverInfo", (req, res, next) => {
     client.serverInfo()
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server information.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request server information.' })
         })
 });
 
@@ -78,11 +70,11 @@ app.post("/admin/kill", (req, res, next) => {
 
     client.killPlayer(playerName)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 });
 
@@ -92,11 +84,11 @@ app.post("/admin/kick", (req, res, next) => {
 
     client.kickPlayer(playerName, reason)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 });
 
@@ -108,11 +100,11 @@ app.post("/admin/ban", (req, res, next) => {
 
     client.banPlayer(banType, playerName, timeout, reason)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 });
 app.post("/reservedslots", (req, res, next) => {
@@ -121,11 +113,11 @@ app.post("/reservedslots", (req, res, next) => {
 
         client.vipPlayer(soldierName)
             .then((response) => {
-                res.json({ status: "OK", server: serverName, data: response });
+                res.json({ status: "OK", server: getServerName(), data: response });
             })
             .catch(err => {
 
-                res.status(400).send({ status: "FAILED", server: serverName, error: err })
+                res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
             })
     }
     catch (err) {
@@ -137,11 +129,11 @@ app.get("/players", (req, res, next) => {
     try {
         client.listPlayers()
             .then((response) => {
-                res.json({ status: "OK", server: serverName, data: response });
+                res.json({ status: "OK", server: getServerName(), data: response });
             })
             .catch(err => {
 
-                res.status(400).send({ status: "FAILED", server: serverName, error: err })
+                res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
             })
     }
     catch (err) {
@@ -153,11 +145,11 @@ app.post("/count", (req, res, next) => {
     try {
         client.listPlayers()
             .then((response) => {
-                res.json({ status: "OK", server: serverName, data: response });
+                res.json({ status: "OK", server: getServerName(), data: response });
             })
             .catch(err => {
 
-                res.status(400).send({ status: "FAILED", server: serverName, error: err })
+                res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
             })
     }
     catch (err) {
@@ -170,11 +162,11 @@ app.post("/count", (req, res, next) => {
 app.post("/team_1", (req, res, next) => {
     client.team_1()
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server players.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request server players.' })
         })
 });
 
@@ -182,11 +174,11 @@ app.post("/team_2", (req, res, next) => {
     client.team_2()
 
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server players.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request server players.' })
         })
 });
 
@@ -194,11 +186,11 @@ app.post("/serverfps", (req, res, next) => {
     client.serverFPS()
 
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server name.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request server name.' })
         })
 })
 
@@ -206,11 +198,11 @@ app.post("/listOfMaps", (req, res, next) => {
     client.listOfMaps()
 
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server map list.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request server map list.' })
         })
 })
 
@@ -220,11 +212,11 @@ app.post("/setMapIndex", (req, res, next) => {
     client.setNextMap(indexNum)
 
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to set index for next map.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to set index for next map.' })
         })
 })
 
@@ -232,11 +224,11 @@ app.post("/printBans", (req, res, next) => {
     client.printBanList()
 
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request banlist.' })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: 'Failed to request banlist.' })
         })
 })
 
@@ -245,33 +237,33 @@ app.post("/admin/unban", (req, res, next) => {
     let banId = req.body.banId;
     client.unban(banType, banId)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
 app.post("/getInfo", (req, res, next) => {
     client.getAllInfo()
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
 app.post("/getIndices", (req, res, next) => {
     client.getMapIndices()
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
@@ -283,11 +275,11 @@ app.post("/switchPlayer", (req, res, next) => {
     client.switchPlayer(playerName, teamId, squadId, force)
 
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            res.json({ status: "OK", server: getServerName(), data: response });
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
@@ -295,11 +287,11 @@ app.post("/admin/sayall", (req, res, next) => {
     let what = req.body.what;
     client.adminSayall(what)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response })
+            res.json({ status: "OK", server: getServerName(), data: response })
         })
         .catch(err => {
             console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
@@ -308,11 +300,11 @@ app.post("/admin/psay", (req, res, next) => {
     let playerName = req.body.playerName;
     client.adminSayPlayer(what, playerName)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response })
+            res.json({ status: "OK", server: getServerName(), data: response })
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
@@ -321,11 +313,11 @@ app.post("/admin/yellall", (req, res, next) => {
     let duration = req.body.duration;
     client.adminYellall(what, duration)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response })
+            res.json({ status: "OK", server: getServerName(), data: response })
         })
         .catch(err => {
             console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
@@ -335,11 +327,11 @@ app.post("/admin/pyell", (req, res, next) => {
     let playerName = req.body.playerName;
     client.adminYellPlayer(what, duration, playerName)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response })
+            res.json({ status: "OK", server: getServerName(), data: response })
         })
         .catch(err => {
             console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
@@ -347,11 +339,11 @@ app.post("/admin/sayall", (req, res, next) => {
     let what = req.body.what;
     client.adminSayall(what)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response })
+            res.json({ status: "OK", server: getServerName(), data: response })
         })
         .catch(err => {
             console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
@@ -361,11 +353,11 @@ app.post("/custom", (req, res, next) => {
 
     client.customCommand(command, params)
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response })
+            res.json({ status: "OK", server: getServerName(), data: response })
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            res.status(400).send({ status: "FAILED", server: getServerName(), error: err })
         })
 })
 
