@@ -28,14 +28,8 @@ class BattleConClient {
     connection.on("ready", () => {
       // Execute raw commands:
       connection.exec("version", (err, msg) => {
-        if (err) {
-            console.error("# Error getting version " + err);
-            version = '0';
-        }
-        else {
-          console.log("# Server is running " + msg[0] + ", version " + msg[1]);
-          version = msg[1];
-        }
+        console.log("# Server is running " + msg[0] + ", version " + msg[1]);
+        version = msg[1];
       });
 
       // Execute module commands (core.js):

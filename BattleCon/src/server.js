@@ -9,22 +9,19 @@ var client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, p
 client.connect()
 
 var serverNameUpdater = function (req, res, next) {
-    let wantedName = '';
-    client.serverInfo()
-        .then((response) => {
-            wantedName = response[0]
-            if(wantedName != serverName) {
-                serverName = wantedName;
-            }
-        })
-        .catch(err => {
+    if (!serverName) {
+        client.serverInfo()
+            .then((response) => {
+                serverName = response[0]
+            })
+            .catch(err => {
 
-            serverName = null
-        })
-        
+                serverName = null
+            })
+    }
+
     next()
 }
-
 
 app.use(serverNameUpdater)
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -47,7 +44,7 @@ app.get("/serverName", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server name.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 });
 
@@ -59,7 +56,7 @@ app.get("/version", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server version.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 });
 
@@ -70,7 +67,7 @@ app.get("/serverInfo", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server information.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 });
 
@@ -176,7 +173,7 @@ app.post("/team_1", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server players.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 });
 
@@ -188,7 +185,7 @@ app.post("/team_2", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server players.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 });
 
@@ -200,7 +197,7 @@ app.post("/serverfps", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server name.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 })
 
@@ -212,7 +209,7 @@ app.post("/listOfMaps", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request server map list.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 })
 
@@ -226,7 +223,7 @@ app.post("/setMapIndex", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to set index for next map.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 })
 
@@ -238,7 +235,7 @@ app.post("/printBans", (req, res, next) => {
         })
         .catch(err => {
 
-            res.status(400).send({ status: "FAILED", server: serverName, error: 'Failed to request banlist.' })
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
         })
 })
 
