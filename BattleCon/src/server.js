@@ -27,7 +27,7 @@ app.use(serverNameUpdater)
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.listen(process.env.BATTLECON_PORT || 3000, () => {
+var server = app.listen(process.env.BATTLECON_PORT || 3000, () => {
     console.log(`Server running on port ${process.env.BATTLECON_PORT || 3000}`);
 });
 

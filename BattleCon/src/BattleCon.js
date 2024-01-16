@@ -1,9 +1,12 @@
 /*
  Copyright 2013 Daniel Wirtz <dcode@dcode.io>
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
+
  http://www.apache.org/licenses/LICENSE-2.0
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,9 +14,9 @@
  limitations under the License.
  */
 
- var events = require("events"),
- net = require("net"),
- Message = require("./BattleCon/Message.js");
+var events = require("events"),
+    net = require("net"),
+    Message = require("./BattleCon/Message.js");
 
 /**
 * Constructs a new BattleCon instance.
@@ -25,19 +28,19 @@
 * @extends events.EventEmitter
 */
 var BattleCon = function (host, port, pass) {
- events.EventEmitter.call(this);
+    events.EventEmitter.call(this);
 
- // Connection parameters
- this.host = host;
- this.port = port;
- this.pass = pass;
+    // Connection parameters
+    this.host = host;
+    this.port = port;
+    this.pass = pass;
 
- // Connection state
- this.loggedIn = false;
- this.sock = null;
- this.id = 0x3fffffff;
- this.buf = Buffer.alloc(0);
- this.cbs = {};
+    // Connection state
+    this.loggedIn = false;
+    this.sock = null;
+    this.id = 0x3fffffff;
+    this.buf = new Buffer.alloc(0);
+    this.cbs = {};
 };
 
 // Event                   | Meaning
@@ -67,12 +70,12 @@ BattleCon.prototype = Object.create(events.EventEmitter.prototype);
 * @throws {Error} If the module could not be loaded
 */
 BattleCon.prototype.use = function (gameModule, options) {
- if (typeof gameModule === 'function') {
-     gameModule(this, options);
- } else if (typeof gameModule === 'string' && /^[a-zA-Z0-9_\-]+$/.test(gameModule)) {
-     require("./games/" + gameModule + ".js")(this, options);
- }
- return this;
+    if (typeof gameModule === 'function') {
+        gameModule(this, options);
+    } else if (typeof gameModule === 'string' && /^[a-zA-Z0-9_\-]+$/.test(gameModule)) {
+        require("./games/" + gameModule + ".js")(this, options);
+    }
+    return this;
 };
 
 /**
@@ -80,34 +83,34 @@ BattleCon.prototype.use = function (gameModule, options) {
 * @param {function(Error)=} callback Callback
 */
 BattleCon.prototype.connect = function (callback) {
- if (this.sock !== null) return;
- this.sock = new net.Socket();
- var cbCalled = false;
- this.sock.on("error", function (err) {
-     if (!this.loggedIn && callback && !cbCalled) {
-         cbCalled = true;
-         callback(err);
-     }
-     this.emit("error", err);
- }.bind(this));
- this.sock.on("close", function () {
-     this.emit("close");
-     this.sock = null;
- }.bind(this));
- this.sock.connect(this.port, this.host, function () {
-     this.emit("connect");
-     this.sock.on("data", this._gather.bind(this));
-     if (this.login) this.login(callback);
- }.bind(this));
+    if (this.sock !== null) return;
+    this.sock = new net.Socket();
+    var cbCalled = false;
+    this.sock.on("error", function (err) {
+        if (!this.loggedIn && callback && !cbCalled) {
+            cbCalled = true;
+            callback(err);
+        }
+        this.emit("error", err);
+    }.bind(this));
+    this.sock.on("close", function () {
+        this.emit("close");
+        this.sock = null;
+    }.bind(this));
+    this.sock.connect(this.port, this.host, function () {
+        this.emit("connect");
+        this.sock.on("data", this._gather.bind(this));
+        if (this.login) this.login(callback);
+    }.bind(this));
 };
 
 /**
 * Disconnects from the server.
 */
 BattleCon.prototype.disconnect = function () {
- if (this.sock !== null) {
-     this.sock.end();
- }
+    if (this.sock !== null) {
+        this.sock.end();
+    }
 };
 
 /**
@@ -116,24 +119,19 @@ BattleCon.prototype.disconnect = function () {
 * @private
 */
 BattleCon.prototype._gather = function (chunk) {
- this.buf = Buffer.concat([this.buf, chunk]);
- do {
-     if (this.buf.length < 8) return;
-     var size = this.buf.readUInt32LE(4);
-     
-     if (this.buf.length < size) {
-        
-        return;
-     }
-     var data = this.buf.slice(0, size);
-     
-     this.buf = this.buf.slice(size, this.buf.length);
-     try {
-         this._process(Message.decode(data));
-     } catch (err) {
-         this.emit("error", err);
-     }
- } while (true);
+    this.buf = Buffer.concat([this.buf, chunk]);
+    do {
+        if (this.buf.length < 8) return;
+        var size = this.buf.readUInt32LE(4);
+        if (this.buf.length < size) return;
+        var data = this.buf.slice(0, size);
+        this.buf = this.buf.slice(size, this.buf.length);
+        try {
+            this._process(Message.decode(data));
+        } catch (err) {
+            this.emit("error", err);
+        }
+    } while (true);
 };
 
 /**
@@ -142,24 +140,24 @@ BattleCon.prototype._gather = function (chunk) {
 * @private
 */
 BattleCon.prototype._process = function (msg) {
- if (msg.data.length == 0) {
-     this.emit("error", "empty message received");
-     return;
- }
- if (msg.isFromServer()) {
-     this.emit("event", /* raw event */ msg);
- } else {
-     this.emit("message", /* raw message */ msg);
-     if (this.cbs.hasOwnProperty("cb" + msg.id)) {
-         var callback = this.cbs["cb" + msg.id];
-         delete this.cbs["cb" + msg.id];
-         if (msg.data[0] === "OK") {
-             callback(null, msg.data.slice(1));
-         } else {
-             callback(new Error(msg.data.join(' ')));
-         }
-     }
- }
+    if (msg.data.length == 0) {
+        this.emit("error", "empty message received");
+        return;
+    }
+    if (msg.isFromServer()) {
+        this.emit("event", /* raw event */ msg);
+    } else {
+        this.emit("message", /* raw message */ msg);
+        if (this.cbs.hasOwnProperty("cb" + msg.id)) {
+            var callback = this.cbs["cb" + msg.id];
+            delete this.cbs["cb" + msg.id];
+            if (msg.data[0] === "OK") {
+                callback(null, msg.data.slice(1));
+            } else {
+                callback(new Error(msg.data.join(' ')));
+            }
+        }
+    }
 };
 
 /**
@@ -168,17 +166,17 @@ BattleCon.prototype._process = function (msg) {
 * @param {function(Error, Message=)=} callback Callback
 */
 BattleCon.prototype.exec = function (command, callback) {
- var msg = new Message(this.id, 0, command);
- if (typeof callback === 'function') {
-     this.cbs["cb" + this.id] = callback;
- }
- try {
-     this.emit("exec", msg); // May throw to abort
- } catch (aborted) {
-     return;
- }
- this.sock.write(msg.encode());
- this.id = (this.id + 1) & 0x3fffffff;
+    var msg = new Message(this.id, 0, command);
+    if (typeof callback === 'function') {
+        this.cbs["cb" + this.id] = callback;
+    }
+    try {
+        this.emit("exec", msg); // May throw to abort
+    } catch (aborted) {
+        return;
+    }
+    this.sock.write(msg.encode());
+    this.id = (this.id + 1) & 0x3fffffff;
 };
 
 /**
@@ -188,25 +186,24 @@ BattleCon.prototype.exec = function (command, callback) {
 * @returns {!Array.<Object.<string,string>>}
 */
 BattleCon.tabulate = function (res, offset) {
- if (!offset) offset = 0;
- var nColumns = parseInt(res[offset], 10),
-     columns = [];
- for (var i = offset + 1; i <= nColumns; i++) {
-     columns.push(res[i]);
- }
- var nRows = parseInt(res[i], 10),
-     rows = [];
- for (var n = 0; n < nRows; n++) {
-     var row = {};
-     for (var j = 0; j < columns.length; j++) {
-         row[columns[j]] = res[++i];
-     }
-     rows.push(row);
- }
- rows.columns = columns;
- return rows;
+    if (!offset) offset = 0;
+    var nColumns = parseInt(res[offset], 10),
+        columns = [];
+    for (var i = offset + 1; i <= nColumns; i++) {
+        columns.push(res[i]);
+    }
+    var nRows = parseInt(res[i], 10),
+        rows = [];
+    for (var n = 0; n < nRows; n++) {
+        var row = {};
+        for (var j = 0; j < columns.length; j++) {
+            row[columns[j]] = res[++i];
+        }
+        rows.push(row);
+    }
+    rows.columns = columns;
+    return rows;
 };
-
 
 /**
 * Tabulates a result containing columns and rows.
