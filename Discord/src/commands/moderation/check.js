@@ -2,6 +2,7 @@ import { createConnection } from 'mysql';
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 import geoip from 'geoip-lite'
+import fs from 'fs'
 
 function truncateString(str, maxLength) {
     if (str.length > maxLength) {
@@ -206,7 +207,7 @@ module.exports = class check {
             .setAuthor(`Check for ${serverDB.database}`, message.author.avatarURL())
             .setFooter('Author: Bartis');
 
-        infosAccounts.forEach((playerInfo) => {
+        infosAccounts.forEach(async (playerInfo) => {
             const lookup = geoip.lookup(playerInfo.IP_Address);
             const country = lookup ? lookup.country : 'Err';
 
@@ -234,6 +235,24 @@ module.exports = class check {
                         uniqueHistoryAccounts.set(oldKey, history.RecStamp);
                     }
                 });
+
+                if (Array.from(uniqueHistoryAccounts).length >= 25) {
+
+                    message.channel.send(embed);
+
+                    const fileName = `name_history.txt`;
+
+                    const fileContent = Array.from(uniqueHistoryAccounts).map(([nickname, date]) => {
+                        const dateObject = new Date(date);
+                        return `• ${nickname} (Date: ${dateObject.toLocaleDateString()})`;
+                    }).join('\n');
+
+                    fs.writeFileSync(fileName, fileContent, 'utf-8');
+                    await message.channel.send({ files: [fileName] });
+                    await fs.promises.unlink(fileName);
+
+                    return;
+                }
 
                 const historyAccountsList = Array.from(uniqueHistoryAccounts).map(([nickname, date]) => {
                     const dateObject = new Date(date);

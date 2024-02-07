@@ -2,6 +2,7 @@ import { createConnection } from 'mysql';
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 import geoip from 'geoip-lite'
+import fs from 'fs'
 
 function truncateString(str, maxLength) {
     if (str.length > maxLength) {
@@ -188,6 +189,18 @@ module.exports = class link {
 
         if (linkedAccounts.length === 0) {
             message.reply("linkedAccounts is empty");
+            return;
+        }
+
+        if (linkedAccounts >= 25) {
+            const fileName = `links.txt`;
+
+            const fileContent = linkedAccounts.map(account => `• ${account}`).join('\n');
+
+            fs.writeFileSync(fileName, fileContent, 'utf-8');
+            await message.channel.send({ files: [fileName] });
+            await fs.promises.unlink(fileName);
+
             return;
         }
 
