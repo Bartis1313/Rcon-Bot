@@ -192,7 +192,7 @@ module.exports = class link {
             return;
         }
 
-        if (linkedAccounts >= 25) {
+        if (linkedAccounts >= 25 || linkedAccounts.map(account => `• ${account}`).join('\n').length > 1024) {
             const fileName = `links.txt`;
 
             const fileContent = linkedAccounts.map(account => `• ${account}`).join('\n');

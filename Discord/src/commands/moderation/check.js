@@ -201,29 +201,49 @@ module.exports = class check {
             return;
         }
 
+        const writeInfoAsFile = infosAccounts.length > 2 ? true : false;
+        const arrLookup = [];
+        const arrNameHistory = [];
+
         const embed = new Discord.MessageEmbed()
             .setColor('00FF00')
             .setTimestamp()
             .setAuthor(`Check for ${serverDB.database}`, message.author.avatarURL())
             .setFooter('Author: Bartis');
 
+        const uniqueHistoryAccounts = new Map();
+
         infosAccounts.forEach(async (playerInfo) => {
+
             const lookup = geoip.lookup(playerInfo.IP_Address);
             const country = lookup ? lookup.country : 'Err';
 
-            embed.addFields(
-                { name: 'Soldier Name', value: playerInfo.SoldierName || 'N/A', inline: true },
-                { name: 'Global Rank', value: playerInfo.GlobalRank || 'N/A', inline: true },
-                { name: 'EA GUID', value: playerInfo.EAGUID || 'N/A', inline: true },
-                { name: 'PB GUID', value: playerInfo.PBGUID || 'N/A', inline: true },
-                { name: 'IP Address', value: playerInfo.IP_Address || 'N/A', inline: true },
-                { name: 'Country Code', value: country || 'N/A', inline: true }, // country code might be empty for some people
-                { name: 'GameID', value: this.mapNames.get(playerInfo.GameID) || 'N/A', inline: true },
-                { name: '\u200b', value: '\u200b', inline: true },
-                { name: '\u200b', value: '\u200b', inline: true }
-            );
-
-            const uniqueHistoryAccounts = new Map();
+            if (!writeInfoAsFile) {
+                embed.addFields(
+                    { name: 'Soldier Name', value: playerInfo.SoldierName || 'N/A', inline: true },
+                    { name: 'Global Rank', value: playerInfo.GlobalRank || 'N/A', inline: true },
+                    { name: 'EA GUID', value: playerInfo.EAGUID || 'N/A', inline: true },
+                    { name: 'PB GUID', value: playerInfo.PBGUID || 'N/A', inline: true },
+                    { name: 'IP Address', value: playerInfo.IP_Address || 'N/A', inline: true },
+                    { name: 'Country Code', value: country || 'N/A', inline: true }, // country code might be empty for some people
+                    { name: 'GameID', value: this.mapNames.get(playerInfo.GameID) || 'N/A', inline: true },
+                    { name: '\u200b', value: '\u200b', inline: true },
+                    { name: '\u200b', value: '\u200b', inline: true }
+                );
+            }
+            else {
+                arrLookup.push(
+                    { name: 'Soldier Name', value: playerInfo.SoldierName || 'N/A' },
+                    { name: 'Global Rank', value: playerInfo.GlobalRank || 'N/A' },
+                    { name: 'EA GUID', value: playerInfo.EAGUID || 'N/A' },
+                    { name: 'PB GUID', value: playerInfo.PBGUID || 'N/A' },
+                    { name: 'IP Address', value: playerInfo.IP_Address || 'N/A' },
+                    { name: 'Country Code', value: country || 'N/A' }, // country code might be empty for some people
+                    { name: 'GameID', value: this.mapNames.get(playerInfo.GameID) || 'N/A' },
+                    { name: '\u200b', value: '\u200b' },
+                    { name: '\u200b', value: '\u200b' }
+                )
+            }
 
             if (playerInfo.NicknameHistory && playerInfo.NicknameHistory.length > 0) {
                 playerInfo.NicknameHistory.forEach(history => {
@@ -235,25 +255,19 @@ module.exports = class check {
                         uniqueHistoryAccounts.set(oldKey, history.RecStamp);
                     }
                 });
+            }
+        });
 
-                if (Array.from(uniqueHistoryAccounts).length >= 25) {
+        if (Array.from(uniqueHistoryAccounts).length) {
+            if (Array.from(uniqueHistoryAccounts).length >= 25 || embed.fields.length >= 25) {
+                const fileContent = Array.from(uniqueHistoryAccounts).map(([nickname, date]) => {
+                    const dateObject = new Date(date);
+                    return `• ${nickname} (Date: ${dateObject.toLocaleDateString()})`;
+                }).join('\n');
 
-                    message.channel.send(embed);
-
-                    const fileName = `name_history.txt`;
-
-                    const fileContent = Array.from(uniqueHistoryAccounts).map(([nickname, date]) => {
-                        const dateObject = new Date(date);
-                        return `• ${nickname} (Date: ${dateObject.toLocaleDateString()})`;
-                    }).join('\n');
-
-                    fs.writeFileSync(fileName, fileContent, 'utf-8');
-                    await message.channel.send({ files: [fileName] });
-                    await fs.promises.unlink(fileName);
-
-                    return;
-                }
-
+                arrNameHistory.push(fileContent);
+            }
+            else {
                 const historyAccountsList = Array.from(uniqueHistoryAccounts).map(([nickname, date]) => {
                     const dateObject = new Date(date);
                     return `• ${nickname} (Date: ${dateObject.toLocaleDateString()})`;
@@ -261,10 +275,30 @@ module.exports = class check {
 
                 const truncated = truncateString(historyAccountsList, 1024);
 
-                embed.addField('Name history', truncated, false);
+                embed.addField('Name history', truncated);
             }
-        });
+        }
 
         message.channel.send(embed);
+
+        if (arrLookup.length) {
+            const fileName = `check.txt`;
+
+            const fileContent = arrLookup.map(obj => `${obj.name}: ${obj.value}`).join('\n');
+
+            fs.writeFileSync(fileName, fileContent, 'utf-8');
+            await message.channel.send({ files: [fileName] });
+            await fs.promises.unlink(fileName);
+        }
+
+        if (arrNameHistory.length) {
+            const fileName = `history.txt`;
+
+            const fileContent = arrNameHistory.join('\n');
+
+            fs.writeFileSync(fileName, fileContent, 'utf-8');
+            await message.channel.send({ files: [fileName] });
+            await fs.promises.unlink(fileName);
+        }
     };
 }
