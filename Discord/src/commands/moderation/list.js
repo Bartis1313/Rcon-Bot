@@ -248,8 +248,14 @@ module.exports = class list {
 
                         const newEmbed = await this.createInfoEmbed(newInfo, server);
 
-                        const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
-                        fetchedMsg.edit(newEmbed);
+                        const fetchedMsgPromise = channel.messages.fetch(this.scoreboardMessage[server]);
+                        fetchedMsgPromise
+                            .then(fetchedMsg => {
+                                return fetchedMsg.edit(newEmbed);
+                            })
+                            .catch(error => {
+                                console.error("Error fetching or editing message:", error);
+                            });
 
                         this.consecutiveErrors[server] = 0;
                     } catch (error) {
