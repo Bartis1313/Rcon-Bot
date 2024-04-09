@@ -108,7 +108,7 @@ module.exports = class BanAnnouncer {
                 if (bans.length > 0) {
                     const lastid = Number(bans[bans.length - 1].ID);
                     if (lastid > this.lastBanIds[index]) {
-                        this.lastBanIds[index];
+                        this.lastBanIds[index] = lastid;
 
                         this.lastProcessedTime = new Date();
                         this.sendBansToWebhook(webhookURL, bans);
