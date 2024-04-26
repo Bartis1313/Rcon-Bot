@@ -248,18 +248,14 @@ module.exports = class list {
 
                         const newEmbed = await this.createInfoEmbed(newInfo, server);
 
-                        const fetchedMsgPromise = channel.messages.fetch(this.scoreboardMessage[server]);
-                        fetchedMsgPromise
-                            .then(fetchedMsg => {
-                                return fetchedMsg.edit(newEmbed);
-                            })
-                            .catch(error => {
-                                console.error("Error fetching or editing message:", error);
-                            });
+                        const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
+                        await fetchedMsg.edit(newEmbed);
 
                         this.consecutiveErrors[server] = 0;
                     } catch (error) {
                         console.error("Error editing message:", error);
+                        clearInterval(this.intervalIds[server]);
+                        this.intervalIds[server] = null;
                     }
                     // 30 seconds, below api errors critical handling
                 }, 30_000);
