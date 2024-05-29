@@ -1,4 +1,4 @@
-import { createConnection } from 'mysql';
+import mysql from 'mysql';
 import fetch from 'node-fetch';
 
 function getRandomInt(min, max) {
@@ -41,36 +41,14 @@ module.exports = class BanAnnouncer {
         }
 
         this.lastProcessedTime = new Date();
-        this.connections = this.dbsConfig.map((config, index) => {
+        this.pools = this.dbsConfig.map((config, index) => {
             this.lastBanIds[index] = -1;
 
-            return { config, webhookURL: this.webhookURLs[index] };
+            return { pool: mysql.createPool(config), webhookURL: this.webhookURLs[index] };
         });
     }
 
-    async getRecentBans(config, webhookURL, index) {
-
-        const connection = createConnection(config);
-
-        const connect = () => {
-            return new Promise((resolve, reject) => {
-                connection.connect((err) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve();
-                    }
-                });
-            });
-        };
-
-        const disconnect = () => {
-            return new Promise((resolve) => {
-                connection.end(() => {
-                    resolve();
-                });
-            });
-        };
+    async getRecentBans(pool, webhookURL, index) {
 
         const query = `
             SELECT rcd.record_id, target_name, ban_startTime, ban_endTime, record_message, source_name, ServerName
@@ -82,13 +60,17 @@ module.exports = class BanAnnouncer {
             AND ab.ban_startTime > '${this.lastProcessedTime.toISOString()}'
             `;
 
-        try {
-            await connect();
+        pool.getConnection((err, connection) => {
+            if (err) {
+                console.error("Error getting database connection: ", err);
+                return;
+            }
+
             connection.query(query, (error, results) => {
+                connection.release();
+
                 if (error) {
                     console.error('Error querying database:', error);
-
-                    connection.end();
                     return;
                 }
 
@@ -114,17 +96,8 @@ module.exports = class BanAnnouncer {
                         this.sendBansToWebhook(webhookURL, bans);
                     }
                 }
-
             });
-
-            await disconnect();
-        }
-        catch (error) {
-            console.error('Error querying database:', error);
-            await disconnect();
-        }
-
-        await disconnect();
+        })
     }
 
     async sendBansToWebhook(webhookURL, bans) {
@@ -179,15 +152,15 @@ module.exports = class BanAnnouncer {
     }
 
     checkForNewBans() {
-        this.connections.forEach((connection, index) => {
-            this.getRecentBans(connection.config, connection.webhookURL, index);
+        this.pools.forEach((poolObj, index) => {
+            this.getRecentBans(poolObj.pool, poolObj.webhookURL, index);
         });
     }
 
     async startBanAnnouncement(interval, delayBetweenConnections) {
         const processConnections = async () => {
-            await Promise.all(this.connections.map(async (connectionInfo, index) => {
-                await this.getRecentBans(connectionInfo.config, connectionInfo.webhookURL, index);
+            await Promise.all(this.pools.map(async (poolObj, index) => {
+                await this.getRecentBans(poolObj.pool, poolObj.webhookURL, index);
                 await new Promise((resolve) => setTimeout(resolve, delayBetweenConnections));
             }));
         };
