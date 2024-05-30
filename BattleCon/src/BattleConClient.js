@@ -54,7 +54,6 @@ class BattleConClient {
       const date = new Date();
       console.log(`Disconnect: ${date.toLocaleString()}`);
       this._connection.disconnect();
-      this._connection.quit();
       if (reconnectInterval === null) {
         reconnectInterval = setInterval(() => {
           this._connection.connect();
