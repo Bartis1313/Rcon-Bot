@@ -63,6 +63,10 @@ class BattleConClient {
       }
     });
 
+    connection.on("error", (err) => {
+      console.log("# Error: " + err.message, err.stack);
+    });
+
     connection.on("player.chat", (name, text, subset) => {
       //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
       webHookKickSenderBF3(connection, name, text, subset, this.playerMap);
