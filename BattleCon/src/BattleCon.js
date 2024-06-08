@@ -34,6 +34,7 @@ var BattleCon = function (host, port, pass) {
     this.host = host;
     this.port = port;
     this.pass = pass;
+    this.timeoutInterval;
 
     // Connection state
     this.loggedIn = false;
@@ -85,6 +86,15 @@ BattleCon.prototype.use = function (gameModule, options) {
 BattleCon.prototype.connect = function (callback) {
     if (this.sock !== null) return;
     this.sock = new net.Socket();
+
+    this.sock.setTimeout(20000, function () {
+        console.log("Timeout reached");
+        this.sock.end();
+        this.sock.destroy();
+        this.sock = null;
+        this.emit("close");
+    }.bind(this));
+
     var cbCalled = false;
     this.sock.on("error", function (err) {
         if (!this.loggedIn && callback && !cbCalled) {
@@ -96,11 +106,18 @@ BattleCon.prototype.connect = function (callback) {
     this.sock.on("close", function () {
         this.emit("close");
         this.sock = null;
+        clearInterval(this.timeoutInterval);
     }.bind(this));
     this.sock.connect(this.port, this.host, function () {
         this.emit("connect");
         this.sock.on("data", this._gather.bind(this));
         if (this.login) this.login(callback);
+
+        clearInterval(this.timeoutInterval);
+        this.timeoutInterval = setInterval(function () {
+            this.exec('version');
+        }.bind(this), 10000);
+
     }.bind(this));
 };
 
