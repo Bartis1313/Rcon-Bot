@@ -54,7 +54,13 @@ class BattleConClient {
       const date = new Date();
       console.log(`Disconnect: ${date.toLocaleString()}`);
       this._connection.disconnect();
-      process.kill(process.pid, 'SIGTERM');
+      if (reconnectInterval === null) {
+        reconnectInterval = setInterval(() => {
+          this._connection.connect();
+          console.log("Retried to connect");
+        }, 60_000); // 60secs
+      }
+
     });
 
     connection.on("error", (err) => {

@@ -127,6 +127,7 @@ BattleCon.prototype.connect = function (callback) {
 BattleCon.prototype.disconnect = function () {
     if (this.sock !== null) {
         this.sock.end();
+        this.sock.destroy();
     }
 };
 
