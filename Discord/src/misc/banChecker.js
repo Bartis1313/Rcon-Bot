@@ -62,7 +62,7 @@ module.exports = class BanAnnouncer {
 
         pool.getConnection((err, connection) => {
             if (err) {
-                console.error("Error getting database connection: ", err);
+                console.error("Error getting database connection: ", Date().toLocaleString());
                 return;
             }
 
@@ -70,7 +70,7 @@ module.exports = class BanAnnouncer {
                 connection.release();
 
                 if (error) {
-                    console.error('Error querying database:', error);
+                    console.error('Error querying database:', Date().toLocaleString());
                     return;
                 }
 
