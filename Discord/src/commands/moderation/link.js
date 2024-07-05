@@ -185,6 +185,12 @@ module.exports = class link {
 
         const linkedAccountsPromises = this.processServer(serverDB, playerName);
         const linkedAccountsArrays = await linkedAccountsPromises;
+
+        if (!linkedAccountsArrays) {
+            message.reply("linkedAccountsArrays is undefined");
+            return;
+        }
+
         const linkedAccounts = linkedAccountsArrays.flat();
 
         if (linkedAccounts.length === 0) {
