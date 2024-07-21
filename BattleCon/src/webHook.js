@@ -135,12 +135,12 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
 
     let ba = false;
 
-    if(fixedText.startsWith("[Battlefield Agency] [Kick]")) {
+    if (fixedText.startsWith("[Battlefield Agency] [Kick]")) {
 
         const splited = fixedText.split(' ');
         const reason_ = splited.splice(4).join(' ');
 
-        if(!reason_.toLowerCase().includes("vpn")) {
+        if (!reason_.toLowerCase().includes("vpn")) {
             const name = splited[3].replace(/\[|\]/g, '');
 
             kicker = "BA";
@@ -169,7 +169,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
         return; // stop there, we dont have issuer yet
     }
 
-    
+
     if (waitingForBanned) {
 
         // temp temp
@@ -184,6 +184,12 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
 
             reason = `[${duration}] ${reason}`;
 
+            if (fixedText.includes("AutoBan")) {
+                kicked = playerNameSay;
+                kicker = bannedMatch[2];
+                reason = pendingEnforceMatch[3];
+            }
+
             waitingForBanned = false;
             pendingEnforceMatch = null;
         }
@@ -193,7 +199,7 @@ const webHookKickSenderBF3 = async (connection, name, text, subset, map) => {
     } else if (kickedRegex) {
         [, kicked, kicker, reason] = kickedRegex;
     } else if (ba) {
-        
+
     }
     else {
         return;

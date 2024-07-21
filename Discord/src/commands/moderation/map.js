@@ -139,7 +139,7 @@ module.exports = class map {
                 break;
             }
 
-            msg.delete()
+            msg.delete().catch(err => console.log('Message already deleted or does not exist.'));
 
             const content = this.maplistArr;
             const confirmEmbed = new Discord.MessageEmbed()
