@@ -10,7 +10,7 @@ module.exports = class vip {
     }
 
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEI))) {
+        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
             message.reply("You don't have permission to use this command.")
             return
         }

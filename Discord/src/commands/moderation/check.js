@@ -187,7 +187,8 @@ module.exports = class check {
                     continue askPlayerName;
                 }
 
-                return console.error("Couldn't get the playerName");
+                console.error("Couldn't get the playerName")
+                return;
             }
             break;
         }
