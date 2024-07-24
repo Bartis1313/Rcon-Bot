@@ -28,52 +28,49 @@ class Helpers {
     }
 
     static selectServer(msg) {
-        let promises = []
-        let apiUrls = [];
-        if (process.env.BATTLECON_API_URLS) { // Should probs add some validation here
-            apiUrls = process.env.BATTLECON_API_URLS.split(',')
-        }
+        const apiUrls = process.env.BATTLECON_API_URLS ? process.env.BATTLECON_API_URLS.split(',') : [];
 
-        for (let apiUrl of apiUrls) {
-            promises.push(
+        const promises = apiUrls.map(apiUrl => {
+            return new Promise((resolve) => {
                 fetch(`${apiUrl}/serverName`, {
                     method: "get",
                     headers: {
                         "Accept": "application/json",
                         "Accept-Charset": "utf-8"
-                    }
+                    },
+                    timeout: 10000 // test
                 })
                     .then(response => response.json())
+                    .then(data => resolve(data))
                     .catch(error => {
-                        console.log(error)
-                        return false
-                    })
-            )
-        }
+                        console.error(`Error fetching from ${apiUrl}:`, error);
+                        resolve(false);
+                    });
+            });
+        });
 
-        // TODO: Add checks for if there are more than 10 servers? Though who has that many?
-        const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+        const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+
         return Promise.all(promises)
             .then(async (responses) => {
-                if (!responses.some((response) => response.status === "OK")) {
-                    return null
+                if (!responses.some(response => response && response.status === "OK")) {
+                    return null;
                 }
 
                 const embed = new Discord.MessageEmbed()
                     .setTimestamp()
                     .setColor("00FF00")
-                    .setAuthor('Server Select', msg.author.avatarURL())
+                    .setAuthor('Server Select', msg.author.avatarURL());
 
-                let index = 0;
-                responses.forEach((response) => {
+                responses.forEach((response, index) => {
                     if (response) {
-                        embed.addField(choices[index], `**${response.server}**`, false)
+                        embed.addField(choices[index], `**${response.server}**`, false);
                     }
-                    index++;
-                })
+                });
 
-                const possibleChoices = choices.slice(0, index);
+                const possibleChoices = choices.slice(0, responses.length);
                 const message = await msg.channel.send(embed);
+
                 // React with possible choices
                 for (const choice of possibleChoices) {
                     await message.react(choice);
@@ -83,27 +80,28 @@ class Helpers {
                     return possibleChoices.includes(reaction.emoji.name) && user.id === msg.author.id;
                 };
 
-                return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
+                return message.awaitReactions(filter, { max: 1, time: 60000, errors: ['time'] })
                     .then(collected => {
                         const reaction = collected.first();
-                        const index = possibleChoices.findIndex(x => x === reaction.emoji.name);
+                        const selectedIndex = possibleChoices.findIndex(choice => choice === reaction.emoji.name);
                         message.delete();
 
-                        if (index >= 0) {
-                            return apiUrls[index];
+                        if (selectedIndex >= 0) {
+                            return apiUrls[selectedIndex];
                         }
 
                         return null;
                     })
-                    .catch(async collected => {
+                    .catch(async () => {
                         message.delete();
                         const m = await msg.reply(`Command timed out`);
                         m.delete({ timeout: 5000 });
                         return null;
                     });
             })
-            .catch((err) => {
-                console.log(err)
+            .catch(err => {
+                console.error('Error in selectServer:', err);
+                return null;
             });
     }
 
