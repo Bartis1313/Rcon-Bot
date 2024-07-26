@@ -99,6 +99,10 @@ class BattleCon extends events.EventEmitter {
                         console.log("No response to version command");
                         this._handleNoResponse();
                     }
+
+                    if(msg) {
+                        console.log('msg: ', msg);
+                    }
                 });
 
                 clearTimeout(this.responseTimeout);
