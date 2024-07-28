@@ -40,6 +40,7 @@ class BattleCon extends events.EventEmitter {
         this.id = 0x3fffffff;
         this.buf = Buffer.alloc(0);
         this.cbs = {};
+        this.retryCount = 0;
     }
 
     static Message = Message;
@@ -58,11 +59,8 @@ class BattleCon extends events.EventEmitter {
         this.sock = new net.Socket();
 
         this.sock.setTimeout(20000, () => {
-            console.log("Timeout reached");
-            this.sock.end();
-            this.sock.destroy();
-            this.sock = null;
-            this.emit("close");
+            console.log("Initial connection timeout reached");
+            this._handleNoResponse();
         });
 
         let cbCalled = false;
@@ -90,27 +88,7 @@ class BattleCon extends events.EventEmitter {
             this.sock.on("data", this._gather.bind(this));
             if (this.login) this.login(callback);
 
-            clearInterval(this.timeoutInterval);
-            this.timeoutInterval = setInterval(() => {
-                this.exec('version', (err, msg) => {
-                    if (err) {
-                        console.log("Exec version error:", err);
-                    } else if (!msg) {
-                        console.log("No response to version command");
-                        this._handleNoResponse();
-                    }
-
-                    if(msg) {
-                        console.log('msg: ', msg);
-                    }
-                });
-
-                clearTimeout(this.responseTimeout);
-                this.responseTimeout = setTimeout(() => {
-                    console.log("No response within the timeout period, reconnecting...");
-                    this._handleNoResponse();
-                }, 10000);
-            }, 10000);
+            this._startVersionCheck();
         });
     }
 
@@ -118,6 +96,7 @@ class BattleCon extends events.EventEmitter {
         if (this.sock !== null) {
             this.sock.end();
             this.sock.destroy();
+            this.sock = null;
         }
     }
 
@@ -174,18 +153,42 @@ class BattleCon extends events.EventEmitter {
         this.id = (this.id + 1) & 0x3fffffff;
     }
 
+    _startVersionCheck() {
+        clearInterval(this.timeoutInterval);
+        this.timeoutInterval = setInterval(() => {
+            this.exec('version', (err, msg) => {
+                if (err) {
+                    console.log("Exec version error:", err);
+                    this._handleNoResponse();
+                } else if (!msg) {
+                    console.log("No response to version command");
+                    this._handleNoResponse();
+                } else {
+                    console.log('Received response: ', msg);
+                    clearTimeout(this.responseTimeout);
+                    this.responseTimeout = setTimeout(() => {
+                        console.log("No response within the timeout period, reconnecting...");
+                        this._handleNoResponse();
+                    }, 10000);
+                }
+            });
+        }, 10000);
+    }
+
     _handleNoResponse() {
-        console.log("Handling no response, closing and reconnecting...");
+        console.log("Handling no response, closing socket and reconnecting...");
         this.disconnect();
+        const retryDelay = Math.min(30000, (1000 * Math.pow(2, this.retryCount)));
         setTimeout(() => {
+            this.retryCount++;
             this.connect();
-        }, 1000); // Wait 1 second before reconnecting
+        }, retryDelay);
     }
 
     static tabulate(res, offset = 0) {
         const nColumns = parseInt(res[offset], 10);
         const columns = [];
-        let i = offset + 1; // Declare i here
+        let i = offset + 1;
 
         for (; i <= nColumns; i++) {
             columns.push(res[i]);
