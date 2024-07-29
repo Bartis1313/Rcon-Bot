@@ -1,32 +1,3 @@
-/*
- Copyright 2013 Daniel Wirtz <dcode@dcode.io>
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
-
-var events = require("events"),
-    net = require("net"),
-    Message = require("./BattleCon/Message.js");
-
-/**
-* Constructs a new BattleCon instance.
-* @exports BattleCon
-* @param {string} host Hostname or IP
-* @param {number} port Port
-* @param {string} pass RCON password
-* @constructor
-* @extends events.EventEmitter
-*/
 class BattleCon extends events.EventEmitter {
     constructor(host, port, pass) {
         super();
@@ -40,7 +11,7 @@ class BattleCon extends events.EventEmitter {
         this.id = 0x3fffffff;
         this.buf = Buffer.alloc(0);
         this.cbs = {};
-        this.retryCount = 0;
+        this.retryDelay = 5000;
     }
 
     static Message = Message;
@@ -55,7 +26,10 @@ class BattleCon extends events.EventEmitter {
     }
 
     connect(callback) {
-        if (this.sock !== null) return;
+        if (this.sock !== null) {
+            console.log("Socket exists?");
+            return;
+        } 
         this.sock = new net.Socket();
 
         this.sock.setTimeout(20000, () => {
@@ -80,6 +54,7 @@ class BattleCon extends events.EventEmitter {
             this.sock = null;
             clearInterval(this.timeoutInterval);
             clearTimeout(this.responseTimeout);
+            console.log(`Disconnect: ${new Date().toLocaleString()}`);
         });
 
         this.sock.connect(this.port, this.host, () => {
@@ -96,7 +71,6 @@ class BattleCon extends events.EventEmitter {
         if (this.sock !== null) {
             this.sock.end();
             this.sock.destroy();
-            this.sock = null;
         }
     }
 
@@ -154,8 +128,10 @@ class BattleCon extends events.EventEmitter {
     }
 
     _startVersionCheck() {
+        console.log("Starting version check interval");
         clearInterval(this.timeoutInterval);
         this.timeoutInterval = setInterval(() => {
+            console.log("Executing version command");
             this.exec('version', (err, msg) => {
                 if (err) {
                     console.log("Exec version error:", err);
@@ -178,11 +154,10 @@ class BattleCon extends events.EventEmitter {
     _handleNoResponse() {
         console.log("Handling no response, closing socket and reconnecting...");
         this.disconnect();
-        const retryDelay = Math.min(30000, (1000 * Math.pow(2, this.retryCount)));
         setTimeout(() => {
-            this.retryCount++;
+            console.log("Retrying to connect");
             this.connect();
-        }, retryDelay);
+        }, this.retryDelay);
     }
 
     static tabulate(res, offset = 0) {
