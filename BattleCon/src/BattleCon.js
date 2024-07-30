@@ -11,9 +11,9 @@
  limitations under the License.
  */
 
- var events = require("events"),
- net = require("net"),
- Message = require("./BattleCon/Message.js");
+var events = require("events"),
+    net = require("net"),
+    Message = require("./BattleCon/Message.js");
 
 /**
 * Constructs a new BattleCon instance.
@@ -56,7 +56,7 @@ class BattleCon extends events.EventEmitter {
         if (this.sock !== null) {
             console.log("Socket exists?");
             return;
-        } 
+        }
         this.sock = new net.Socket();
 
         this.sock.setTimeout(20000, () => {
@@ -142,6 +142,14 @@ class BattleCon extends events.EventEmitter {
     }
 
     exec(command, callback) {
+        if (this.sock === null) {
+            this.disconnect();
+            setTimeout(() => {
+                console.log("Retrying to connect (exec had null socket somehow)");
+                this.connect();
+            }, this.retryDelay);
+        }
+
         const msg = new Message(this.id, 0, command);
         if (typeof callback === 'function') {
             this.cbs["cb" + this.id] = callback;

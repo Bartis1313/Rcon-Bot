@@ -327,24 +327,36 @@ class BattleConClient {
   }
 
   customCommand(command, params) {
-    let connection = this._connection
+    let connection = this._connection;
     return new Promise(function (resolve, reject) {
-      if (!command) reject('command name is required.')
+      if (!command) reject('command name is required.');
 
       let arr = [];
-      arr.push(command)
+      arr.push(command);
+
       if (params) {
-        for (const el in params)
-          arr.push(el)
+        for (const el of params) {
+          arr.push(el);
+        }
+      }
+
+      // Check if the first element begins with ` and the last element ends with `
+      if (arr[1].startsWith('`') && arr[arr.length - 1].endsWith('`')) {
+        // Join all elements except the command into a single string, remove the backticks
+        const joinedArgs = arr.slice(1).join(' ').slice(1, -1);
+        arr = [command, joinedArgs];
       }
 
       const commandArgs = params ? arr : command;
 
+      console.log(commandArgs)
+
       connection.exec(commandArgs, function (err, msg) {
-        err ? reject(err.message) : resolve(msg);
+        err ? reject(err.message) : resolve(msg)
       });
-    })
+    });
   }
+
 }
 
 
