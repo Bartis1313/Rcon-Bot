@@ -37,26 +37,6 @@ module.exports = class ban {
             return
         }
 
-        // await Helpers.sendDisconnectInfo(ActionType.BAN, server, parameters, 10000);
-
-        // return fetch(`${server}/admin/ban`, {
-        //     method: "post",
-        //     headers: {
-        //         "Content-type": "application/json",
-        //         "Accept": "application/json",
-        //         "Accept-Charset": "utf-8"
-        //     },
-        //     body: JSON.stringify(parameters)
-        // })
-        //     .then(response => response.json())
-        //     .then(json => {
-        //         return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
-        //     })
-        //     .catch(error => {
-        //         console.log(error)
-        //         return false
-        //     })
-
         const paramsFixed = {
             what: parameters.banDuration
                 ? `/${parameters.banTimeout} ${parameters.banDuration} ${parameters.playerName} ${parameters.banReason}`
@@ -84,125 +64,6 @@ module.exports = class ban {
 
     getParameters(message, server) {
         return new Promise(async (resolve, reject) => {
-
-            // CODE FOR NON ADKATS
-            //     let banType;
-            //     let banId;
-            //     let timeout;
-            //     let banReason;
-
-            //     askbanType: while (true) {
-            //         banType = await Helpers.askbanType(message);
-            //         if (!banType) {
-            //             if (await Helpers.askTryAgain(message)) {
-            //                 continue askbanType;
-            //             }
-
-            //             return reject(console.error("Couldn't get the ban Type"))
-            //         }
-            //         break;
-            //     }
-
-            //     askPlayerName: while (true) {
-            //         banId = await Helpers.askPlayerName(message);
-            //         if (!banId) {
-            //             if (await Helpers.askTryAgain(message)) {
-            //                 continue askPlayerName;
-            //             }
-
-            //             return reject(console.error("Couldn't get the banId"))
-            //         }
-            //         break;
-            //     }
-
-
-            //     const embed = new Discord.MessageEmbed()
-            //         .setTimestamp()
-            //         .setColor("00FF00")
-            //         .setAuthor('Given Properties', message.author.avatarURL());
-
-            //     embed.addField('Given playername', `**${banId}**`, false);
-
-            //     const msg = await message.channel.send(embed);
-
-            //     askTimeout: while (true) {
-            //         timeout = await Helpers.askTimeout(message);
-            //         if (!timeout) {
-            //             if (await Helpers.askTryAgain(message)) {
-            //                 continue askTimeout;
-            //             }
-            //             return reject(console.error("Couldn't get the ban type"))
-            //         }
-            //         break;
-            //     }
-            //     msg.delete();
-
-            //     // valid arg -> perm OR rounds -> there space needs to be added for valid call
-            //     switch (timeout) {
-            //         case "perm":
-            //             break;
-            //         case "seconds":
-            //             askTimeout: while (true) {
-            //                 timeout += " " + await Helpers.askString("Timeout", "Specify amount of seconds for ban", message);
-            //                 if (!timeout) {
-            //                     if (await Helpers.askTryAgain(message)) {
-            //                         continue askTimeout;
-            //                     }
-            //                     return reject(console.error("Couldn't get ban duration in seconds"))
-            //                 }
-            //                 break;
-            //             }
-            //             break;
-            //         case "rounds":
-            //             askTimeout: while (true) {
-            //                 timeout += " " + await Helpers.askString("Timeout", "Specify amount of rounds for ban", message);
-            //                 if (!timeout) {
-            //                     if (await Helpers.askTryAgain(message)) {
-            //                         continue askTimeout;
-            //                     }
-            //                     return reject(console.error("Couldn't get ban duration in rounds"))
-            //                 }
-            //                 break;
-            //             }
-            //             break;
-            //     }
-
-            //     askReason: while (true) {
-            //         banReason = await Helpers.askReason(message);
-            //         if (!banReason) {
-            //             if (await Helpers.askTryAgain(message)) {
-            //                 continue askReason;
-            //             }
-
-            //             return reject(console.error("Couldn't get the reason"))
-            //         }
-
-            //         break;
-            //     }
-
-            //     //msg.delete();
-            //     const confirmEmbed = new Discord.MessageEmbed()
-            //         .setTimestamp()
-            //         .setColor("00FF00")
-            //         .setAuthor('Are you sure you want to ban the player?', message.author.avatarURL());
-
-            //     confirmEmbed.addField('Given banType', `**${banType}**`, false);
-            //     confirmEmbed.addField('Given playername', `**${banId}**`, false);
-            //     confirmEmbed.addField('Given timeout', `**${timeout}**`, false);
-            //     confirmEmbed.addField('Given reason', `**${banReason}**`, false);
-
-
-            //     if (await Helpers.confirm(message, confirmEmbed)) {
-            //         return resolve({
-            //             banType: banType,
-            //             playerName: banId,
-            //             timeout: timeout,
-            //             reason: banReason,
-            //         });
-            //     }
-            //     else {
-            //         return reject(console.error("Ban interrupted!"))
-            //     }
 
             let banTimeout = '';
             let playerName = '';
@@ -351,29 +212,6 @@ module.exports = class ban {
     }
 
     buildEmbed(message, parameters, response) {
-        // const embed = new Discord.MessageEmbed()
-        //     .setTimestamp()
-        //     .setColor(response.status === "OK" ? "00FF00" : "FF0000")
-        //     .setThumbnail('https://img.pngio.com/ban-banhammer-censor-censorship-hammer-ip-block-moderator-icon-banhammer-png-512_512.png')
-        //     .setFooter('Author: Bartis', 'https://img.pngio.com/ban-banhammer-censor-censorship-hammer-ip-block-moderator-icon-banhammer-png-512_512.png')
-        //     .setAuthor('Ban', message.author.avatarURL())
-        //     .addField('Issuer', message.author.username, true)
-        //     .addField('Target', `**${response?.data?.banId}**`, true)
-        //     .addField('Type', response?.data?.banType, true)
-        // switch (response?.data?.banTimeoutType) {
-        //     case "perm":
-        //         embed.addField('Duration', '**Permanent**', true)
-        //         break
-        //     case "rounds":
-        //         embed.addField('Duration', `**${response?.data?.banTimeout}** rounds`, true)
-        //         break
-        //     case "seconds":
-        //         embed.addField('Duration', `**${response?.data?.banTimeout}** seconds`, true)
-        //         break
-        //     default:
-        //         embed.addField('Duration', `unknown`, true)
-        //         break
-        // }
 
         const embed = new Discord.MessageEmbed()
             .setTimestamp()

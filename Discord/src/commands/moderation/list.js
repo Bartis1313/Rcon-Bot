@@ -157,7 +157,8 @@ module.exports = class list {
                 return arr;
             })
             .catch(error => {
-
+                console.error("Error fetching map array:", error);
+                return [];
             })
     }
 
@@ -167,7 +168,8 @@ module.exports = class list {
             if (players == 0) return 'Empty'
             else return format(players);
         } catch (err) {
-
+            console.error("Error updating team1:", err);
+            return 'Error';
         }
     }
 
@@ -177,7 +179,8 @@ module.exports = class list {
             if (players == 0) return 'Empty'
             else return format(players);
         } catch (err) {
-
+            console.error("Error updating team2:", err);
+            return 'Error';
         }
     }
 
@@ -185,11 +188,14 @@ module.exports = class list {
         try {
             const maps = await this.getMapArray(server);
             const index = await this.getNextIndex(server);
-
-            return { mapName: maps[index].mapName, modeName: maps[index].modeName };
+            if (index !== null && maps[index]) {
+                return { mapName: maps[index].mapName, modeName: maps[index].modeName };
+            }
+            return { mapName: 'Unknown', modeName: 'Unknown' };
         }
         catch (err) {
-            console.log('error ', err);
+            console.log('Error getting next map:', err);
+            return { mapName: 'Unknown', modeName: 'Unknown' };
         }
     }
 

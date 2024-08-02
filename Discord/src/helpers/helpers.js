@@ -29,73 +29,81 @@ class Helpers {
 
     static selectServer(msg) {
         const apiUrls = process.env.BATTLECON_API_URLS ? process.env.BATTLECON_API_URLS.split(',') : [];
-
+    
         const promises = apiUrls.map(apiUrl => {
-            return new Promise((resolve) => {
-                fetch(`${apiUrl}/serverName`, {
-                    method: "get",
-                    headers: {
-                        "Accept": "application/json",
-                        "Accept-Charset": "utf-8"
-                    },
-                    timeout: 10000 // test
-                })
-                    .then(response => response.json())
-                    .then(data => resolve(data))
-                    .catch(error => {
-                        console.error(`Error fetching from ${apiUrl}:`, error);
-                        resolve(false);
-                    });
+            return fetch(`${apiUrl}/serverName`, {
+                method: "get",
+                headers: {
+                    "Accept": "application/json",
+                    "Accept-Charset": "utf-8"
+                },
+                timeout: 10000 // test
+            })
+            .then(response => response.json())
+            .catch(error => {
+                console.error(`Error fetching from ${apiUrl}:`, error);
+                return null;
             });
         });
-
+    
         const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-
+    
         return Promise.all(promises)
             .then(async (responses) => {
-                if (!responses.some(response => response && response.status === "OK")) {
+                responses = responses.filter(response => response && response.status === "OK");
+    
+                if (!responses.length) {
                     return null;
                 }
-
+    
                 const embed = new Discord.MessageEmbed()
                     .setTimestamp()
                     .setColor("00FF00")
                     .setAuthor('Server Select', msg.author.avatarURL());
-
+    
                 responses.forEach((response, index) => {
-                    if (response) {
-                        embed.addField(choices[index], `**${response.server}**`, false);
-                    }
+                    embed.addField(choices[index], `**${response.server}**`, false);
                 });
-
+    
                 const possibleChoices = choices.slice(0, responses.length);
                 const message = await msg.channel.send(embed);
-
+    
                 // React with possible choices
-                for (const choice of possibleChoices) {
-                    await message.react(choice);
-                }
-
+                const reactPromises = possibleChoices.map(choice => {
+                    return message.react(choice).catch(err => {
+                        console.error(`Failed to react with ${choice}:`, err);
+                    });
+                });
+    
+                await Promise.all(reactPromises);
+    
                 const filter = (reaction, user) => {
                     return possibleChoices.includes(reaction.emoji.name) && user.id === msg.author.id;
                 };
-
+    
                 return message.awaitReactions(filter, { max: 1, time: 60000, errors: ['time'] })
                     .then(collected => {
                         const reaction = collected.first();
                         const selectedIndex = possibleChoices.findIndex(choice => choice === reaction.emoji.name);
-                        message.delete();
-
+                        message.delete().catch(deleteError => {
+                            console.error('Failed to delete the message:', deleteError);
+                        });
+    
                         if (selectedIndex >= 0) {
                             return apiUrls[selectedIndex];
                         }
-
+    
                         return null;
                     })
-                    .catch(async () => {
-                        message.delete();
-                        const m = await msg.reply(`Command timed out`);
-                        m.delete({ timeout: 5000 });
+                    .catch(collected => {
+                        message.delete().catch(deleteError => {
+                            console.error('Failed to delete the message after timeout:', deleteError);
+                        });
+                        msg.reply('Command timed out').then(m => {
+                            setTimeout(() => m.delete().catch(console.error), 5000);
+                        }).catch(sendError => {
+                            console.error('Failed to send timeout message:', sendError);
+                        });
                         return null;
                     });
             })
@@ -106,100 +114,136 @@ class Helpers {
     }
 
     static async selectDBServer(msg, dbs) {
-        // TODO: Add checks for if there are more than 10 servers? Though who has that many?
-        const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
-
+        const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         const embed = new Discord.MessageEmbed()
             .setTimestamp()
             .setColor("00FF00")
-            .setAuthor('Select DB Server', msg.author.avatarURL())
-
-        const len = dbs.length;
-
-        for (let index = 0; index < len; index++) {
-            embed.addField(choices[index], `**${dbs[index].database}**`, false)
-        }
-
-        const message = await msg.channel.send(embed);
-        for (let index = 0; index < len; index++) {
-            await message.react(choices[index]);
-        }
-
+            .setAuthor('Select DB Server', msg.author.avatarURL());
+    
+        dbs.forEach((db, index) => {
+            embed.addField(choices[index], `**${db.database}**`, false);
+        });
+    
+        const message = await msg.channel.send(embed).catch(sendError => {
+            console.error('Error while sending embed:', sendError);
+            return null;
+        });
+    
+        if (!message) return null;
+    
+        const reactPromises = choices.slice(0, dbs.length).map(choice => {
+            return message.react(choice).catch(reactError => {
+                console.error(`Failed to react with ${choice}:`, reactError);
+            });
+        });
+    
+        await Promise.all(reactPromises);
+    
         const filter = (reaction, user) => {
             return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
         };
-
+    
         return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
             .then(collected => {
                 const reaction = collected.first();
-                message.delete();
-
                 const index = choices.findIndex(x => x === reaction.emoji.name);
+    
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message:', deleteError);
+                });
+    
                 if (index >= 0) {
                     return dbs[index];
                 }
-
+    
                 return null;
             })
-            .catch(async collected => {
-                message.delete();
-                const m = await msg.reply(`Command timed out`);
-                m.delete({ timeout: 5000 });
+            .catch(collected => {
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message after timeout:', deleteError);
+                });
+    
+                msg.reply('Command timed out').then(m => {
+                    setTimeout(() => m.delete().catch(console.error), 5000);
+                }).catch(sendError => {
+                    console.error('Failed to send timeout message:', sendError);
+                });
+    
                 return null;
             });
-    }
+    }    
 
     static async selectPlayerName(msg, players) {
-        const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+        const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         const embed = new Discord.MessageEmbed()
             .setTimestamp()
             .setColor("00FF00")
-            .setAuthor('Select player', msg.author.avatarURL())
-
+            .setAuthor('Select player', msg.author.avatarURL());
+    
         let index = 0;
-        players.forEach((player) => {
-            embed.addField(choices[index], `**${player}**`, false)
-
+        players.forEach(player => {
+            embed.addField(choices[index], `**${player}**`, false);
             index++;
-        })
+        });
+    
         // Add "not in the list" entry
-        embed.addField('❌', `The player is not in the list`, false)
-
+        embed.addField('❌', `The player is not in the list`, false);
+    
         const possibleChoices = choices.slice(0, index);
         possibleChoices.push('❌');
-        const message = await msg.channel.send(embed);
-        // React with possible choices
-        for (const choice of possibleChoices) {
-            await message.react(choice);
-        }
-
-        const filter = (reaction, user) => {
-            return possibleChoices.includes(reaction.emoji.name) && user.id === msg.author.id;
-        };
-
+    
+        const message = await msg.channel.send(embed).catch(sendError => {
+            console.error('Error while sending embed:', sendError);
+            return null;
+        });
+    
+        if (!message) return null;
+    
+        const reactPromises = possibleChoices.map(choice => 
+            message.react(choice).catch(reactError => {
+                console.error(`Failed to react with ${choice}:`, reactError);
+            })
+        );
+    
+        await Promise.all(reactPromises);
+    
+        const filter = (reaction, user) => 
+            possibleChoices.includes(reaction.emoji.name) && user.id === msg.author.id;
+    
         return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
             .then(collected => {
                 const reaction = collected.first();
-                message.delete();
-
+    
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message:', deleteError);
+                });
+    
                 if (reaction.emoji.name === '❌') {
                     return null;
                 }
-
-                const index = possibleChoices.findIndex(x => x === reaction.emoji.name);
-                if (index >= 0) {
-                    return players[index];
+    
+                const selectedIndex = possibleChoices.findIndex(x => x === reaction.emoji.name);
+                if (selectedIndex >= 0) {
+                    return players[selectedIndex];
                 }
-
+    
                 return null;
             })
-            .catch(async collected => {
-                message.delete();
-                const m = await msg.reply(`Command timed out`);
-                m.delete({ timeout: 5000 });
+            .catch(collected => {
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message after timeout:', deleteError);
+                });
+    
+                msg.reply('Command timed out').then(m => {
+                    setTimeout(() => m.delete().catch(console.error), 5000);
+                }).catch(sendError => {
+                    console.error('Failed to send timeout message:', sendError);
+                });
+    
                 return null;
             });
     }
+    
 
     static askTryAgain(msg, title, description) {
         const embed = new Discord.MessageEmbed()
@@ -215,7 +259,9 @@ class Helpers {
         }).then(async response => {
             // If no responses, the time ran out
             if (!response) {
-                msg.delete();
+                msg.delete().catch(deleteError => {
+                    console.error('Failed to delete the message:', deleteError);
+                });
                 return null
             }
 
@@ -307,14 +353,23 @@ class Helpers {
             .setTimestamp()
             .setColor("00FF00")
             .setAuthor('Type of the ban', msg.author.avatarURL());
-        for (let index = 0; index < namedChoices.length; index++) {
-            embed.addField(choices[index], `**${namedChoices[index]}**`, false)
-        }
-        const message = await msg.channel.send(embed);
 
-        for (const choice of choices) {
-            await message.react(choice);
+        for (let index = 0; index < namedChoices.length; index++) {
+            embed.addField(choices[index], `**${namedChoices[index]}**`, false);
         }
+
+        const message = await msg.channel.send(embed).catch(sendError => {
+            console.error('Error while sending embed:', sendError);
+            return null;
+        });
+
+        if (!message) return null;
+
+        const reactPromises = choices.map(choice => message.react(choice).catch(reactError => {
+            console.error(`Failed to react with ${choice}:`, reactError);
+        }));
+
+        await Promise.all(reactPromises);
 
         const filter = (reaction, user) => {
             return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
@@ -323,19 +378,31 @@ class Helpers {
         return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
             .then(collected => {
                 const reaction = collected.first();
-                message.delete();
-
                 const index = choices.findIndex(x => x === reaction.emoji.name);
+
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message:', deleteError);
+                });
+
                 if (index >= 0) {
                     return namedChoices[index];
                 }
 
                 return null;
             })
-            .catch(async collected => {
-                message.delete();
-                const m = await msg.reply(`Command timed out`);
-                m.delete({ timeout: 5000 });
+            .catch(collected => {
+                console.error('Error while waiting for reactions:', collected);
+
+                msg.reply('Command timed out').then(m => {
+                    setTimeout(() => m.delete().catch(console.error), 5000);
+                }).catch(sendError => {
+                    console.error('Failed to send timeout message:', sendError);
+                });
+
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message after timeout:', deleteError);
+                });
+
                 return null;
             });
     }
@@ -348,13 +415,21 @@ class Helpers {
             .setColor("00FF00")
             .setAuthor('Timeout of the ban', msg.author.avatarURL());
         for (let index = 0; index < namedChoices.length; index++) {
-            embed.addField(choices[index], `**${namedChoices[index]}**`, false)
+            embed.addField(choices[index], `**${namedChoices[index]}**`, false);
         }
-        const message = await msg.channel.send(embed);
 
-        for (const choice of choices) {
-            await message.react(choice);
-        }
+        const message = await msg.channel.send(embed).catch(sendError => {
+            console.error('Error while sending embed:', sendError);
+            return null;
+        });
+
+        if (!message) return null;
+
+        const reactPromises = choices.map(choice => message.react(choice).catch(reactError => {
+            console.error(`Failed to react with ${choice}:`, reactError);
+        }));
+
+        await Promise.all(reactPromises);
 
         const filter = (reaction, user) => {
             return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
@@ -363,19 +438,31 @@ class Helpers {
         return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
             .then(collected => {
                 const reaction = collected.first();
-                message.delete();
-
                 const index = choices.findIndex(x => x === reaction.emoji.name);
+
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message:', deleteError);
+                });
+
                 if (index >= 0) {
                     return namedChoices[index];
                 }
 
                 return null;
             })
-            .catch(async collected => {
-                message.delete();
-                const m = await msg.reply(`Command timed out`);
-                m.delete({ timeout: 5000 });
+            .catch(collected => {
+                console.error('Error while waiting for reactions:', collected);
+
+                msg.reply('Command timed out').then(m => {
+                    setTimeout(() => m.delete().catch(console.error), 5000);
+                }).catch(sendError => {
+                    console.error('Failed to send timeout message:', sendError);
+                });
+
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message after timeout:', deleteError);
+                });
+
                 return null;
             });
     }
@@ -388,13 +475,21 @@ class Helpers {
             .setColor("00FF00")
             .setAuthor('Timeout of the ban', msg.author.avatarURL());
         for (let index = 0; index < namedChoices.length; index++) {
-            embed.addField(choices[index], `**${namedChoices[index]}**`, false)
+            embed.addField(choices[index], `**${namedChoices[index]}**`, false);
         }
-        const message = await msg.channel.send(embed);
 
-        for (const choice of choices) {
-            await message.react(choice);
-        }
+        const message = await msg.channel.send(embed).catch(sendError => {
+            console.error('Error while sending embed:', sendError);
+            return null;
+        });
+
+        if (!message) return null;
+
+        const reactPromises = choices.map(choice => message.react(choice).catch(reactError => {
+            console.error(`Failed to react with ${choice}:`, reactError);
+        }));
+
+        await Promise.all(reactPromises);
 
         const filter = (reaction, user) => {
             return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
@@ -403,19 +498,31 @@ class Helpers {
         return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
             .then(collected => {
                 const reaction = collected.first();
-                message.delete();
-
                 const index = choices.findIndex(x => x === reaction.emoji.name);
+
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message:', deleteError);
+                });
+
                 if (index >= 0) {
                     return namedChoices[index];
                 }
 
                 return null;
             })
-            .catch(async collected => {
-                message.delete();
-                const m = await msg.reply(`Command timed out`);
-                m.delete({ timeout: 5000 });
+            .catch(collected => {
+                console.error('Error while waiting for reactions:', collected);
+
+                msg.reply('Command timed out').then(m => {
+                    setTimeout(() => m.delete().catch(console.error), 5000);
+                }).catch(sendError => {
+                    console.error('Failed to send timeout message:', sendError);
+                });
+
+                message.delete().catch(deleteError => {
+                    console.error('Failed to delete the message after timeout:', deleteError);
+                });
+
                 return null;
             });
     }
