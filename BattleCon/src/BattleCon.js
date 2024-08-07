@@ -176,7 +176,7 @@ class BattleCon extends events.EventEmitter {
                     console.log("No response to version command");
                     this._handleNoResponse();
                 } else {
-                    console.log('Received response: ', msg);
+                    //console.log('Received response: ', msg);
                     clearTimeout(this.responseTimeout);
                     this.responseTimeout = setTimeout(() => {
                         console.log("No response within the timeout period, reconnecting...");
