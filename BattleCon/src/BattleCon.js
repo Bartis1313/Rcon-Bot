@@ -167,7 +167,7 @@ class BattleCon extends events.EventEmitter {
         console.log("Starting version check interval");
         clearInterval(this.timeoutInterval);
         this.timeoutInterval = setInterval(() => {
-            console.log("Executing version command");
+            //console.log("Executing version command");
             this.exec('version', (err, msg) => {
                 if (err) {
                     console.log("Exec version error:", err);
