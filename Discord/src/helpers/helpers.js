@@ -50,6 +50,13 @@ class Helpers {
     
         return Promise.all(promises)
             .then(async (responses) => {
+
+                responses.forEach(response => {
+                    if (!response || response.status !== "OK") {
+                        console.log(`Response has failed, error`, response.error);
+                    }
+                });
+
                 responses = responses.filter(response => response && response.status === "OK");
     
                 if (!responses.length) {
