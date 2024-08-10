@@ -106,7 +106,7 @@ Message.decode = function (buf) {
     for (var i = 0; i < dataLength; i++) {
         var len = buf.readUInt32LE(offset);
         offset += 4;
-        data.push(buf.slice(offset, offset + len).toString("utf8"));
+        data.push(buf.subarray(offset, offset + len).toString("utf8"));
         offset += len + 1;
     }
     return new Message(id, flags, data);

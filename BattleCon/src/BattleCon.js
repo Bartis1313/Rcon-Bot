@@ -109,13 +109,18 @@ class BattleCon extends events.EventEmitter {
             if (this.buf.length < 8) return;
             const size = this.buf.readUInt32LE(4);
             if (this.buf.length < size) return;
-            const data = this.buf.slice(0, size);
-            this.buf = this.buf.slice(size);
+
+            const data = this.buf.subarray(0, size);
+            this.buf = this.buf.subarray(size);
+
             try {
                 this._process(Message.decode(data));
             } catch (err) {
                 console.log("Error processing message:", err);
                 this.emit("error", err);
+
+                this._handleNoResponse(); // idk, some weird stuff UB
+                return;
             }
         }
     }
@@ -188,7 +193,7 @@ class BattleCon extends events.EventEmitter {
     }
 
     _handleNoResponse() {
-        console.log("Handling no response, closing socket and reconnecting...");
+        console.log("Handling reconnecting...");
         this.disconnect();
         setTimeout(() => {
             console.log("Retrying to connect");
