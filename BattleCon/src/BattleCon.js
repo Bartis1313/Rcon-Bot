@@ -96,6 +96,9 @@ class BattleCon extends events.EventEmitter {
 
     disconnect() {
         if (this.sock !== null) {
+            this.sock.removeAllListeners("data");
+            this.sock.removeAllListeners("error");
+            this.sock.removeAllListeners("close");
             this.sock.end();
             this.sock.destroy();
             this.sock = null;
