@@ -53,7 +53,7 @@ class Helpers {
 
                 responses.forEach(response => {
                     if (!response || response.status !== "OK") {
-                        console.log(`Response has failed, error`, response.error);
+                        console.log(`Response has failed, error`, response);
                     }
                 });
 
