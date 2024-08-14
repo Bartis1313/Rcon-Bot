@@ -82,6 +82,8 @@ class BattleCon extends events.EventEmitter {
             clearInterval(this.timeoutInterval);
             clearTimeout(this.responseTimeout);
             console.log(`Disconnect: ${new Date().toLocaleString()}`);
+
+            this.disconnect();
         });
 
         this.sock.connect(this.port, this.host, () => {
