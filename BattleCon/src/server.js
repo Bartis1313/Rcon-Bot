@@ -31,6 +31,14 @@ var server = app.listen(process.env.BATTLECON_PORT || 3000, () => {
     console.log(`Server running on port ${process.env.BATTLECON_PORT || 3000}`);
 });
 
+setInterval(() => {
+    client.version()
+        .catch((err) => {
+            console.error("Error in client.version():", err);
+            process.exit(1);
+        });
+}, 10000);
+
 process.on('SIGTERM', () => {
     server.close(() => {
         console.log('Process terminated')
