@@ -237,11 +237,14 @@ module.exports = class list {
 
             const channel = bot.channels.cache.get(this.scoreboardChannelId[server]);
 
+            let retryDelay = 5000; // 5 seconds
+            this.consecutiveErrors[server] = 0;
+
             if (this.intervalIds[server] !== null) {
                 this.intervalIds[server] = setInterval(async () => {
                     try {
                         if (!channel.messages.cache.has(this.scoreboardMessage[server])) { // deleted msg
-                            console.log("Message not found in cache. Stopped interval.");
+                            console.log("Message not found in cache, closing");
                             clearInterval(this.intervalIds[server]);
                             this.intervalIds[server] = null;
                             return;
@@ -257,14 +260,20 @@ module.exports = class list {
                         const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
                         await fetchedMsg.edit(newEmbed);
 
+                        // reset retry
+                        retryDelay = 5000;
                         this.consecutiveErrors[server] = 0;
                     } catch (error) {
                         console.error("Error editing message:", error);
-                        clearInterval(this.intervalIds[server]);
-                        this.intervalIds[server] = null;
+
+                        this.consecutiveErrors[server] += 1;
+                        console.log(`Consecutive errors: ${this.consecutiveErrors[server]}. Retrying in ${retryDelay / 1000} seconds.`);
+
+                        retryDelay = Math.min(retryDelay * 2, 60_000); // max 60 seconds
+
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
                     }
-                    // 30 seconds, below api errors critical handling
-                }, 30_000);
+                }, 30_000); // 30 secs
             }
         } catch (error) {
             console.error("Error sending initial message:", error);

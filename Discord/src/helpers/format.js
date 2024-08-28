@@ -1,29 +1,37 @@
-const format = (str) => {
+const format = (inputArray) => {
+    // parse array info in struct like
     let arr = [];
-
-    // Divides array into chunks of 4
-
-    for (let x = 0; x < str.length; x += 4) {
-        arr.push([str[x], str[x + 1], str[x + 2], str[x + 3]])
+    for (let i = 0; i < inputArray.length; i += 4) {
+        const score = parseInt(inputArray[i], 10);
+        const stat1 = parseInt(inputArray[i + 1], 10);
+        const stat2 = parseInt(inputArray[i + 2], 10);
+        const name = inputArray[i + 3];
+        arr.push([score, stat1, stat2, name]);
     }
 
-    let maxLength1 = 0;
-    let maxLength2 = 0;
-    let maxLength3 = 0;
+    // sort by scores, (scores are first)
+    arr.sort((a, b) => b[0] - a[0]);
 
-    // Gets Max Length of Elements at index 0 and 1 of each array
+    // max spaces between each split
+    let maxLength1 = 0, maxLength2 = 0, maxLength3 = 0;
 
     arr.forEach(w => {
-        w[0].length > maxLength1 ? maxLength1 = w[0].length : null;
-        w[1].length > maxLength2 ? maxLength2 = w[1].length : null;
-        w[2].length > maxLength3 ? maxLength3 = w[2].length : null;
-    })
+        if (String(w[0]).length > maxLength1) maxLength1 = String(w[0]).length;
+        if (String(w[1]).length > maxLength2) maxLength2 = String(w[1]).length;
+        if (String(w[2]).length > maxLength3) maxLength3 = String(w[2]).length;
+    });
 
-    // adds spaces to end of string depending on its length
+    // formatting is done here
+    arr = arr.map(w => {
+        return [
+            String(w[0]).padEnd(maxLength1 + 1, " "),
+            String(w[1]).padEnd(maxLength2 + 1, " "),
+            String(w[2]).padEnd(maxLength3 + 1, " "),
+            `"${w[3]}"\n`
+        ].join("");
+    });
 
-    arr = arr.map(w => [w[0] + (" ").repeat(maxLength1 - w[0].length + 1), w[1] + (" ").repeat(maxLength2 - w[1].length + 1), w[2] + (" ").repeat(maxLength3 - w[2].length + 1) + '"' + w[3] + '"' + "\n"]);
-
-    return (arr.flat().join(""))
-}
+    return arr.join("");
+};
 
 export default format
