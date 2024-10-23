@@ -1,5 +1,6 @@
 import BattleCon from "../src/BattleCon";
 import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook.js'
+import { ticketsScript, tickrateScript } from './scripts.js'
 
 class BattleConClient {
   constructor(host, port, password) {
@@ -55,6 +56,10 @@ class BattleConClient {
       console.log(`Disconnect: ${date.toLocaleString()}`);
     });
 
+    connection.on("event", function (msg) {
+      //console.log("# " + msg.data.join(' '));
+    });
+
     connection.on("error", (err) => {
       console.log("# Error: " + err.message, err.stack);
     });
@@ -62,7 +67,12 @@ class BattleConClient {
     connection.on("player.chat", (name, text, subset) => {
       //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
       webHookKickSenderBF3(connection, name, text, subset, this.playerMap);
+      tickrateScript(text).catch(console.error);;
     });
+
+    connection.on("server.roundOver", () => {
+      ticketsScript(connection).catch(console.error);;
+    })
 
     connection.on("pb.message", (msg) => {
       //console.log(msg)
