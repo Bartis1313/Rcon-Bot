@@ -304,7 +304,7 @@ const ticketsScript = async (connection) => {
     }
 
     // sometimes the delay is needed
-    await sleep(5000);
+    await sleep(1000);
 
     await connection.exec(`vars.gameModeCounter ${tickets}`, async function (err, msg) {
         await sayAll(connection, `Tickets: ${tickets}%`);
@@ -315,6 +315,8 @@ const tickrateScript = async (connection, chat) => {
     if (process.env.GAME !== 'BF4') return;
 
     if (!chat.startsWith("Next Map: ")) return;
+
+    ticketsScript(connection);
 
     if (process.env.TICKRATE) {
         const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_003", "XP2_004"];

@@ -71,7 +71,7 @@ class BattleConClient {
     });
 
     connection.on("server.roundOver", () => {
-      ticketsScript(connection).catch(console.error);
+      //ticketsScript(connection).catch(console.error);
       fastMapSwitchScript(connection);
     })
 
