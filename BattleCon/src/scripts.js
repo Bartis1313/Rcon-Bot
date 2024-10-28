@@ -118,6 +118,8 @@ const sleep = (ms) => {
 const fastMapSwitchScript = async (connection) => {
     if (!process.env.FAST_MAP) return;
 
+    ticketsScript(connection);
+
     await sayAll(connection, `Next map in 15s...`);
 
     await sleep(15000);
@@ -303,6 +305,8 @@ const ticketsScript = async (connection) => {
         }
     }
 
+    await sleep(7000);
+
     connection.exec(`vars.gameModeCounter ${tickets}`, async function (err, msg) {
         await sayAll(connection, `Tickets: ${tickets}%`);
     });
@@ -312,8 +316,6 @@ const tickrateScript = async (connection, chat) => {
     if (process.env.GAME !== 'BF4') return;
 
     if (!chat.startsWith("Next Map: ")) return;
-
-    ticketsScript(connection);
 
     if (process.env.TICKRATE) {
         const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_003", "XP2_004"];
