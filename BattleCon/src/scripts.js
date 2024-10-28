@@ -303,10 +303,7 @@ const ticketsScript = async (connection) => {
         }
     }
 
-    // sometimes the delay is needed
-    await sleep(1000);
-
-    await connection.exec(`vars.gameModeCounter ${tickets}`, async function (err, msg) {
+    connection.exec(`vars.gameModeCounter ${tickets}`, async function (err, msg) {
         await sayAll(connection, `Tickets: ${tickets}%`);
     });
 }
