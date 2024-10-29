@@ -115,281 +115,7 @@ const sleep = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
 };
 
-const fastMapSwitchScript = async (connection) => {
-    if (!process.env.FAST_MAP) return;
-
-    ticketsScript(connection);
-
-    await sayAll(connection, `Next map in 15s...`);
-
-    await sleep(15000);
-
-    connection.exec(`mapList.runNextRound`, async function (err, msg) {
-
-    });
-}
-
-const joinLogScript = async (connection, name, guid) => {
-    let playerCount = -1;
-    let maxPlayers = -1;
-    let currentPing = -1;
-
-    await new Promise((resolve, reject) => {
-        connection.exec("serverInfo", function (err, msg) {
-            if (err) {
-                return reject(err);
-            }
-
-            playerCount = msg[1];
-            resolve();
-        });
-    });
-
-    await new Promise((resolve, reject) => {
-        connection.exec("vars.maxPlayers", function (err, msg) {
-            if (err) {
-                return reject(err);
-            }
-
-            maxPlayers = msg;
-            resolve();
-        });
-    });
-
-    await new Promise((resolve, reject) => {
-        connection.on("pb.message", async (message) => {
-            if (message.includes(`Player GUID Computed`) && message.includes(name)) {
-                connection.exec(`player.ping ${name}`, (err, msg) => {
-                    if (err) {
-                        return reject(err);
-                    }
-
-                    currentPing = msg[1];
-                    resolve();
-                });
-            }
-        });
-    });
-
-    if (playerCount === -1) return;
-    if (maxPlayers === -1) return;
-    if (currentPing === -1) return;
-
-    if (currentPing === 65535) currentPing = -1;
-
-    const message = {
-        embeds: [
-            {
-                title: `${name} joined the server`,
-                fields: [
-                    {
-                        name: 'EA GUID',
-                        value: guid,
-                        inline: true,
-                    },
-                    {
-                        name: 'Ping',
-                        value: currentPing.toString(),
-                        inline: true,
-                    },
-                    {
-                        name: 'Players',
-                        value: `${playerCount.toString()}/${maxPlayers.toString()}`,
-                        inline: true,
-                    },
-                ].filter(field => field !== null), // Filter out null fields
-                color: 0x3498DB // Light blue
-            }
-        ]
-    };
-
-    fetch("", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message)
-    })
-        .then((response) => {
-            if (!response.ok) {
-                console.error('Failed to send message to the webhook:', response.status, response.statusText);
-            }
-        })
-        .catch((error) => {
-            console.error('Error:', error, message);
-        });
-}
-
-const ticketsScript = async (connection) => {
-    if (!process.env.TICKETS) return;
-
-    const maps = [];
-    let index = -1;
-    let playerCount = -1;
-
-    const mapListPromise = new Promise((resolve, reject) => {
-        connection.exec("mapList.list", function (err, msg) {
-            if (err) {
-                return reject(err);
-            }
-            const data = msg;
-            for (let i = 0; i < data.length; i++) {
-                if (!isNaN(data[i])) {
-                    continue;
-                }
-
-                const mapName = getMapObj('BF4')[data[i]];
-                const modeName = getModesObj('BF4')[data[i + 1]];
-
-                maps.push({ mapName: mapName, modeName: modeName });
-                i++;
-            }
-            resolve();
-        });
-    });
-
-    const mapIndicesPromise = new Promise((resolve, reject) => {
-        connection.exec("mapList.getMapIndices", function (err, msg) {
-            if (err) {
-                return reject(err);
-            }
-            index = msg[1];
-            resolve();
-        });
-    });
-
-    const serverInfoPromise = new Promise((resolve, reject) => {
-        connection.exec("serverInfo", function (err, msg) {
-            if (err) {
-                return reject(err);
-            }
-
-            playerCount = msg[1];
-            resolve();
-        });
-    });
-
-    await Promise.all([mapListPromise, mapIndicesPromise, serverInfoPromise]);
-
-    if (maps.length === 0) return;
-    if (index === -1) return;
-    if (playerCount === -1) return;
-
-    const mapObj = { mapName: maps[index].mapName, modeName: maps[index].modeName };
-
-    let tickets = 100;
-
-    if (mapObj.modeName == "Conquest Large") {
-        if (playerCount <= 29) {
-            tickets = 100;
-        }
-        if (playerCount >= 45) {
-            tickets = 125;
-        }
-    }
-    else if (mapObj.modeName == "Conquest Small") {
-        if (playerCount <= 29) {
-            tickets = 150;
-        }
-        if (playerCount >= 45) {
-            tickets = 200;
-        }
-    }
-    else if (mapObj.modeName == "Rush") {
-
-        if (playerCount <= 29) {
-            tickets = 150;
-        }
-        if (playerCount >= 45) {
-            tickets = 250;
-        }
-    }
-
-    await sleep(7000);
-
-    connection.exec(`vars.gameModeCounter ${tickets}`, async function (err, msg) {
-        await sayAll(connection, `Tickets: ${tickets}%`);
-    });
-}
-
-const tickrateScript = async (connection, chat) => {
-    if (process.env.GAME !== 'BF4') return;
-
-    if (!chat.startsWith("Next Map: ")) return;
-
-    if (process.env.TICKRATE) {
-        const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_003", "XP2_004"];
-
-        const maps = [];
-        let index = -1;
-        let playerCount = -1;
-
-        const mapListPromise = new Promise((resolve, reject) => {
-            connection.exec("mapList.list", function (err, msg) {
-                if (err) {
-                    return reject(err);
-                }
-                const data = msg;
-                for (let i = 0; i < data.length; i++) {
-                    if (!isNaN(data[i])) {
-                        continue;
-                    }
-
-                    const mapName = data[i];
-                    const modeName = data[i + 1];
-
-                    maps.push({ mapName: mapName, modeName: modeName });
-                    i++;
-                }
-                resolve();
-            });
-        });
-
-        const mapIndicesPromise = new Promise((resolve, reject) => {
-            connection.exec("mapList.getMapIndices", function (err, msg) {
-                if (err) {
-                    return reject(err);
-                }
-                index = msg[1];
-                resolve();
-            });
-        });
-
-        const serverInfoPromise = new Promise((resolve, reject) => {
-            connection.exec("serverInfo", function (err, msg) {
-                if (err) {
-                    return reject(err);
-                }
-
-                playerCount = msg[21];
-                resolve();
-            });
-        });
-
-        await Promise.all([mapListPromise, mapIndicesPromise, serverInfoPromise]);
-
-        if (maps.length === 0) return;
-        if (index === -1) return;
-        if (playerCount === -1) return;
-
-        const mapObj = { mapName: maps[index].mapName, modeName: maps[index].modeName };
-
-        let tick = 60;
-
-        for (const m of maps40) {
-            if (mapObj.mapName == m) {
-                tick = 40;
-                break;
-            }
-        }
-
-        await sleep(1000);
-
-        connection.exec(`vars.OutHighFrequency ${tick}`, async function (err, msg) {
-
-        });
-    }
-
+const factionScript = async (connection) => {
     if (process.env.FACTIONS) {
         const Teams = {
             0: "US",
@@ -540,9 +266,286 @@ const tickrateScript = async (connection, chat) => {
 
         });
 
-        await sleep(1000);
+        await sleep(7000);
 
         await sayAll(connection, `Setting factions to ${Teams[Team1]} vs ${Teams[Team2]} on next round...`);
+    }
+}
+
+const fastMapSwitchScript = async (connection) => {
+    if (!process.env.FAST_MAP) return;
+
+    ticketsScript(connection);
+    factionScript(connection);
+
+    await sayAll(connection, `Next map in 15s...`);
+
+    await sleep(15000);
+
+    connection.exec(`mapList.runNextRound`, async function (err, msg) {
+
+    });
+}
+
+const joinLogScript = async (connection, name, guid) => {
+    let playerCount = -1;
+    let maxPlayers = -1;
+    let currentPing = -1;
+
+    await new Promise((resolve, reject) => {
+        connection.exec("serverInfo", function (err, msg) {
+            if (err) {
+                return reject(err);
+            }
+
+            playerCount = msg[1];
+            resolve();
+        });
+    });
+
+    await new Promise((resolve, reject) => {
+        connection.exec("vars.maxPlayers", function (err, msg) {
+            if (err) {
+                return reject(err);
+            }
+
+            maxPlayers = msg;
+            resolve();
+        });
+    });
+
+    await new Promise((resolve, reject) => {
+        connection.on("pb.message", async (message) => {
+            if (message.includes(`Player GUID Computed`) && message.includes(name)) {
+                connection.exec(`player.ping ${name}`, (err, msg) => {
+                    if (err) {
+                        return reject(err);
+                    }
+
+                    currentPing = msg[1];
+                    resolve();
+                });
+            }
+        });
+    });
+
+    if (playerCount === -1) return;
+    if (maxPlayers === -1) return;
+    if (currentPing === -1) return;
+
+    if (currentPing === 65535) currentPing = -1;
+
+    const message = {
+        embeds: [
+            {
+                title: `${name} joined the server`,
+                fields: [
+                    {
+                        name: 'EA GUID',
+                        value: guid,
+                        inline: true,
+                    },
+                    {
+                        name: 'Ping',
+                        value: currentPing.toString(),
+                        inline: true,
+                    },
+                    {
+                        name: 'Players',
+                        value: `${playerCount.toString()}/${maxPlayers.toString()}`,
+                        inline: true,
+                    },
+                ].filter(field => field !== null), // Filter out null fields
+                color: 0x3498DB // Light blue
+            }
+        ]
+    };
+
+    fetch("", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message)
+    })
+        .then((response) => {
+            if (!response.ok) {
+                console.error('Failed to send message to the webhook:', response.status, response.statusText);
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error, message);
+        });
+}
+
+const ticketsScript = async (connection) => {
+    if (!process.env.TICKETS) return;
+
+    const maps = [];
+    let index = -1;
+    let playerCount = -1;
+
+    const mapListPromise = new Promise((resolve, reject) => {
+        connection.exec("mapList.list", function (err, msg) {
+            if (err) {
+                return reject(err);
+            }
+            const data = msg;
+            for (let i = 0; i < data.length; i++) {
+                if (!isNaN(data[i])) {
+                    continue;
+                }
+
+                const mapName = data[i];
+                const modeName = data[i + 1];
+
+                maps.push({ mapName: mapName, modeName: modeName });
+                i++;
+            }
+            resolve();
+        });
+    });
+
+    const mapIndicesPromise = new Promise((resolve, reject) => {
+        connection.exec("mapList.getMapIndices", function (err, msg) {
+            if (err) {
+                return reject(err);
+            }
+            index = msg[1];
+            resolve();
+        });
+    });
+
+    const serverInfoPromise = new Promise((resolve, reject) => {
+        connection.exec("serverInfo", function (err, msg) {
+            if (err) {
+                return reject(err);
+            }
+
+            playerCount = msg[1];
+            resolve();
+        });
+    });
+
+    await Promise.all([mapListPromise, mapIndicesPromise, serverInfoPromise]);
+
+    if (maps.length === 0) return;
+    if (index === -1) return;
+    if (playerCount === -1) return;
+
+    const mapObj = { mapName: maps[index].mapName, modeName: maps[index].modeName };
+
+    let tickets = 100;
+
+    if (mapObj.modeName == "ConquestLarge0") {
+        if (playerCount <= 29) {
+            tickets = 100;
+        }
+        if (playerCount >= 45) {
+            tickets = 125;
+        }
+    }
+    else if (mapObj.modeName == "ConquestSmall0") {
+        if (playerCount <= 29) {
+            tickets = 150;
+        }
+        if (playerCount >= 45) {
+            tickets = 200;
+        }
+    }
+    else if (mapObj.modeName == "RushLarge0") {
+
+        if (playerCount <= 29) {
+            tickets = 150;
+        }
+        if (playerCount >= 45) {
+            tickets = 250;
+        }
+    }
+
+    await sleep(7000);
+
+    connection.exec(`vars.gameModeCounter ${tickets}`, async function (err, msg) {
+        await sayAll(connection, `Tickets: ${tickets}%`);
+    });
+}
+
+const tickrateScript = async (connection, chat) => {
+    if (process.env.GAME !== 'BF4') return;
+
+    if (!chat.startsWith("Next Map: ")) return;
+
+    if (process.env.TICKRATE) {
+        const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_003", "XP2_004"];
+
+        const maps = [];
+        let index = -1;
+        let playerCount = -1;
+
+        const mapListPromise = new Promise((resolve, reject) => {
+            connection.exec("mapList.list", function (err, msg) {
+                if (err) {
+                    return reject(err);
+                }
+                const data = msg;
+                for (let i = 0; i < data.length; i++) {
+                    if (!isNaN(data[i])) {
+                        continue;
+                    }
+
+                    const mapName = data[i];
+                    const modeName = data[i + 1];
+
+                    maps.push({ mapName: mapName, modeName: modeName });
+                    i++;
+                }
+                resolve();
+            });
+        });
+
+        const mapIndicesPromise = new Promise((resolve, reject) => {
+            connection.exec("mapList.getMapIndices", function (err, msg) {
+                if (err) {
+                    return reject(err);
+                }
+                index = msg[1];
+                resolve();
+            });
+        });
+
+        const serverInfoPromise = new Promise((resolve, reject) => {
+            connection.exec("serverInfo", function (err, msg) {
+                if (err) {
+                    return reject(err);
+                }
+
+                playerCount = msg[21];
+                resolve();
+            });
+        });
+
+        await Promise.all([mapListPromise, mapIndicesPromise, serverInfoPromise]);
+
+        if (maps.length === 0) return;
+        if (index === -1) return;
+        if (playerCount === -1) return;
+
+        const mapObj = { mapName: maps[index].mapName, modeName: maps[index].modeName };
+
+        let tick = 60;
+
+        for (const m of maps40) {
+            if (mapObj.mapName == m) {
+                tick = 40;
+                break;
+            }
+        }
+
+        await sleep(1000);
+
+        connection.exec(`vars.OutHighFrequency ${tick}`, async function (err, msg) {
+
+        });
     }
 }
 
