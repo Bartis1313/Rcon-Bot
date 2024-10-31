@@ -1,6 +1,9 @@
 import BattleCon from "../src/BattleCon";
 import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook.js'
-import { ticketsScript, tickrateScript, fastMapSwitchScript, joinLogScript } from './scripts.js'
+import {
+  ticketsScript, tickrateScript, fastMapSwitchScript, joinLogScript
+  , handleOnKill, handleOnSpawn, handleOnLeave, handleOnDisconnect, generateRoundEndWebhook
+} from './scripts.js'
 
 class BattleConClient {
   constructor(host, port, password) {
@@ -54,6 +57,7 @@ class BattleConClient {
     connection.on("close", () => {
       const date = new Date();
       console.log(`Disconnect: ${date.toLocaleString()}`);
+      handleOnDisconnect();
     });
 
     connection.on("event", function (msg) {
@@ -71,8 +75,9 @@ class BattleConClient {
     });
 
     connection.on("server.roundOver", () => {
-      //ticketsScript(connection).catch(console.error);
       fastMapSwitchScript(connection);
+
+      //generateRoundEndWebhook(connection);
     })
 
     connection.on("pb.message", (msg) => {
@@ -83,7 +88,20 @@ class BattleConClient {
     connection.on("player.join", (name, guid) => {
       this.playerMap.set(name, guid);
 
-      //joinLogScript(connection, name, guid);
+      joinLogScript(connection, name, guid);
+    })
+
+    connection.on("player.spawn", (name, team) => {
+
+      handleOnSpawn(name, team);
+    })
+
+    connection.on("player.leave", (name, info) => {
+      handleOnLeave(name);
+    })
+
+    connection.on("player.kill", (killerName, victimName, weaponName, isHeadshot) => {
+      handleOnKill(killerName, victimName, weaponName, isHeadshot);
     })
 
     connection.on("player.leave", (name) => {
