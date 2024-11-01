@@ -275,7 +275,7 @@ const factionScript = async (connection) => {
 const fastMapSwitchScript = async (connection) => {
     if (!process.env.FAST_MAP) return;
 
-    ticketsScript(connection);
+    ticketsScript(connection, true);
     factionScript(connection);
 
     sayAll(connection, `Next map in 15s...`);
@@ -378,7 +378,7 @@ const joinLogScript = async (connection, name, guid) => {
         });
 }
 
-const ticketsScript = async (connection) => {
+const ticketsScript = async (connection, isSay = false) => {
     if (!process.env.TICKETS) return;
 
     const maps = [];
@@ -463,17 +463,26 @@ const ticketsScript = async (connection) => {
         }
     }
 
-    await sleep(4000);
+    if (isSay) sayAll(connection, `Tickets ${tickets}%`);
 
-    connection.exec(`vars.gameModeCounter ${tickets}`, function (err, msg) {
-        sayAll(connection, `Tickets: ${tickets}%`);
-    });
+    for (let i = 0; i < 10; i++) {
+        // I guess
+        (async () => {
+            connection.exec(`vars.gameModeCounter ${tickets}`, function (err, msg) {
+
+            });
+        })();
+
+        await sleep(1000);
+    }
 }
 
 const tickrateScript = async (connection, chat) => {
     if (process.env.GAME !== 'BF4') return;
 
     if (!chat.startsWith("Next Map: ")) return;
+
+    ticketsScript(connection, false);
 
     if (process.env.TICKRATE) {
         const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_003", "XP2_004"];
@@ -654,7 +663,7 @@ const generateRoundEndWebhook = async (connection) => {
     });
 
     try {
-        const response = await fetch("https://discord.com/api/webhooks/850929600254705694/GqrLdMk0Ovn22OhtiYmbUHwDv6fQmTfi2KT8FhC3o15y-7myd79HqBM3ODAbKGjIMmVG", {
+        const response = await fetch("", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
