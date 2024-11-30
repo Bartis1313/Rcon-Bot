@@ -88,7 +88,7 @@ class BattleConClient {
     connection.on("player.join", (name, guid) => {
       this.playerMap.set(name, guid);
 
-      joinLogScript(connection, name, guid);
+      //joinLogScript(connection, name, guid);
     })
 
     connection.on("player.spawn", (name, team) => {

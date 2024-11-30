@@ -273,10 +273,10 @@ const factionScript = async (connection) => {
 }
 
 const fastMapSwitchScript = async (connection) => {
-    if (!process.env.FAST_MAP) return;
-
     ticketsScript(connection, true);
     factionScript(connection);
+
+    if (!process.env.FAST_MAP) return;
 
     sayAll(connection, `Next map in 15s...`);
 
