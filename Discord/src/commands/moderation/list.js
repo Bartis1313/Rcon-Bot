@@ -199,7 +199,9 @@ module.exports = class list {
         }
     }
 
-    async createInfoEmbed(info, server) {
+    async createInfoEmbed(info, server, existingEmbed = null) {
+        let embed = existingEmbed || new Discord.MessageEmbed();
+
         const map = getMapObj(getVer(server))[info.MapName];
         const mode = getModesObj(getVer(server))[info.ModeName];
         const tickets1 = parseFloat(info.Scores.Team1).toFixed(0);
@@ -209,7 +211,7 @@ module.exports = class list {
         const playerCount = info.Players;
         const next = await this.getNext(server);
 
-        const embed = new Discord.MessageEmbed()
+        embed
             .setTitle(`Players: ${playerCount}/${maxPlayers} Tickets ${tickets1}:${tickets2} Time: ${rtime}\nMap: ${map} Mode: ${mode}\nNext Map: ${next.mapName} Mode: ${next.modeName}`)
             .setTimestamp()
             .setColor('GREEN')
@@ -228,7 +230,7 @@ module.exports = class list {
 
             this.intervalIds[server] = {}; // reset on retry
 
-            const embed = await this.createInfoEmbed(info, server);
+            let embed = await this.createInfoEmbed(info, server);
 
             const msg = await message.channel.send(embed);
 
@@ -255,10 +257,10 @@ module.exports = class list {
                             return;
                         }
 
-                        const newEmbed = await this.createInfoEmbed(newInfo, server);
+                        embed = await this.createInfoEmbed(newInfo, server, embed);
 
                         const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
-                        await fetchedMsg.edit(newEmbed);
+                        await fetchedMsg.edit(embed);
 
                         // reset retry
                         retryDelay = 5000;
