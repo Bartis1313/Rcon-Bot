@@ -275,16 +275,6 @@ const factionScript = async (connection) => {
 const fastMapSwitchScript = async (connection) => {
     ticketsScript(connection, true);
     factionScript(connection);
-
-    if (!process.env.FAST_MAP) return;
-
-    sayAll(connection, `Next map in 15s...`);
-
-    await sleep(15000);
-
-    connection.exec(`mapList.runNextRound`, async function (err, msg) {
-
-    });
 }
 
 const joinLogScript = async (connection, name, guid) => {

@@ -93,15 +93,15 @@ class BattleConClient {
 
     connection.on("player.spawn", (name, team) => {
 
-      handleOnSpawn(name, team);
+      //handleOnSpawn(name, team);
     })
 
     connection.on("player.leave", (name, info) => {
-      handleOnLeave(name);
+      //handleOnLeave(name);
     })
 
     connection.on("player.kill", (killerName, victimName, weaponName, isHeadshot) => {
-      handleOnKill(killerName, victimName, weaponName, isHeadshot);
+      //handleOnKill(killerName, victimName, weaponName, isHeadshot);
     })
 
     connection.on("player.leave", (name) => {
