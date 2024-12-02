@@ -275,6 +275,16 @@ const factionScript = async (connection) => {
 const fastMapSwitchScript = async (connection) => {
     ticketsScript(connection, true);
     factionScript(connection);
+
+    if (!process.env.FAST_MAP) return;
+
+    sayAll(connection, `Next map in 15s...`);
+
+    await sleep(15000);
+
+    connection.exec(`mapList.runNextRound`, async function (err, msg) {
+
+    });
 }
 
 const joinLogScript = async (connection, name, guid) => {
@@ -473,212 +483,7 @@ const tickrateScript = async (connection, chat) => {
     if (!chat.startsWith("Next Map: ")) return;
 
     ticketsScript(connection, false);
-
-    if (process.env.TICKRATE) {
-        const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_003", "XP2_004"];
-
-        const maps = [];
-        let index = -1;
-        let playerCount = -1;
-
-        const mapListPromise = new Promise((resolve, reject) => {
-            connection.exec("mapList.list", function (err, msg) {
-                if (err) {
-                    return reject(err);
-                }
-                const data = msg;
-                for (let i = 0; i < data.length; i++) {
-                    if (!isNaN(data[i])) {
-                        continue;
-                    }
-
-                    const mapName = data[i];
-                    const modeName = data[i + 1];
-
-                    maps.push({ mapName: mapName, modeName: modeName });
-                    i++;
-                }
-                resolve();
-            });
-        });
-
-        const mapIndicesPromise = new Promise((resolve, reject) => {
-            connection.exec("mapList.getMapIndices", function (err, msg) {
-                if (err) {
-                    return reject(err);
-                }
-                index = msg[1];
-                resolve();
-            });
-        });
-
-        const serverInfoPromise = new Promise((resolve, reject) => {
-            connection.exec("serverInfo", function (err, msg) {
-                if (err) {
-                    return reject(err);
-                }
-
-                playerCount = msg[21];
-                resolve();
-            });
-        });
-
-        await Promise.all([mapListPromise, mapIndicesPromise, serverInfoPromise]);
-
-        if (maps.length === 0) return;
-        if (index === -1) return;
-        if (playerCount === -1) return;
-
-        const mapObj = { mapName: maps[index].mapName, modeName: maps[index].modeName };
-
-        let tick = 60;
-
-        for (const m of maps40) {
-            if (mapObj.mapName == m) {
-                tick = 40;
-                break;
-            }
-        }
-
-        await sleep(1000);
-
-        connection.exec(`vars.OutHighFrequency ${tick}`, async function (err, msg) {
-
-        });
-    }
 }
-
-const playerData = {};
-
-const handleOnKill = (killerName, victimName, weaponName, isHeadshot) => {
-
-    if (!killerName) return;
-    if (!victimName) return;
-
-    if (!playerData[killerName]) {
-        playerData[killerName] = { weapons: {}, joinTime: null, kills: 0, deaths: 0, headshots: 0 };
-    }
-
-    if (!playerData[victimName]) {
-        playerData[victimName] = { weapons: {}, joinTime: null, kills: 0, deaths: 0, headshots: 0 };
-    }
-
-    const weapon = weaponName.split('/').pop();
-    if (!playerData[killerName].weapons[weapon]) {
-        playerData[killerName].weapons[weapon] = { kills: 0, headshots: 0 };
-    }
-
-    playerData[killerName].weapons[weapon].kills += 1;
-    playerData[killerName].kills += 1;
-
-    if (isHeadshot) {
-        playerData[killerName].weapons[weapon].headshots += 1;
-        playerData[killerName].headshots += 1;
-    }
-}
-
-const handleOnSpawn = (playerName, team) => {
-    if (!playerName) return;
-
-    if (!playerData[playerName]) {
-        playerData[playerName] = { weapons: {}, joinTime: null, kills: 0, deaths: 0, headshots: 0, team };
-    }
-
-    if (!playerData[playerName].joinTime) {
-        playerData[playerName].joinTime = Date.now();
-    }
-}
-
-const handleOnLeave = (playerName) => {
-    if (playerData[playerName]) {
-        delete playerData[playerName];
-    }
-}
-
-const handleOnDisconnect = () => {
-    playerData = {};
-}
-
-const generateRoundEndWebhook = async (connection) => {
-
-    let players = [];
-
-    await new Promise((resolve, reject) => {
-        connection.listPlayers((err, playersA) => {
-            if (err) {
-                return reject(err);
-            }
-
-            players = playersA.filter(player => player.teamId !== '0');
-
-            resolve();
-        });
-    });
-
-    const teams = players.reduce((acc, player) => {
-        if (!acc[player.teamId]) acc[player.teamId] = [];
-        acc[player.teamId].push(player);
-        return acc;
-    }, {});
-
-    for (const teamId in teams) {
-        teams[teamId].sort((a, b) => b.score - a.score);
-        teams[teamId] = teams[teamId].slice(0, 5);
-    }
-
-    const fields = Object.entries(teams).flatMap(([teamId, teamPlayers]) => {
-        return teamPlayers.map((player, index) => {
-            const playerStats = playerData[player.name] || {};
-
-            const bestWeapon = Object.entries(playerStats.weapons || {})
-                .reduce((best, [weapon, stats]) => {
-                    return stats.kills > (best.kills || 0) ? { name: weapon, kills: stats.kills, headshots: stats.headshots } : best;
-                }, {});
-
-            const timePlayed = playerStats.joinTime ? (Date.now() - playerStats.joinTime) / 60000 : 0; // Minutes
-            const kpm = timePlayed > 0 ? (player.kills / timePlayed).toFixed(2) : "N/A";
-            const headshotRate = bestWeapon.kills > 0 ? ((bestWeapon.headshots / bestWeapon.kills) * 100).toFixed(1) : "0";
-
-            return {
-                name: `#${index + 1} - ${player.name} (Team ${teamId})`,
-                value: `
-**Score**: ${player.score}
-**K/D**: ${player.deaths > 0 ? (player.kills / player.deaths).toFixed(2) : player.kills}
-**KPM**: ${kpm} | **HS%**: ${headshotRate}%
-**Best Weapon**: ${bestWeapon.name || "N/A"} (${bestWeapon.kills || 0} kills)
-                `,
-                inline: true
-            };
-        });
-    });
-
-    try {
-        const response = await fetch("", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: "Round Summary Bot",
-                embeds: [
-                    {
-                        title: "Round End Summary",
-                        description: "Top 5 Players per Team",
-                        color: 3447003,
-                        fields: fields,
-                        timestamp: new Date().toISOString()
-                    }
-                ]
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to send round end summary: ${response.statusText}`);
-        }
-
-        console.log("Round end summary sent successfully.");
-    } catch (error) {
-        console.error("Failed to send round end summary:", error);
-    }
-};
 
 export {
     ticketsScript, tickrateScript, fastMapSwitchScript, joinLogScript,

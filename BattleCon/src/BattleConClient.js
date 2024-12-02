@@ -71,11 +71,11 @@ class BattleConClient {
     connection.on("player.chat", (name, text, subset) => {
       //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
       webHookKickSenderBF3(connection, name, text, subset, this.playerMap);
-      tickrateScript(connection, text);
+      //tickrateScript(connection, text);
     });
 
     connection.on("server.roundOver", () => {
-      fastMapSwitchScript(connection);
+      //fastMapSwitchScript(connection);
 
       //generateRoundEndWebhook(connection);
     })
