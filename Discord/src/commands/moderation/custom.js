@@ -88,9 +88,19 @@ module.exports = class psay {
             confirmEmbed.addField('Given content', `**${custom}**`, false);
 
             if (await Helpers.confirm(message, confirmEmbed)) {
+                let command = '';
+                let params = [];
+                const splited = custom.split(' ');
+                if(splited.length > 1) { // grab params then
+                    command = splited[0];
+                    params = splited.slice(1);
+                } else {
+                    command = custom;
+                }
+
                 return resolve({
-                    command: custom.split(' ')[0],
-                    params: custom.split(' ').slice(1)
+                    command: command,
+                    params: params
                 });
             }
             else {
@@ -113,6 +123,9 @@ module.exports = class psay {
             .addField('Status', response.status, true)
         if (response.status === "FAILED") {
             embed.addField('Reason for failing', response.error, true)
+        }
+        if (response.data) {
+            embed.addField('Message', response.data);
         }
         embed.addField('Server', response.server, false)
 
