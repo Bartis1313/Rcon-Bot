@@ -273,7 +273,6 @@ const factionScript = async (connection) => {
 }
 
 const fastMapSwitchScript = async (connection) => {
-    ticketsScript(connection, true);
     factionScript(connection);
 
     if (!process.env.FAST_MAP) return;
@@ -486,6 +485,5 @@ const tickrateScript = async (connection, chat) => {
 }
 
 export {
-    ticketsScript, tickrateScript, fastMapSwitchScript, joinLogScript,
-    handleOnKill, handleOnSpawn, handleOnLeave, handleOnDisconnect, generateRoundEndWebhook
+    ticketsScript, tickrateScript, fastMapSwitchScript, joinLogScript, factionScript
 };

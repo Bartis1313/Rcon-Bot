@@ -1,8 +1,7 @@
 import BattleCon from "../src/BattleCon";
 import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook.js'
 import {
-  ticketsScript, tickrateScript, fastMapSwitchScript, joinLogScript
-  , handleOnKill, handleOnSpawn, handleOnLeave, handleOnDisconnect, generateRoundEndWebhook
+  factionScript
 } from './scripts.js'
 
 class BattleConClient {
@@ -78,6 +77,8 @@ class BattleConClient {
       //fastMapSwitchScript(connection);
 
       //generateRoundEndWebhook(connection);
+
+      factionScript(connection);
     })
 
     connection.on("pb.message", (msg) => {
