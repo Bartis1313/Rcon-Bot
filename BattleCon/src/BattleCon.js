@@ -32,7 +32,6 @@ class BattleCon extends events.EventEmitter {
         this.port = port;
         this.pass = pass;
         this.timeoutInterval = null;
-        this.responseTimeout = null;
         this.loggedIn = false;
         this.sock = null;
         this.id = 0x3fffffff;
@@ -80,7 +79,6 @@ class BattleCon extends events.EventEmitter {
             this.emit("close");
             this.sock = null;
             clearInterval(this.timeoutInterval);
-            clearTimeout(this.responseTimeout);
             console.log(`Disconnect: ${new Date().toLocaleString()}`);
 
             this.disconnect();
@@ -108,7 +106,6 @@ class BattleCon extends events.EventEmitter {
     }
 
     _gather(chunk) {
-        clearTimeout(this.responseTimeout);
         this.buf = Buffer.concat([this.buf, chunk]);
         while (true) {
             if (this.buf.length < 8) return;
@@ -185,13 +182,6 @@ class BattleCon extends events.EventEmitter {
                 } else if (!msg) {
                     console.log("No response to version command");
                     this._handleNoResponse();
-                } else {
-                    //console.log('Received response: ', msg);
-                    clearTimeout(this.responseTimeout);
-                    this.responseTimeout = setTimeout(() => {
-                        console.log("No response within the timeout period, reconnecting...");
-                        this._handleNoResponse();
-                    }, 10000);
                 }
             });
         }, 10000);

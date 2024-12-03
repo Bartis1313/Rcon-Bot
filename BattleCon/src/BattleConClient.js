@@ -1,7 +1,7 @@
 import BattleCon from "../src/BattleCon";
 import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook.js'
 import {
-  factionScript
+  ticketsScript, ticketsChat, factionScript, tickrateScript
 } from './scripts.js'
 
 class BattleConClient {
@@ -9,6 +9,7 @@ class BattleConClient {
     this._connection = new BattleCon(host, port, password).use(process.env.GAME);
     this.playerMap = new Map();
     this.initialize();
+    this.inEndRound = false;
   }
 
   initialize() {
@@ -70,15 +71,20 @@ class BattleConClient {
     connection.on("player.chat", (name, text, subset) => {
       //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
       webHookKickSenderBF3(connection, name, text, subset, this.playerMap);
-      //tickrateScript(connection, text);
+
+      ticketsChat(connection, text);
+      tickrateScript(connection, true, text);
     });
 
     connection.on("server.roundOver", () => {
-      //fastMapSwitchScript(connection);
-
-      //generateRoundEndWebhook(connection);
+      this.inEndRound = true;
 
       factionScript(connection);
+      ticketsScript(connection, true);
+    })
+
+    connection.on("server.onLevelLoaded", () => {
+      this.inEndRound = false;
     })
 
     connection.on("pb.message", (msg) => {
