@@ -386,6 +386,9 @@ const tickrateScript = async (connection, isChat = false, chat = "") => {
 
     const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_004", "MP_Journey"];
 
+
+    factionScript(connection);
+
     const maps = [];
     let index = -1;
     let playerCount = -1;
