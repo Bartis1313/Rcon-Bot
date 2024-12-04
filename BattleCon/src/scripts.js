@@ -364,7 +364,7 @@ const ticketsScript = async (connection, isSay = false) => {
 
     if (isSay) sayAll(connection, `Tickets ${tickets}%`);
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 75; i++) {
         // I guess
         (() => {
             connection.exec(`vars.gameModeCounter ${tickets}`, function (err, msg) {
