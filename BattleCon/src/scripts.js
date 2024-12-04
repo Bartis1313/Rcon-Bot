@@ -366,7 +366,7 @@ const ticketsScript = async (connection, isSay = false) => {
 
     for (let i = 0; i < 10; i++) {
         // I guess
-        (async () => {
+        (() => {
             connection.exec(`vars.gameModeCounter ${tickets}`, function (err, msg) {
 
             });
@@ -382,6 +382,8 @@ const tickrateScript = async (connection, isChat = false, chat = "") => {
     if (isChat) {
         if (chat != "VOTING ENDED!") return;
         else await sleep(2000);
+
+        ticketsScript(connection, false);
     }
 
     const maps40 = ["MP_Resort", "MP_Naval", "MP_Damage", "XP0_Oman", "XP2_001", "XP2_002", "XP2_004", "MP_Journey"];
