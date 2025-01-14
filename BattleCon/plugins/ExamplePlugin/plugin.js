@@ -13,6 +13,11 @@ module.exports = class ExamplePlugin extends BasePlugin {
 
         this.onEvent("player.onChat", ([name, text]) => {
             console.log(`[${this.pluginName}] ${name} said: ${text}`);
+
+            // exec
+            this.exec('version', (err, msg) => {
+                err ? console.warn("Error version: ", err) : console.log("Raw version response: ", msg);
+            });
         });
 
         // We can load this as well

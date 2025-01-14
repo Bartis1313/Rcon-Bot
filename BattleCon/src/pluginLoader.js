@@ -34,66 +34,6 @@ function ensureModuleInstalled(moduleName, pluginDir) {
  * @param {Object} bc - The BattleCon client or your main application context.
  * @param {string} pluginDir - The directory of the plugin.
  * @param {string} pluginName - The name of the plugin.
- */
-function loadPlugin(bc, pluginDir, pluginName) {
-    const pluginMainFile = path.join(pluginDir, 'plugin.js');  // Assuming the main plugin file is `plugin.js`
-
-    try {
-        const packageJsonPath = path.join(pluginDir, 'package.json');
-        if (fs.existsSync(packageJsonPath)) {
-            const pluginPackage = require(packageJsonPath);
-            const dependencies = pluginPackage.dependencies || {};
-            for (const dep in dependencies) {
-                ensureModuleInstalled(dep, pluginDir);
-            }
-        }
-
-        const PluginClass = require(pluginMainFile);
-
-        // Check if the plugin extends BasePlugin
-        if (PluginClass.prototype instanceof BasePlugin) {
-            // If it's a new plugin or it has been modified, load it
-            const pluginStat = fs.statSync(pluginMainFile);
-            if (!loadedPlugins.has(pluginName) || loadedPlugins.get(pluginName) !== pluginStat.mtimeMs) {
-                new PluginClass(bc); // Initialize the plugin
-                loadedPlugins.set(pluginName, pluginStat.mtimeMs); // Store the last modified time
-                console.log(`Loaded plugin: ${pluginName}`);
-            } else {
-                console.log(`Plugin "${pluginName}" is already loaded and unchanged.`);
-            }
-        } else {
-            console.warn(`Skipped plugin "${pluginName}" as it does not extend BasePlugin.`);
-        }
-    } catch (err) {
-        console.error(`Failed to load plugin "${pluginName}":`, err);
-    }
-}
-
-/**
- * Reloads the plugins, only loading those that have changed or are new.
- * @param {Object} bc - The BattleCon client or your main application context.
- * @param {string} folderPath - The path to the plugins directory.
- */
-function reloadPlugins(bc, folderPath = "../plugins") {
-    const absolutePath = path.resolve(__dirname, folderPath);
-
-    try {
-        const pluginDirs = fs.readdirSync(absolutePath).filter(file => fs.statSync(path.join(absolutePath, file)).isDirectory());
-
-        pluginDirs.forEach((pluginName) => {
-            const pluginDir = path.join(absolutePath, pluginName);
-            loadPlugin(bc, pluginDir, pluginName);
-        });
-    } catch (err) {
-        console.error(`Failed to read plugins folder: ${absolutePath}`, err);
-    }
-}
-
-/**
- * Loads a plugin from its directory, checking if it needs to be reloaded.
- * @param {Object} bc - The BattleCon client or your main application context.
- * @param {string} pluginDir - The directory of the plugin.
- * @param {string} pluginName - The name of the plugin.
  * @returns {boolean} - Returns true if the plugin was successfully loaded or reloaded, false otherwise.
  */
 function loadPlugin(bc, pluginDir, pluginName) {
@@ -135,6 +75,26 @@ function loadPlugin(bc, pluginDir, pluginName) {
 }
 
 /**
+ * Reloads the plugins, only loading those that have changed or are new.
+ * @param {Object} bc - The BattleCon client or your main application context.
+ * @param {string} folderPath - The path to the plugins directory.
+ */
+function reloadPlugins(bc, folderPath = "../plugins") {
+    const absolutePath = path.resolve(__dirname, folderPath);
+
+    try {
+        const pluginDirs = fs.readdirSync(absolutePath).filter(file => fs.statSync(path.join(absolutePath, file)).isDirectory());
+
+        pluginDirs.forEach((pluginName) => {
+            const pluginDir = path.join(absolutePath, pluginName);
+            loadPlugin(bc, pluginDir, pluginName);
+        });
+    } catch (err) {
+        console.error(`Failed to read plugins folder: ${absolutePath}`, err);
+    }
+}
+
+/**
  * Loads a single plugin by its name.
  * @param {Object} bc - The BattleCon client or your main application context.
  * @param {string} pluginName - The name of the plugin to load.
@@ -153,4 +113,4 @@ function loadSinglePlugin(bc, pluginName, folderPath = "../plugins") {
     }
 }
 
-module.exports = { loadPlugins: reloadPlugins, loadSinglePlugin  };
+module.exports = { loadPlugins: reloadPlugins, loadSinglePlugin };

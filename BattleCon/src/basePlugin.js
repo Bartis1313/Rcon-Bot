@@ -14,6 +14,15 @@ class BasePlugin {
     onEvent(eventName, handler) {
         this.bc.onEvent(eventName, handler);
     }
+
+    /**
+     * Executes raw ecent.
+     * @param {string|string[]} command - The name of the event, array is name + possible arguments
+     * @param {function} callback - The function to handle the exec response.
+     */
+    exec(command, callback) {
+        this.bc.exec(command, callback);
+    }
 }
 
 module.exports = BasePlugin;
