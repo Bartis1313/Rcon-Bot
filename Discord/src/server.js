@@ -1,7 +1,5 @@
 const Discord = require('discord.js');
 const client = new Discord.Client({ restRequestTimeout: 60_0000 });
-const BanAnnouncer = require('./misc/banChecker.js');
-const banAnnouncer = new BanAnnouncer();
 
 const { CommandHandler } = require("djs-commands")
 const CH = new CommandHandler({
@@ -13,7 +11,6 @@ const CH = new CommandHandler({
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
     client.user.setActivity('Watching Servers');
-    banAnnouncer.startBanAnnouncement(60_000, 60_000);
 });
 
 client.on('message', message => {

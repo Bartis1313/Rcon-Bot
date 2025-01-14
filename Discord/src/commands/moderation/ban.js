@@ -98,7 +98,7 @@ module.exports = class ban {
                     }
 
                     const matchedPlayer = PlayerMatching.getBestPlayerMatch(playerName, playerNames);
-                    if (!matchedPlayer) {
+                    if (matchedPlayer === null) {
                         informNotOnServer = true;
                     }
                     else if (matchedPlayer.type === "multi") {
