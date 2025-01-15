@@ -1,31 +1,37 @@
-const Discord = require('discord.js');
-const client = new Discord.Client({ restRequestTimeout: 60_0000 });
+const { Client, GatewayIntentBits } = require('discord.js');
+const { CommandHandler } = require('./handler');
 
-const { CommandHandler } = require("djs-commands")
-const CH = new CommandHandler({
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions
+    ],
+});
+
+const commandHandler = new CommandHandler({
     folder: __dirname + '/commands/',
-    prefix: [`${process.env.DISCORD_COMMAND_PREFIX}`]
+    prefix: process.env.DISCORD_COMMAND_PREFIX || '!',
 });
 
-
-client.on('ready', () => {
+client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
-    client.user.setActivity('Watching Servers');
 });
 
-client.on('message', message => {
-    if (message.channel.type === 'dm') return;
-    if (message.author.type === 'bot') return;
+client.on('messageCreate', (message) => {
+    if (!message.guild || message.author.bot) return;
 
-    let args = message.content.split(" ");
-    let command = args[0];
-    let cmd = CH.getCommand(command);
-    if (!cmd) return;
+    const args = message.content.split(/\s+/);
+    const command = commandHandler.getCommand(args[0]);
 
-    try {
-        cmd.run(client, message, args)
-    } catch (e) {
-        console.log(e)
+    if (command) {
+        try {
+            command.run(client, message, args.slice(1));
+        } catch (error) {
+            console.error(`Error executing command '${command.name}':`, error);
+            message.reply('There was an error while executing this command.');
+        }
     }
 });
 

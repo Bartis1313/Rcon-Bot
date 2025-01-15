@@ -7,6 +7,7 @@ module.exports = class psay {
         this.name = 'custom';
         this.alias = ['customcommand'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
+        this.desc = 'Custom command, execute anything';
     }
 
     async run(bot, message, args) {

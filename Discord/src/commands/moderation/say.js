@@ -1,5 +1,5 @@
 const fetch = require("node-fetch");
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 
 module.exports = class say {
@@ -46,8 +46,9 @@ module.exports = class say {
             body: JSON.stringify(parameters)
         })
             .then(response => response.json())
-            .then(json => {  
-                return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
+            .then(json => {
+                console.log("Got to api");
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] });
             })
             .catch(error => {
                 console.log(error)
@@ -66,10 +67,10 @@ module.exports = class say {
 
             let what;
 
-            askMessage: while(true) {
-                what = await Helpers.askMessage(message);
-                if(!what) {
-                    if(await Helpers.askTryAgain(message)) {
+            askMessage: while (true) {
+                what = await Helpers.ask(message, "Global say", "Type message to all players");
+                if (!what) {
+                    if (await Helpers.askTryAgain(message)) {
                         continue askMessage;
                     }
                     return reject(console.error("Couldn't get the message"))
@@ -77,50 +78,55 @@ module.exports = class say {
                 break;
             }
 
-            const embed = new Discord.MessageEmbed()
+            const embed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Given Properties', message.author.avatarURL());
+                .setColor(0x00FF00) // Use hex color
+                .setAuthor({ name: 'Given Properties', iconURL: message.author.displayAvatarURL() })
+                .addFields({ name: 'Given content', value: `**${what}**`, inline: false });
 
-            embed.addField('Given content', `**${what}**`, false);
+            const msg = await message.channel.send({ embeds: [embed] });
 
-            const msg = await message.channel.send(embed);
-
-            const confirmEmbed = new Discord.MessageEmbed()
+            const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Are you sure you want say it to all as admin?', message.author.avatarURL());
+                .setColor(0x00FF00)
+                .setAuthor({ name: 'Are you sure you want to say it to all as admin?', iconURL: message.author.displayAvatarURL() });
 
             if (await Helpers.confirm(message, confirmEmbed)) {
-                msg.delete();
+                await msg.delete().catch(err => console.error('Failed to delete message:', err));
                 return resolve({
                     what: what,
                 });
-                
-            }
-            else {
-                msg.delete();
-                return reject(console.error("say interrupted!"))
+            } else {
+                await msg.delete().catch(err => console.error('Failed to delete message:', err));
+                return reject(console.error("say interrupted!"));
             }
         })
     }
 
 
     buildEmbed(message, parameters, response) {
-        const embed = new Discord.MessageEmbed()
+        const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? "00FF00" : "FF0000")
+            .setColor(response.status === "OK" ? 0x00FF00 : 0xFF0000)  // Hex color
             .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png')
-            .setFooter('Author: Bartis', 'https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png')
-            .setAuthor('Say all', message.author.avatarURL())
-            .addField('Issuer', message.author.username, true)
-            .addField('Content', `**${parameters.what}**`, true)
-            .addField('Status', response.status, true)
-        if (response.status === "FAILED") {
-            embed.addField('Reason for failing', response.error, true)
-        }
-        embed.addField('Server', response.server, false)
+            .setFooter({ text: 'Author: Bartis', iconURL: 'https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png' })
+            .setAuthor({ name: 'Say all', iconURL: message.author.displayAvatarURL() })
+            .addFields(
+                { name: 'Issuer', value: message.author.username, inline: true },
+                { name: 'Content', value: `**${parameters.what}**`, inline: true },
+                { name: 'Status', value: response.status, inline: true }
+            );
 
-        return embed
+        if (response.status === "FAILED") {
+            embed.addFields(
+                { name: 'Reason for failing', value: response.error, inline: true }
+            );
+        }
+
+        embed.addFields(
+            { name: 'Server', value: response.server, inline: false }
+        );
+
+        return embed;
     }
 }

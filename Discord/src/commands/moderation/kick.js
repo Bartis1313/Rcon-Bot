@@ -1,8 +1,9 @@
 const fetch = require("node-fetch");
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 import { Helpers, ActionType } from '../../helpers/helpers'
 import PlayerMatching from '../../helpers/playerMatching'
 
+// TODO
 module.exports = class kick {
     constructor() {
         this.name = 'kick';
@@ -69,7 +70,7 @@ module.exports = class kick {
             let reason;
 
             askPlayerName: while (true) {
-                playerName = await Helpers.askPlayerName(message);
+                playerName = await Helpers.ask(message, "Player name", "Give player name to kick");
                 if (!playerName) {
                     if (await Helpers.askTryAgain(message)) {
                         continue askPlayerName;
@@ -93,7 +94,7 @@ module.exports = class kick {
                         playerName = matchedPlayer.playerName;
                         break askPlayerName;
                     case "far":
-                        const embed = new Discord.MessageEmbed()
+                        const embed = new EmbedBuilder()
                             .setTimestamp()
                             .setColor("00FF00")
                             .setAuthor('Confirm', message.author.avatarURL())

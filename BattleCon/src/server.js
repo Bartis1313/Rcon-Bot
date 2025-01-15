@@ -381,3 +381,6 @@ app.post("/custom", (req, res, next) => {
         })
 })
 
+app.post("/getNextmap", (req, res, next) => {
+    // TODO
+})

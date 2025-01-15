@@ -4,6 +4,7 @@ import { Helpers } from '../../helpers/helpers'
 import getVer from '../../helpers/ver.js';
 import { getMapObj, getModesObj } from '../../helpers/mapsObj.js'
 
+// TODO
 module.exports = class map {
     constructor() {
         this.name = 'map';

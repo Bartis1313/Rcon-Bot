@@ -2,6 +2,7 @@ const fetch = require("node-fetch");
 const Discord = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 
+// TODO
 module.exports = class vip {
     constructor() {
         this.name = 'vip';
