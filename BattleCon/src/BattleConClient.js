@@ -7,8 +7,8 @@ global.BasePlugin = require("./basePlugin");
 const { loadPlugins } = require("./pluginLoader");
 
 class BattleConClient {
-  constructor(host, port, password) {
-    this._connection = new BattleCon(host, port, password).use(process.env.GAME);
+  constructor(host, port, password, game) {
+    this._connection = new BattleCon(host, port, password).use(game);
     this.playerMap = new Map();
     this.initialize();
     this.inEndRound = false;

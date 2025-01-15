@@ -4,7 +4,7 @@ var app = express();
 import BattleConClient from "./BattleConClient"
 
 var serverName = null
-var client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, process.env.RCON_PASS)
+var client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, process.env.RCON_PASS, process.env.GAME)
 
 client.connect()
 
