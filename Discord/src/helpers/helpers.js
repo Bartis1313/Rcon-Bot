@@ -31,7 +31,6 @@ class Helpers {
 
     static async selectServer(msg) {
         const apiUrls = process.env.BATTLECON_API_URLS ? process.env.BATTLECON_API_URLS.split(',') : [];
-        const games = process.env.BATTLECON_GAMES ? process.env.BATTLECON_GAMES.split(',') : [];
 
         const promises = apiUrls.map((apiUrl, index) => {
             return fetch(`${apiUrl}/serverName`, {
@@ -105,7 +104,7 @@ class Helpers {
                 });
 
                 if (selectedIndex >= 0) {
-                    return { api: apiUrls[selectedIndex], game: games[selectedIndex] }; // return games for later validate it
+                    return apiUrls[selectedIndex];
                 }
 
                 console.warn('No valid selection made.');
