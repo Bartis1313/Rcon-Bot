@@ -9,19 +9,18 @@ var client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, p
 client.connect()
 
 var serverNameUpdater = function (req, res, next) {
-    if (!serverName) {
-        client.serverInfo()
-            .then((response) => {
-                serverName = response[0]
-            })
-            .catch(err => {
+    client.serverInfo()
+        .then((response) => {
+            serverName = response[0]
+        })
+        .catch(err => {
 
-                serverName = null
-            })
-    }
+            serverName = null
+        })
 
     next()
 }
+
 
 app.use(serverNameUpdater)
 app.use(bodyParser.urlencoded({ extended: false }));

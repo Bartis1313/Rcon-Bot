@@ -21,6 +21,11 @@ class BasePlugin {
      * @param {function} callback - The function to handle the exec response.
      */
     exec(command, callback) {
+        if(this.bc.commands.includes(command.length ? command[0] : command)) {
+            console.error(`${command[0]} is not a command!`);
+            return;
+        }
+
         this.bc.exec(command, callback);
     }
 }
