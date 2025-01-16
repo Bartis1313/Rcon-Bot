@@ -1,8 +1,8 @@
 const fetch = require("node-fetch");
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 
-module.exports = class psay {
+module.exports = class CustomCommand {
     constructor() {
         this.name = 'custom';
         this.alias = ['customcommand'];
@@ -11,125 +11,120 @@ module.exports = class psay {
     }
 
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
-            message.reply("You don't have permission to use this command.")
-            return
-        }
-
-        let server = await Helpers.selectServer(message)
-        if (!server) {
-            message.delete({ timeout: 5000 });
+        if (!message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID)) {
+            message.reply("You don't have permission to use this command.");
             return;
         }
 
-        message.delete();
+        let server = await Helpers.selectServer(message);
+        if (!server) {
+            message.delete().catch(console.error);
+            return;
+        }
+
+        message.delete().catch(console.error);
 
         let parameters = await this.getParameters(message, server)
-            .then(parameters => {
-                return parameters;
-            })
+            .then(parameters => parameters)
             .catch(err => {
-                console.log(err);
+                console.error(err);
                 return null;
-            })
+            });
 
         if (!parameters) {
-            return
+            return;
         }
 
         return fetch(`${server}/custom`, {
             method: "post",
             headers: {
-                "Content-type": "application/json",
+                "Content-Type": "application/json",
                 "Accept": "application/json",
-                "Accept-Charset": "utf-8"
+                "Accept-Charset": "utf-8",
             },
-            body: JSON.stringify(parameters)
+            body: JSON.stringify(parameters),
         })
             .then(response => response.json())
-            .then(json => {  
-                return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
+            .then(json => {
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] });
             })
             .catch(error => {
-                console.log(error)
-                return false
-            })
+                console.error(error);
+                return false;
+            });
     }
 
-    getParameters(message, server) {
+    async getParameters(message, server) {
         return new Promise(async (resolve, reject) => {
-            let custom;      
+            let custom;
 
-            askCustom: while(true) {
-                custom = await Helpers.askString("Custom", "Provide custom command **SPACE = NEW ARG**, docs are linked in !help", message);
-                if(!custom) {
-                    if(await Helpers.askTryAgain(message)) {
+            askCustom: while (true) {
+                custom = await Helpers.ask(message, "Custom", "Provide custom command **SPACE = NEW ARG**");
+                if (!custom) {
+                    if (await Helpers.askTryAgain(message)) {
                         continue askCustom;
                     }
-                    return reject(console.error("Couldn't get the message"))
+                    return reject(console.error("Couldn't get the message"));
                 }
                 break;
             }
 
-            const embed = new Discord.MessageEmbed()
+            const embed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Given Properties', message.author.avatarURL());
+                .setColor('Green')
+                .setAuthor({ name: 'Given Properties', iconURL: message.author.displayAvatarURL() });
 
-            embed.addField('Given content', `**${custom}**`, false);
+            embed.addFields({ name: 'Given content', value: `**${custom}**`, inline: false });
 
-            const msg = await message.channel.send(embed);
+            const msg = await message.channel.send({ embeds: [embed] });
 
-            msg.delete();
-            const confirmEmbed = new Discord.MessageEmbed()
+            const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Are you sure you want execute this command?', message.author.avatarURL());
-
-            confirmEmbed.addField('Given content', `**${custom}**`, false);
+                .setColor('Yellow')
+                .setAuthor({ name: 'Are you sure you want to execute this command?', iconURL: message.author.displayAvatarURL() })
+                .addFields({ name: 'Given content', value: `**${custom}**`, inline: false });
 
             if (await Helpers.confirm(message, confirmEmbed)) {
                 let command = '';
                 let params = [];
-                const splited = custom.split(' ');
-                if(splited.length > 1) { // grab params then
-                    command = splited[0];
-                    params = splited.slice(1);
+                const split = custom.split(' ');
+                if (split.length > 1) {
+                    command = split[0];
+                    params = split.slice(1);
                 } else {
                     command = custom;
                 }
 
                 return resolve({
                     command: command,
-                    params: params
+                    params: params,
                 });
+            } else {
+                return reject(console.error("Custom command interrupted!"));
             }
-            else {
-                return reject(console.error("custom command interrupted!"))
-            }
-        })
+        });
     }
 
-
-    buildEmbed(message, parameters, response) { 
+    buildEmbed(message, parameters, response) {
         const str = parameters.params.length ? `[${parameters.params.join(' ')}]` : "";
-        const embed = new Discord.MessageEmbed()
+        const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? "00FF00" : "FF0000")
-            .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png')
-            .setFooter('Author: Bartis', 'https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png')
-            .setAuthor('Custom command', message.author.avatarURL())
-            .addField('Issuer', message.author.username, true)
-            .addField('Content', `**${parameters.command}** ${str}`, true)
-            .addField('Status', response.status, true)
+            .setColor(response.status === "OK" ? 'Green' : 'Red')
+            .setAuthor({ name: 'Custom Command', iconURL: message.author.displayAvatarURL() })
+            .addFields(
+                { name: 'Issuer', value: message.author.username, inline: true },
+                { name: 'Content', value: `**${parameters.command}** ${str}`, inline: true },
+                { name: 'Status', value: response.status, inline: true }
+            );
+
         if (response.status === "FAILED") {
-            embed.addField('Reason for failing', response.error, true)
+            embed.addFields({ name: 'Reason for Failing', value: response.error, inline: true });
         }
         if (response.data) {
-            embed.addField('Message', response.data);
+            embed.addFields({ name: 'Message', value: response.data, inline: false });
         }
-        embed.addField('Server', response.server, false)
+        embed.addFields({ name: 'Server', value: response.server, inline: false });
 
-        return embed
+        return embed;
     }
-}
+};

@@ -1,37 +1,28 @@
 const fetch = require("node-fetch");
-const Discord = require('discord.js');
+const { EmbedBuilder } = require("discord.js");
 import { Helpers } from '../../helpers/helpers'
-import getVer from '../../helpers/ver.js';
-import { getMapObj, getModesObj } from '../../helpers/mapsObj.js'
 
-// TODO
 module.exports = class map {
     constructor() {
         this.name = 'map';
         this.alias = ['mapindex'];
         this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
-        this.maplistArr = [];
-        this.modelistArr = [];
-        this.maplistRaw = [];
-        this.lenMap;
-        this.serverUrl;
     }
-
 
     async run(bot, message, args) {
         if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
             message.reply("You don't have permission to use this command.")
             return
-        }       
+        }
 
         let server = await Helpers.selectServer(message)
         this.serverUrl = server;
         if (!server) {
-            message.delete({ timeout: 5000 });
+            message.delete().catch(console.error);
             return;
         }
 
-        message.delete()
+        message.delete().catch(console.error);
 
         let parameters = await this.getParameters(message, server)
             .then(parameters => {
@@ -53,11 +44,11 @@ module.exports = class map {
                 "Accept": "application/json",
                 "Accept-Charset": "utf-8"
             },
-            body: JSON.stringify(parameters)
+            body: JSON.stringify(parameters.indexNum)
         })
             .then(response => response.json())
             .then(json => {
-                return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] })
             })
             .catch(error => {
                 console.log(error)
@@ -65,69 +56,57 @@ module.exports = class map {
             })
     }
 
-    getMapArray() {
-        const maps = getMapObj(getVer(this.serverUrl));
-        const modes = getModesObj(getVer(this.serverUrl));
-        this.maplistArr = [];
-        this.modelistArr = [];
-        this.maplistRaw = [];
-
-        return fetch(`${this.serverUrl}/listOfMaps`, {
+    async getMapArray(server) {
+        return fetch(`${server}/listOfMaps`, {
             method: "post",
             headers: {
                 "Content-type": "application/json",
                 "Accept": "application/json",
                 "Accept-Charset": "utf-8"
             },
+            body: JSON.stringify({
+                pretty: true
+            })
         })
             .then(response => response.json())
             .then(json => {
-                const array = json.data;
-
-                for (let i = 2; i < array.length; i += 3) {
-                    const mapCode = array[i];
-                    const mapMode = array[i + 1];
-
-                    this.maplistRaw.push(mapCode);
-                    this.maplistArr.push(maps[mapCode]);
-                    this.modelistArr.push(modes[mapMode]);
-                }
-
-                this.lenMap = this.maplistRaw.length;
-                return true;
+                return json.data.maps;
             })
             .catch(error => {
-                console.error(error)
-                return false
+                console.error("Error fetching map array:", error);
+                return [];
             })
     }
 
-    generateDesc() {
-        const len = this.lenMap
-        let ready_str = `\`\`\`c\n`;
-        const mapname = this.maplistArr;
-        const modename = this.modelistArr;
+    generateDesc(mapObj) {
+        let readyString = `\`\`\`c\n`;
 
-        for (let i = 0; i < len; i++) {
-            ready_str += `Number: ${i} Name: "${mapname[i]}" Mode "${modename[i]}"` + '\n';
-        }
+        mapObj.forEach((mapData, index) => {
+            const map = mapData[0];    // Map name
+            const mode = mapData[1];   // Mode
+            const rounds = mapData[2]; // Rounds
 
-        ready_str += `\`\`\``
-        return ready_str;
+            readyString += `[${index}] Map: "${map}" Mode: "${mode}" (${rounds})\n`;
+        });
+
+        readyString += `\`\`\``;
+
+        return readyString;
     }
 
-    getParameters(message) {
+    getParameters(message, server) {
         return new Promise(async (resolve, reject) => {
             let indexNum;
-            await this.getMapArray()
-            const desc = this.generateDesc()
+            await this.getVer(server); // Ensure version is fetched
+            const mapObj = await this.getMapArray(server);
+            const desc = this.generateDesc(mapObj);
 
-            const embed = new Discord.MessageEmbed()
+            const embed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setDescription(desc)
+                .setColor('Green')
+                .setDescription(desc);
 
-            const msg = await message.channel.send(embed)
+            const msg = await message.channel.send({ embeds: [embed] });
 
             askIndex: while (true) {
                 indexNum = await Helpers.askIndex(message);
@@ -135,54 +114,85 @@ module.exports = class map {
                     if (await Helpers.askTryAgain(message)) {
                         continue askIndex;
                     }
-                    return reject(console.error("Couldn't get the index number"))
+                    return reject(console.error("Couldn't get the index number"));
                 }
                 break;
             }
 
             msg.delete().catch(err => console.log('Message already deleted or does not exist.'));
 
-            const content = this.maplistArr;
-            const confirmEmbed = new Discord.MessageEmbed()
+            const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Are you sure to set this map as next?', message.author.avatarURL());
-
-            confirmEmbed.addField('Given index', `**${indexNum}**`, false);
-            confirmEmbed.addField('Which is', `**${content[indexNum]}**`, false);
+                .setColor('Yellow')
+                .setAuthor({
+                    name: 'Are you sure to set this map as next?',
+                    iconURL: message.author.displayAvatarURL(),
+                })
+                .addFields(
+                    { name: 'Given index', value: `**${indexNum}**`, inline: false },
+                    { name: 'Which is', value: `**${mapObj[indexNum]}**`, inline: false }
+                );
 
             if (await Helpers.confirm(message, confirmEmbed)) {
                 return resolve({
-                    indexNum: indexNum
+                    indexNum: indexNum,
+                    selected: mapObj[indexNum],
                 });
+            } else {
+                return reject(console.error("Map selection interrupted!"));
             }
-            else {
-                return reject(console.error("Map interrupted!"))
-            }
+        });
+    }
+
+    async getVer(server) {
+        return fetch(`${server}/version`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Accept-Charset": "utf-8",
+            },
         })
+            .then(response => response.json())
+            .then(json => {
+                this.version = json.data[0];
+                return json.data[0];
+            })
+            .catch(error => {
+                console.error("Error fetching map array:", error);
+                return null;
+            });
     }
 
     buildEmbed(message, parameters, response) {
-        const valid = this.maplistArr;
-        const urlPrefix = getVer(this.serverUrl) === 'BF4' 
-        ? 'http://eaassets-a.akamaihd.net/bl-cdn/cdnprefix/production-5780-20210129/public/base/bf4/map_images/335x160/'
-        : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/'
+        const urlPrefix = this.version === 'BF4'
+            ? 'http://eaassets-a.akamaihd.net/bl-cdn/cdnprefix/production-5780-20210129/public/base/bf4/map_images/335x160/'
+            : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/';
 
-        const img = urlPrefix + this.maplistRaw[parameters.indexNum].toLowerCase() + '.jpg'
-        const embed = new Discord.MessageEmbed()
+        const img = urlPrefix + parameters.selected[0].toLowerCase() + '.jpg';
+        const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? "00FF00" : "FF0000")
-            .setFooter('Author: Bartis', img)
-            .setAuthor('Next map: ', message.author.avatarURL())
-            .addField('Issuer', message.author.username, true)
-            .addField('Status', response.status, true)
-            .addField('Next map will be: ', `${valid[parameters.indexNum]}`)
-            .setImage(img)
-        if (response.status === "FAILED") {
-            embed.addField('Reason for failing', response.error, true)
-        }
-        embed.addField('Server', response.server, false)
+            .setColor(response.status === "OK" ? 'Green' : 'Red')
+            .setFooter({
+                text: 'Author: Bartis',
+                iconURL: img,
+            })
+            .setAuthor({
+                name: 'Next map:',
+                iconURL: message.author.displayAvatarURL(),
+            })
+            .addFields(
+                { name: 'Issuer', value: message.author.username, inline: true },
+                { name: 'Status', value: response.status, inline: true },
+                { name: 'Next map will be:', value: `${parameters.selected[0]}`, inline: false }
+            )
+            .setImage(img);
 
-        return embed
+        if (response.status === "FAILED") {
+            embed.addFields({ name: 'Reason for failing', value: response.error, inline: true });
+        }
+        embed.addFields({ name: 'Server', value: response.server, inline: false });
+
+        return embed;
     }
 }

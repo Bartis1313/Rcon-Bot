@@ -47,6 +47,8 @@ module.exports = function (bc) {
         SquadRush0: 'Squad Rush'
     };
 
+    bc.gameModes = gameModes;
+
     const gameMaps = {
         MP_Abandoned: 'Zavod 311',
         MP_Damage: 'Lancang Dam',

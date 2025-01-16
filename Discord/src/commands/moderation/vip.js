@@ -1,9 +1,8 @@
 const fetch = require("node-fetch");
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 
-// TODO
-module.exports = class vip {
+module.exports = class Vip {
     constructor() {
         this.name = 'vip';
         this.alias = ['reservedslots'];
@@ -11,54 +10,50 @@ module.exports = class vip {
     }
 
     async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
-            message.reply("You don't have permission to use this command.")
-            return
-        }
-
-        let server = await Helpers.selectServer(message)
-        this.serverUrl = server;
-        if (!server) {
-            message.delete({ timeout: 5000 });
+        if (!message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID)) {
+            message.reply("You don't have permission to use this command.");
             return;
         }
 
-        message.delete();
+        let server = await Helpers.selectServer(message);
+        if (!server) {
+            message.delete().catch(console.error);
+            return;
+        }
+
+        message.delete().catch(console.error);
 
         let parameters = await this.getParameters(message, server)
-            .then(parameters => {
-                return parameters;
-            })
+            .then(parameters => parameters)
             .catch(err => {
-                console.log(err);
+                console.error(err);
                 return null;
-            })
+            });
 
         if (!parameters) {
-            return
+            return;
         }
 
         return fetch(`${server}/reservedSlots`, {
             method: "post",
             headers: {
-                "Content-type": "application/json",
+                "Content-Type": "application/json",
                 "Accept": "application/json",
-                "Accept-Charset": "utf-8"
+                "Accept-Charset": "utf-8",
             },
-            body: JSON.stringify(parameters)
+            body: JSON.stringify(parameters),
         })
             .then(response => response.json())
             .then(json => {
-                console.log(json)
-                return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] });
             })
             .catch(error => {
-                console.log(error)
-                return false
-            })
+                console.error(error);
+                return false;
+            });
     }
 
-    getParameters(message, server) {
+    async getParameters(message) {
         return new Promise(async (resolve, reject) => {
             let soldierName;
 
@@ -69,43 +64,53 @@ module.exports = class vip {
                         continue askPlayerName;
                     }
 
-                    return reject(console.error("Couldn't get the soldierName"))
+                    return reject(console.error("Couldn't get the soldierName"));
                 }
                 break;
             }
 
-            const confirmEmbed = new Discord.MessageEmbed()
+            const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Are you sure you want to add VIP for this player?', message.author.avatarURL());
-
-            confirmEmbed.addField('Given playerName', `**${soldierName}**`, false);
+                .setColor('Yellow')
+                .setAuthor({
+                    name: 'Are you sure you want to add VIP for this player?',
+                    iconURL: message.author.displayAvatarURL(),
+                })
+                .addFields({ name: 'Given playerName', value: `**${soldierName}**`, inline: false });
 
             if (await Helpers.confirm(message, confirmEmbed)) {
                 return resolve({
-                    soldierName: soldierName
+                    soldierName: soldierName,
                 });
+            } else {
+                return reject(console.error("VIP command interrupted!"));
             }
-            else {
-                return reject(console.error("Vip interrupted!"))
-            }
-        })
+        });
     }
 
     buildEmbed(message, parameters, response) {
-        const embed = new Discord.MessageEmbed()
+        const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? "00FF00" : "FF0000")
+            .setColor(response.status === "OK" ? 'Green' : 'Red')
             .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688012094972625024/fireworks.png')
-            .setFooter('Author: Bartis', 'https://cdn.discordapp.com/attachments/608427147039866888/688012094972625024/fireworks.png')
-            .setAuthor('Player Reserved Slot', message.author.avatarURL())
-            .addField('Issuer', message.author.username, true)
-            .addField('Target', `**${parameters.soldierName}**`, true)
-            .addField('Status', response.status, true)
+            .setFooter({
+                text: 'Author: Bartis',
+                iconURL: 'https://cdn.discordapp.com/attachments/608427147039866888/688012094972625024/fireworks.png',
+            })
+            .setAuthor({
+                name: 'Reserved Slot',
+                iconURL: message.author.displayAvatarURL(),
+            })
+            .addFields(
+                { name: 'Issuer', value: message.author.username, inline: true },
+                { name: 'Target', value: `**${parameters.soldierName}**`, inline: true },
+                { name: 'Status', value: response.status, inline: true }
+            );
+
         if (response.status === "FAILED") {
-            embed.addField('Reason for failing', response.error, true)
+            embed.addFields({ name: 'Reason for Failing', value: response.error, inline: true });
         }
 
-        return embed
+        return embed;
     }
-}
+};

@@ -1,5 +1,9 @@
 //const { Message, TextChannel, DMChannel, MessageCollector, Collection, EmbedBuilder } = require('discord.js');
 
+const _safeDelete = (msg) => {
+    msg.delete().catch(error => { console.error("Error deleting message: ", error) });
+};
+
 module.exports = class Prompter {
 
     static async message(channel, { question, userId, max = 1, timeout = 60000 }) {
@@ -50,14 +54,17 @@ module.exports = class Prompter {
 
         // If no reaction was collected, return null
         if (!collected) {
+            _safeDelete(message);
             return null;
         }
 
         const reaction = collected.first();
 
         if (reaction.emoji.name === reactions.yes) {
+            _safeDelete(message);
             return 'yes';
         } else if (reaction.emoji.name === reactions.no) {
+            _safeDelete(message);
             return 'no';
         }
     }

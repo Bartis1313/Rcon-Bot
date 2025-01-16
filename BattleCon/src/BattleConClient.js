@@ -32,7 +32,7 @@ class BattleConClient {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
         version = msg[1];
 
-        loadPlugins(this._connection);
+        //loadPlugins(this._connection);
       });
     });
 
@@ -51,6 +51,22 @@ class BattleConClient {
   }
 
   // define methods
+
+  getMapsRaw() {
+    return this._connection.gameMaps;
+  }
+
+  getModesRaw() {
+    return this._connection.gameModes;
+  }
+
+  getPrettyMap(map) {
+    return this._connection.gameMaps[map] || "Map not found";
+  }
+
+  getPrettyMode(mode) {
+    return this._connection.gameModes[mode] || "Mode not found";
+  }
 
   connect() {
     this._connection.connect(); // Connects and logs in
@@ -159,27 +175,16 @@ class BattleConClient {
     })
   }
 
-  team_1() {
+  team(number) {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
-      connection.team_1(function (err, players) {
-        for (var i = 0; i < players.length; i++) {
-        }
-        err ? reject(err.message) : resolve({ players: players })
+
+      connection.exec(["listPlayers", "team", number.toString()], function (err, players) {
+        err ? reject(err.message) : resolve({ players: connection.tabulate(players) })
       });
     })
   }
 
-  team_2() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.team_2(function (err, players) {
-        for (var i = 0; i < players.length; i++) {
-        }
-        err ? reject(err.message) : resolve({ players: players })
-      });
-    })
-  }
   serverFPS() {
     let connection = this._connection
     return new Promise(function (resolve, reject) {

@@ -255,7 +255,6 @@ class Helpers {
             });
     }
 
-
     static async askTryAgain(msg, title, description) {
         const embed = new EmbedBuilder()
             .setTimestamp()
@@ -270,14 +269,15 @@ class Helpers {
         }).then(async response => {
             // If no responses, the time ran out
             if (!response) {
-                msg.delete().catch(deleteError => {
-                    console.error('Failed to delete the message:', deleteError);
-                });
                 return null
             }
 
-            if (response === 'yes') return true;
-            if (response === 'no') return false;
+            if (response === 'yes') {
+                return true;
+            }
+            if (response === 'no') {
+                return false;
+            }
         });
     }
 
@@ -298,8 +298,12 @@ class Helpers {
                 return null
             }
 
-            if (response === 'yes') return true;
-            if (response === 'no') return false;
+            if (response === 'yes') {
+                return true;
+            }
+            if (response === 'no') {
+                return false;
+            }
         });
     }
 
@@ -316,7 +320,7 @@ class Helpers {
             max: 1,
             timeout: 60 * 1000,
         }).then(async response => {
-
+            // see if it makes sense to auto delete these too...
             if (response === null) {
                 return null;
             }

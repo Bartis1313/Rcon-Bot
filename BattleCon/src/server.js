@@ -50,6 +50,12 @@ process.on('SIGTERM', () => {
     })
 })
 
+const path = require("path");
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.get("/serverName", (req, res, next) => {
     client.version()
         .then((response) => {
@@ -179,20 +185,8 @@ app.post("/count", (req, res, next) => {
 
 
 
-app.post("/team_1", (req, res, next) => {
-    client.team_1()
-        .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
-        })
-        .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
-        })
-});
-
-app.post("/team_2", (req, res, next) => {
-    client.team_2()
-
+app.post("/team", (req, res, next) => {
+    client.team(req.body.id)
         .then((response) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
@@ -215,10 +209,25 @@ app.post("/serverfps", (req, res, next) => {
 })
 
 app.post("/listOfMaps", (req, res, next) => {
+    const isPretty = req.body?.pretty == true;
+
     client.listOfMaps()
 
         .then((response) => {
-            res.json({ status: "OK", server: serverName, data: response });
+            const formattedResponse = {
+                totalMaps: parseInt(response[0]),   // map count
+                unknown: parseInt(response[1]),     // ???
+                maps: []                            // map, mode, rounds
+            };
+
+            for (let i = 2; i < response.length; i += 3) {
+                formattedResponse.maps.push([
+                    isPretty ? client.getPrettyMap(response[i]) : response[i],
+                    isPretty ? client.getPrettyMode(response[i + 1]) : response[i + 1],
+                    parseInt(response[i + 2]) // Rounds
+                ]);
+            }
+            res.json({ status: "OK", server: serverName, data: formattedResponse });
         })
         .catch(err => {
 
@@ -381,6 +390,22 @@ app.post("/custom", (req, res, next) => {
         })
 })
 
-app.post("/getNextmap", (req, res, next) => {
-    // TODO
+app.get("/getMapIndices", (req, res, next) => {
+    client.getMapIndices()
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response });
+        })
+        .catch(err => {
+
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+        })
+})
+
+app.all("/getMapsModesRaw", (req, res, next) => {
+    const maps = client.getMapsRaw();
+    const modes = client.getModesRaw();
+
+    const isPretty = req.body?.pretty;
+
+    res.json({ status: "OK", server: serverName, data: { maps, modes } });
 })

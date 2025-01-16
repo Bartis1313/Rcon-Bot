@@ -2,7 +2,7 @@ const fetch = require("node-fetch");
 const { EmbedBuilder } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 
-module.exports = class say {
+module.exports = class Say {
     constructor() {
         this.name = 'say';
         this.alias = ['sayall'];
@@ -80,7 +80,7 @@ module.exports = class say {
 
             const embed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor(0x00FF00) // Use hex color
+                .setColor('Yellow')
                 .setAuthor({ name: 'Given Properties', iconURL: message.author.displayAvatarURL() })
                 .addFields({ name: 'Given content', value: `**${what}**`, inline: false });
 
@@ -88,7 +88,7 @@ module.exports = class say {
 
             const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor(0x00FF00)
+                .setColor('Yellow')
                 .setAuthor({ name: 'Are you sure you want to say it to all as admin?', iconURL: message.author.displayAvatarURL() });
 
             if (await Helpers.confirm(message, confirmEmbed)) {
@@ -107,9 +107,7 @@ module.exports = class say {
     buildEmbed(message, parameters, response) {
         const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? 0x00FF00 : 0xFF0000)  // Hex color
-            .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png')
-            .setFooter({ text: 'Author: Bartis', iconURL: 'https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png' })
+            .setColor(response.status === "OK" ? 'Green' : 'Red')
             .setAuthor({ name: 'Say all', iconURL: message.author.displayAvatarURL() })
             .addFields(
                 { name: 'Issuer', value: message.author.username, inline: true },
