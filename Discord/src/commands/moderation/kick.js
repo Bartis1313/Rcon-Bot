@@ -169,7 +169,7 @@ module.exports = class Kick {
         }
 
         if (response.status === "FAILED") {
-            embed.addFields({ name: 'Reason for failing', value: response.error, inline: true });
+            embed.addFields({ name: 'Reason for failing', value: response.error.name, inline: true });
         }
 
         embed.addFields({ name: 'Server', value: response.server, inline: false });

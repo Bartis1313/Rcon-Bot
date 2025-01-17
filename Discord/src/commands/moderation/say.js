@@ -47,7 +47,6 @@ module.exports = class Say {
         })
             .then(response => response.json())
             .then(json => {
-                console.log("Got to api");
                 return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] });
             })
             .catch(error => {
@@ -117,7 +116,7 @@ module.exports = class Say {
 
         if (response.status === "FAILED") {
             embed.addFields(
-                { name: 'Reason for failing', value: response.error, inline: true }
+                { name: 'Reason for failing', value: response.error.name, inline: true }
             );
         }
 

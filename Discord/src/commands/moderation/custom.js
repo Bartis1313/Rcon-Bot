@@ -118,10 +118,10 @@ module.exports = class CustomCommand {
             );
 
         if (response.status === "FAILED") {
-            embed.addFields({ name: 'Reason for Failing', value: response.error, inline: true });
+            embed.addFields({ name: 'Reason for Failing', value: response.error.name, inline: true });
         }
         if (response.data) {
-            embed.addFields({ name: 'Message', value: response.data, inline: false });
+            embed.addFields({ name: 'Message', value: String(response.data), inline: false });
         }
         embed.addFields({ name: 'Server', value: response.server, inline: false });
 

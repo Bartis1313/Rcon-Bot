@@ -204,7 +204,7 @@ module.exports = class List {
                 { name: 'Round Time', value: `${fTime(currentInfo.RoundUpTime)}`, inline: true }
             )
             .setDescription(`**Scoreboard**\n` +
-                `**Kills (K)** | **Deaths (D)** | **Player Names**\n` +
+                `**Score** | **Kills (K)** | **Deaths (D)** | **Player Names**\n` +
                 `\`\`\`c\n${formattedScoreboard}\`\`\``)
             .setColor(0x00FF00)
             .setTimestamp();

@@ -108,7 +108,7 @@ module.exports = class Vip {
             );
 
         if (response.status === "FAILED") {
-            embed.addFields({ name: 'Reason for Failing', value: response.error, inline: true });
+            embed.addFields({ name: 'Reason for Failing', value: response.error.name, inline: true });
         }
 
         return embed;

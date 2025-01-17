@@ -284,7 +284,7 @@ class Helpers {
     static async confirm(msg, question) {
         const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(0x00ff00) // Use hex for color
+            .setColor(0x00ff00)
             .setAuthor({ name: 'Confirm', iconURL: msg.author.displayAvatarURL() })
             .setDescription('Do you want to continue?');
 

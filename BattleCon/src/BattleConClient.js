@@ -206,7 +206,7 @@ class BattleConClient {
     return new Promise(function (resolve, reject) {
       if (!indexNum) reject('Index is required.')
 
-      connection.exec(["mapList.setNextMapIndex", indexNum], function (err, msg) {
+      connection.exec(["mapList.setNextMapIndex", indexNum.toString()], function (err, msg) {
         err ? reject(err.message) : resolve({ indexNum: indexNum })
       });
     })
