@@ -328,14 +328,15 @@ class Helpers {
         });
     }
 
-    static async askByArray(msg, namedChoices) {
+    static async askByArray(msg, namedChoices, desc) {
 
         const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(0x00FF00)
-            .setAuthor({ name: 'Type', iconURL: msg.author.avatarURL() });
+            .setAuthor({ name: 'Type', iconURL: msg.author.displayAvatarURL() })
+            .setDescription(desc);
 
         for (let index = 0; index < namedChoices.length; index++) {
             embed.addFields({ name: choices[index], value: `**${namedChoices[index]}**`, inline: false });

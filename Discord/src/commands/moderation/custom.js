@@ -69,15 +69,6 @@ module.exports = class CustomCommand {
                 break;
             }
 
-            const embed = new EmbedBuilder()
-                .setTimestamp()
-                .setColor('Green')
-                .setAuthor({ name: 'Given Properties', iconURL: message.author.displayAvatarURL() });
-
-            embed.addFields({ name: 'Given content', value: `**${custom}**`, inline: false });
-
-            const msg = await message.channel.send({ embeds: [embed] });
-
             const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
                 .setColor('Yellow')
