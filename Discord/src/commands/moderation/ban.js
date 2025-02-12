@@ -1,29 +1,195 @@
-const { EmbedBuilder } = require('discord.js');
-const fetch = require('node-fetch');
+const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
+import Fetch from '../../helpers/fetch';
 
 module.exports = class BanCommand {
     constructor() {
         this.name = 'ban';
-        this.alias = ['banplayer'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
+        this.description = 'Ban a player from the server.';
     }
 
-    async run(bot, message, args) {
-        if (!message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID)) {
-            await message.reply("You don't have permission to use this command.");
+    async init() {
+        const servers = await Helpers.getServerChoices();
+
+        this.slashCommand = new SlashCommandBuilder()
+            .setName(this.name)
+            .setDescription('Ban a player from the server.')
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('permanent')
+                    .setDescription('Permanently ban a player')
+                    .addStringOption(option =>
+                        option.setName('server')
+                            .setDescription("Select the server")
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('type')
+                            .setDescription('The type of ban (name, ip, or guid)')
+                            .setRequired(true)
+                            .addChoices(
+                                { name: 'Name', value: 'name' },
+                                { name: 'IP', value: 'ip' },
+                                { name: 'GUID', value: 'guid' }
+                            )
+                    )
+                    .addStringOption(option =>
+                        option.setName('id')
+                            .setDescription('The player name, IP, or GUID to ban')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('reason')
+                            .setDescription('The reason for the ban')
+                            .setRequired(false)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('temporary')
+                    .setDescription('Temporarily ban a player for a specific duration')
+                    .addStringOption(option =>
+                        option.setName("server")
+                            .setDescription("Select the server")
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('type')
+                            .setDescription('The type of ban (name, ip, or guid)')
+                            .setRequired(true)
+                            .addChoices(
+                                { name: 'Name', value: 'name' },
+                                { name: 'IP', value: 'ip' },
+                                { name: 'GUID', value: 'guid' }
+                            )
+                    )
+                    .addStringOption(option =>
+                        option.setName('id')
+                            .setDescription('The player name, IP, or GUID to ban')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('duration')
+                            .setDescription('The ban duration (e.g., 2m, 1h, 1w)')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('reason')
+                            .setDescription('The reason for the ban')
+                            .setRequired(false)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('rounds')
+                    .setDescription('Ban a player for a specific number of rounds')
+                    .addStringOption(option =>
+                        option.setName("server")
+                            .setDescription("Select the server")
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('type')
+                            .setDescription('The type of ban (name, ip, or guid)')
+                            .setRequired(true)
+                            .addChoices(
+                                { name: 'Name', value: 'name' },
+                                { name: 'IP', value: 'ip' },
+                                { name: 'GUID', value: 'guid' }
+                            )
+                    )
+                    .addStringOption(option =>
+                        option.setName('id')
+                            .setDescription('The player name, IP, or GUID to ban')
+                            .setRequired(true)
+                    )
+                    .addIntegerOption(option =>
+                        option.setName('rounds')
+                            .setDescription('The number of rounds to ban the player')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('reason')
+                            .setDescription('The reason for the ban')
+                            .setRequired(false)
+                    )
+            );
+    }
+
+    async runSlash(interaction) {
+        if (!interaction.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID)) {
+            await interaction.reply({ content: "You don't have permission to use this command.", flags: MessageFlags.Ephemeral });
             return;
         }
 
-        let server = await Helpers.selectServer(message);
+        await interaction.deferReply();
+
+        const server = interaction.options.getString("server");
+        const subcommand = interaction.options.getSubcommand();
+        const banType = interaction.options.getString('type');
+        const banId = interaction.options.getString('id');
+        const banReason = interaction.options.getString('reason') || 'No reason provided';
+
+        let timeout;
+
+        switch (subcommand) {
+            case 'permanent':
+                timeout = 'perm';
+                break;
+
+            case 'temporary':
+                const duration = interaction.options.getString('duration');
+                const parsedSeconds = this.parseTimeout(duration);
+                if (parsedSeconds === null) {
+                    await interaction.editReply("Invalid time format. Use `2m`, `1h`, `1w`.");
+                    return;
+                }
+                timeout = `seconds ${parsedSeconds}`;
+                break;
+
+            case 'rounds':
+                const rounds = interaction.options.getInteger('rounds');
+                if (isNaN(rounds) || rounds <= 0) {
+                    await interaction.editReply("Invalid number of rounds.");
+                    return;
+                }
+                timeout = `rounds ${rounds}`;
+                break;
+        }
+
+        const parameters = {
+            banType: banType,
+            banId: banId,
+            timeout: timeout,
+            banReason: banReason,
+        };
+
+        return Fetch.post(`${server}/admin/ban`, parameters)
+            .then(json => {
+                return interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, json)] });
+            })
+            .catch(error => {
+                console.error(error);
+                return false;
+            });
+    }
+
+    async run(bot, message, args) {
+        if (!Helpers.checkRoles(message, this))
+            return;
+
+        const server = await Helpers.selectServer(message);
         if (!server) {
-            await message.delete({ timeout: 5000 });
+            await message.delete().catch(() => { });
             return;
         }
 
         await message.delete().catch(() => { });
 
-        let parameters = await this.getParameters(message, server)
+        const parameters = await this.getParameters(message, server)
             .then(parameters => parameters)
             .catch(err => {
                 console.error(err);
@@ -34,16 +200,7 @@ module.exports = class BanCommand {
             return;
         }
 
-        return fetch(`${server}/admin/ban`, {
-            method: "POST",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-            body: JSON.stringify(parameters)
-        })
-            .then(response => response.json())
+        return Fetch.post(`${server}/admin/ban`, parameters)
             .then(json => {
                 return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] });
             })
@@ -60,7 +217,6 @@ module.exports = class BanCommand {
             let timeout;
             let banReason;
 
-            // Ask for the ban type
             askBanType: while (true) {
                 banType = await Helpers.askByArray(message, ["name", "ip", "guid"], "Type of ban");
                 if (!banType) {
@@ -72,7 +228,6 @@ module.exports = class BanCommand {
                 break;
             }
 
-            // Ask for the player name, IP, or GUID
             askPlayerName: while (true) {
                 banId = await Helpers.ask(message, "Give name / IP / GUID", "Type it correctly, it's NOT matched");
                 if (!banId) {
@@ -84,7 +239,6 @@ module.exports = class BanCommand {
                 break;
             }
 
-            // Ask for the ban timeout
             askTimeout: while (true) {
                 timeout = await Helpers.askByArray(message, ["perm", "seconds", "rounds"], "Choose ban time");
                 if (!timeout) {
@@ -96,7 +250,6 @@ module.exports = class BanCommand {
                 break;
             }
 
-            // Validate and parse the timeout
             if (timeout === "seconds") {
                 askSeconds: while (true) {
                     const timeInput = await Helpers.ask(message, "Timeout", "Specify amount of time (e.g., 2m, 1h, 1w)");
@@ -131,7 +284,6 @@ module.exports = class BanCommand {
                 }
             }
 
-            // Ask for the ban reason
             askReason: while (true) {
                 banReason = await Helpers.ask(message, "Give reason of ban", "The reason will be why the player got banned");
                 if (!banReason) {
@@ -146,7 +298,7 @@ module.exports = class BanCommand {
             const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
                 .setColor("00FF00")
-                .setAuthor({ name: 'Are you sure you want to ban the player?', iconURL: message.author.avatarURL() })
+                .setAuthor({ name: 'Are you sure you want to ban the player?', iconURL: message.user.avatarURL() })
                 .addFields(
                     { name: 'Given banType', value: `**${banType}**`, inline: false },
                     { name: 'Given playername', value: `**${banId}**`, inline: false },
@@ -180,7 +332,7 @@ module.exports = class BanCommand {
         const match = timeInput.match(regex);
 
         if (!match) {
-            return null; // Invalid format
+            return null;
         }
 
         const value = parseInt(match[1], 10);
@@ -189,15 +341,15 @@ module.exports = class BanCommand {
         return value * timeUnits[unit];
     }
 
-    buildEmbed(message, parameters, response) {
+    buildEmbed(messageOrInteraction, parameters, response) {
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(response.status === "OK" ? "00FF00" : "FF0000")
             .setThumbnail('https://img.pngio.com/ban-banhammer-censor-censorship-hammer-ip-block-moderator-icon-banhammer-png-512_512.png')
             .setFooter({ text: 'Author: Bartis', iconURL: 'https://img.pngio.com/ban-banhammer-censor-censorship-hammer-ip-block-moderator-icon-banhammer-png-512_512.png' })
-            .setAuthor({ name: 'Ban', iconURL: message.author.avatarURL() })
+            .setAuthor({ name: 'Ban', iconURL: messageOrInteraction.user.displayAvatarURL() })
             .addFields(
-                { name: 'Issuer', value: message.author.username, inline: true },
+                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
                 { name: 'Target', value: `**${response?.data?.banId}**`, inline: true },
                 { name: 'Type', value: response?.data?.banType, inline: true }
             );

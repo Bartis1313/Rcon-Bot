@@ -1,10 +1,10 @@
 //const { Message, TextChannel, DMChannel, MessageCollector, Collection, EmbedBuilder } = require('discord.js');
 
-const _safeDelete = (msg) => {
-    msg.delete().catch(error => { console.error("Error deleting message: ", error) });
+const _safeDelete = async (msg, write = false) => {
+    msg.delete().catch(error => { if (write) console.error("Error deleting message: ", error); });
 };
 
-module.exports = class Prompter {
+export default class Prompter {
 
     static async message(channel, { question, userId, max = 1, timeout = 60000 }) {
         const embed = question // TODO: checking, use some preexisting default embed
@@ -27,7 +27,7 @@ module.exports = class Prompter {
             return response.content;
         } catch {
             // Delete the question message if time runs out
-            await message.delete().catch(() => null);
+            await _safeDelete(message);
             return null; // No response
         }
     }

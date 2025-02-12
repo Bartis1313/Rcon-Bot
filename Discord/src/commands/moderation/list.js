@@ -1,45 +1,56 @@
-const fetch = require("node-fetch");
-const { EmbedBuilder } = require('discord.js');
-import { Helpers } from '../../helpers/helpers'
-import fTime from '../../helpers/timeFormat.js'
+const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+import { Helpers, DiscordLimits } from '../../helpers/helpers'
+import Fetch from '../../helpers/fetch.js';
+
+const formatDuration = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+
+    let formattedDuration = '';
+
+    if (hours > 0) {
+        formattedDuration += hours.toString().padStart(2, '0') + ':';
+    }
+
+    formattedDuration += minutes.toString().padStart(2, '0') + ':' + remainingSeconds.toString().padStart(2, '0');
+
+    return formattedDuration;
+}
 
 module.exports = class List {
     constructor() {
         this.name = 'list';
-        this.alias = ['listplayers'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
+        this.description = 'Sends formatted embed message of players from the server'
 
         this.scoreboardMessage = {};
         this.scoreboardChannelId = {};
         this.intervalIds = {};
     }
 
+    async init() {
+        const servers = await Helpers.getServerChoices();
+
+        this.slashCommand = new SlashCommandBuilder()
+            .setName(this.name)
+            .setDescription(this.description)
+            .addStringOption(option =>
+                option.setName('server')
+                    .setDescription('Select the server')
+                    .setRequired(true)
+                    .addChoices(...servers)
+            )
+    }
+
     async getTeams(server) {
         try {
-            const response1 = fetch(`${server}/team`, {
-                method: "POST",
-                headers: {
-                    "Content-type": "application/json",
-                    "Accept": "application/json",
-                    "Accept-Charset": "utf-8"
-                },
-                body: JSON.stringify({ id: 1 })
-            });
-
-            const response2 = fetch(`${server}/team`, {
-                method: "POST",
-                headers: {
-                    "Content-type": "application/json",
-                    "Accept": "application/json",
-                    "Accept-Charset": "utf-8"
-                },
-                body: JSON.stringify({ id: 2 })
-            });
+            const response1 = Fetch.get(`${server}/team`, { id: 1 });
+            const response2 = Fetch.get(`${server}/team`, { id: 2 });
 
             const [data1, data2] = await Promise.all([response1, response2]);
 
-            const json1 = await data1.json();
-            const json2 = await data2.json();
+            const json1 = data1;
+            const json2 = data2;
 
             let retData = {};
 
@@ -81,15 +92,7 @@ module.exports = class List {
     }
 
     async getInfo(server) {
-        return fetch(`${server}/getInfo`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-        })
-            .then(response => response.json())
+        return Fetch.get(`${server}/getInfo`)
             .then(json => {
                 if (json.status !== "OK") {
                     return null;
@@ -102,15 +105,7 @@ module.exports = class List {
     }
 
     async getIndices(server) {
-        return fetch(`${server}/getIndices`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            }
-        })
-            .then(response => response.json())
+        return Fetch.get(`${server}/getIndices`)
             .then(json => {
                 return { currentIdx: json.data[0], nextIdx: json.data[1] };
             })
@@ -119,19 +114,23 @@ module.exports = class List {
             })
     }
 
-    async getMapArray(server) {
-        return fetch(`${server}/listOfMaps`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-            body: JSON.stringify({
-                pretty: true
-            })
+    async getMapArrayRaw(server) {
+        return Fetch.get(`${server}/listOfMaps`, {
+            pretty: false
         })
-            .then(response => response.json())
+            .then(json => {
+                return json.data.maps;
+            })
+            .catch(error => {
+                console.error("Error fetching map array:", error);
+                return [];
+            })
+    }
+
+    async getMapArray(server) {
+        return Fetch.get(`${server}/listOfMaps`, {
+            pretty: true
+        })
             .then(json => {
                 return json.data.maps.map(map => map.slice(0, 2));
             })
@@ -172,6 +171,16 @@ module.exports = class List {
         return `\n${formatTeam(team1)}\n\n\n${formatTeam(team2)}`;
     };
 
+    async getVer(server) {
+        return Fetch.get(`${server}/version`)
+            .then(json => {
+                return json.data[0];
+            })
+            .catch(error => {
+                console.error("Error fetching map array:", error);
+                return null;
+            });
+    }
 
     async createInfoEmbed(server) {
         const embed = new EmbedBuilder();
@@ -180,6 +189,15 @@ module.exports = class List {
         const players = await this.getTeams(server);
         const indexMap = await this.getIndices(server);
         const currentInfo = await this.getInfo(server);
+        const version = await this.getVer(server);
+        const rawMapsArray = await this.getMapArrayRaw(server);
+        const rawMaps = rawMapsArray[indexMap.currentIdx];
+
+        const urlPrefix = version === 'BF4'
+            ? 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf4/map_images/195x79/'
+            : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/';
+
+        const img = urlPrefix + rawMaps[0].toLowerCase() + '.jpg';
 
         const currentMapMode = mapArray[indexMap.currentIdx];
         const nextMapMode = mapArray[indexMap.nextIdx];
@@ -190,41 +208,46 @@ module.exports = class List {
         const playerDataTeam1 = team1.map(player => [player.score, player.kills, player.deaths, player.name]);
         const playerDataTeam2 = team2.map(player => [player.score, player.kills, player.deaths, player.name]);
 
-        const formattedScoreboard = this.format(playerDataTeam1, playerDataTeam2);
-        if (formattedScoreboard.length > 4096) {
-            formattedScoreboard = formattedScoreboard.substring(0, 4090) + '...';
-        }
+        const formattedScoreboard = Helpers.truncateString(this.format(playerDataTeam1, playerDataTeam2), DiscordLimits.maxDescriptionLength);
 
         embed.setTitle('Current Map and Round Info')
             .addFields(
                 { name: 'Players', value: `${currentInfo.Players} / ${currentInfo.MaxPlayers}`, inline: false },
                 { name: 'Current Map', value: `${currentMapMode[0]} - ${currentMapMode[1]}`, inline: true },
                 { name: 'Next Map', value: `${nextMapMode[0]} - ${nextMapMode[1]}`, inline: true },
+                { name: '\u200b', value: '\u200b', inline: true },
                 { name: 'Tickets', value: `${Math.round(currentInfo.Scores.Team1)} : ${Math.round(currentInfo.Scores.Team2)}`, inline: true },
-                { name: 'Round Time', value: `${fTime(currentInfo.RoundUpTime)}`, inline: true }
+                { name: 'Round Time', value: `${formatDuration(currentInfo.RoundUpTime)}`, inline: true }
             )
             .setDescription(`**Scoreboard**\n` +
                 `**Score** | **Kills (K)** | **Deaths (D)** | **Player Names**\n` +
                 `\`\`\`c\n${formattedScoreboard}\`\`\``)
-            .setColor(0x00FF00)
+            .setColor('Green')
+            .setImage(img)
             .setTimestamp();
 
         return embed;
     }
 
-    async sendEmbedWithInterval(bot, message, server) {
+    async sendEmbedWithInterval(messageOrInteraction, server) {
         try {
+            if (messageOrInteraction.isCommand()) {
+                await messageOrInteraction.deferReply();
+            }
+
             if (this.intervalIds[server]) {
                 clearInterval(this.intervalIds[server]);
             }
 
             let embed = await this.createInfoEmbed(server);
-            const msg = await message.channel.send({ embeds: [embed] });
+            const msg = messageOrInteraction.isCommand()
+                ? await messageOrInteraction.editReply({ embeds: [embed] })
+                : await message.channel.send({ embeds: [embed] });
 
             this.scoreboardMessage[server] = msg.id;
-            this.scoreboardChannelId[server] = message.channel.id;
+            this.scoreboardChannelId[server] = messageOrInteraction.channel.id;
 
-            const channel = bot.channels.cache.get(this.scoreboardChannelId[server]);
+            const channel = messageOrInteraction.channel;
 
             this.intervalIds[server] = setInterval(async () => {
                 try {
@@ -248,19 +271,26 @@ module.exports = class List {
         }
     }
 
-    async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
-            message.reply("You don't have permission to use this command.")
-            return
-        }
+    async runSlash(interaction) {
+        if (!Helpers.checkRoles(interaction, this))
+            return;
 
-        let server = await Helpers.selectServer(message)
+        const server = interaction.options.getString("server");
+
+        this.sendEmbedWithInterval(interaction, server);
+    }
+
+    async run(bot, message, args) {
+        if (!Helpers.checkRoles(message, this))
+            return;
+
+        const server = await Helpers.selectServer(message)
         if (!server) {
-            message.delete({ timeout: 5000 });
+            await message.delete();
             return;
         }
 
-        await message.delete()
+        await message.delete();
 
         this.sendEmbedWithInterval(bot, message, server);
     }

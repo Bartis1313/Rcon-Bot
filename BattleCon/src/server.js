@@ -1,14 +1,13 @@
-var express = require("express");
-var bodyParser = require("body-parser");
-var app = express();
+const express = require("express");
+const bodyParser = require("body-parser");
 import BattleConClient from "./BattleConClient"
+const docsData = require("../eadocs/commands.json");
 
-var serverName = null
-var client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, process.env.RCON_PASS, process.env.GAME)
-
+const client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, process.env.RCON_PASS, process.env.GAME)
 client.connect()
 
-var serverNameUpdater = function (req, res, next) {
+let serverName = null;
+const serverNameUpdater = (req, res, next) => {
     client.serverInfo()
         .then((response) => {
             serverName = response[0]
@@ -21,7 +20,7 @@ var serverNameUpdater = function (req, res, next) {
     next()
 }
 
-
+const app = express();
 app.use(serverNameUpdater)
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -30,19 +29,19 @@ var server = app.listen(process.env.BATTLECON_PORT || 3000, () => {
     console.log(`Server running on port ${process.env.BATTLECON_PORT || 3000}`);
 });
 
-const checkClientVersion = () => {
-    client.version()
-        .catch((err) => {
-            console.error("Error in client.version():", err);
-            process.exit(1);
-        });
-};
+// const checkClientVersion = () => {
+//     client.version()
+//         .catch((err) => {
+//             console.error("Error in client.version():", err);
+//             process.exit(1);
+//         });
+// };
 
-setTimeout(() => {
-    setInterval(() => {
-        checkClientVersion();
-    }, 10000);
-}, 60000);
+// setTimeout(() => {
+//     setInterval(() => {
+//         checkClientVersion();
+//     }, 10000);
+// }, 60000);
 
 process.on('SIGTERM', () => {
     server.close(() => {
@@ -52,7 +51,8 @@ process.on('SIGTERM', () => {
 
 const path = require("path");
 
-app.get('/', (req, res) => {
+app.all('/', (req, res) => {
+    //console.log('requested shi');
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -134,59 +134,9 @@ app.post("/admin/ban", (req, res, next) => {
         })
 });
 app.post("/reservedslots", (req, res, next) => {
-    try {
-        let soldierName = req.body.soldierName;
+    let soldierName = req.body.soldierName;
 
-        client.vipPlayer(soldierName)
-            .then((response) => {
-                res.json({ status: "OK", server: serverName, data: response });
-            })
-            .catch(err => {
-
-                res.status(400).send({ status: "FAILED", server: serverName, error: err })
-            })
-    }
-    catch (err) {
-        console.log(err)
-    }
-});
-
-app.get("/players", (req, res, next) => {
-    try {
-        client.listPlayers()
-            .then((response) => {
-                res.json({ status: "OK", server: serverName, data: response });
-            })
-            .catch(err => {
-
-                res.status(400).send({ status: "FAILED", server: serverName, error: err })
-            })
-    }
-    catch (err) {
-
-    }
-});
-
-app.post("/count", (req, res, next) => {
-    try {
-        client.listPlayers()
-            .then((response) => {
-                res.json({ status: "OK", server: serverName, data: response });
-            })
-            .catch(err => {
-
-                res.status(400).send({ status: "FAILED", server: serverName, error: err })
-            })
-    }
-    catch (err) {
-
-    }
-});
-
-
-
-app.post("/team", (req, res, next) => {
-    client.team(req.body.id)
+    client.vipPlayer(soldierName)
         .then((response) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
@@ -196,7 +146,29 @@ app.post("/team", (req, res, next) => {
         })
 });
 
-app.post("/serverfps", (req, res, next) => {
+app.get("/players", (req, res, next) => {
+    client.listPlayers()
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response });
+        })
+        .catch(err => {
+
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+        })
+});
+
+app.get("/team", (req, res, next) => {
+    client.team(req.query.id)
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response });
+        })
+        .catch(err => {
+
+            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+        })
+});
+
+app.get("/serverfps", (req, res, next) => {
     client.serverFPS()
 
         .then((response) => {
@@ -208,8 +180,8 @@ app.post("/serverfps", (req, res, next) => {
         })
 })
 
-app.post("/listOfMaps", (req, res, next) => {
-    const isPretty = req.body?.pretty == true;
+app.get("/listOfMaps", (req, res, next) => {
+    const isPretty = req.query.pretty ? req.query.pretty === 'true' : false;
 
     client.listOfMaps()
 
@@ -224,7 +196,7 @@ app.post("/listOfMaps", (req, res, next) => {
                 formattedResponse.maps.push([
                     isPretty ? client.getPrettyMap(response[i]) : response[i],
                     isPretty ? client.getPrettyMode(response[i + 1]) : response[i + 1],
-                    parseInt(response[i + 2]) // Rounds
+                    parseInt(response[i + 2]) // rounds
                 ]);
             }
             res.json({ status: "OK", server: serverName, data: formattedResponse });
@@ -236,8 +208,7 @@ app.post("/listOfMaps", (req, res, next) => {
 })
 
 app.post("/setMapIndex", (req, res, next) => {
-
-    let indexNum = req.body.indexNum
+    const indexNum = req.body.indexNum;
     client.setNextMap(indexNum)
 
         .then((response) => {
@@ -249,7 +220,7 @@ app.post("/setMapIndex", (req, res, next) => {
         })
 })
 
-app.post("/printBans", (req, res, next) => {
+app.get("/printBans", (req, res, next) => {
     client.printBanList()
 
         .then((response) => {
@@ -274,7 +245,7 @@ app.post("/admin/unban", (req, res, next) => {
         })
 })
 
-app.post("/getInfo", (req, res, next) => {
+app.get("/getInfo", (req, res, next) => {
     client.getAllInfo()
         .then((response) => {
             res.json({ status: "OK", server: serverName, data: response });
@@ -285,7 +256,7 @@ app.post("/getInfo", (req, res, next) => {
         })
 })
 
-app.post("/getIndices", (req, res, next) => {
+app.get("/getIndices", (req, res, next) => {
     client.getMapIndices()
         .then((response) => {
             res.json({ status: "OK", server: serverName, data: response });
@@ -401,11 +372,39 @@ app.get("/getMapIndices", (req, res, next) => {
         })
 })
 
-app.all("/getMapsModesRaw", (req, res, next) => {
+app.get("/getMapsModesRaw", (req, res, next) => {
     const maps = client.getMapsRaw();
     const modes = client.getModesRaw();
 
     const isPretty = req.body?.pretty;
 
     res.json({ status: "OK", server: serverName, data: { maps, modes } });
+})
+
+app.get("/getCommands", (req, res, next) => {
+    const commands = client.getCommands()
+
+    res.json({ status: "OK", server: serverName, data: commands });
+})
+
+app.get("/getDocs", (req, res, next) => {
+
+    res.json({ status: "OK", server: serverName, data: docsData });
+})
+
+app.get("/isOkay", (req, res, next) => {
+    const isBusy = client.isBusy();
+    if (isBusy) {
+        res.status(400).send({ status: "FAILED", server: serverName, error: "Server is in reconnecting state" });
+    }
+
+    // now check if somehow socket is stuck
+    client.version()
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: null });
+        })
+        .catch(err => {
+
+            res.status(400).send({ status: "FAILED", server: serverName, error: err });
+        })
 })

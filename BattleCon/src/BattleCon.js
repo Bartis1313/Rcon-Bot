@@ -11,10 +11,6 @@
  limitations under the License.
  */
 
-var events = require("events"),
-    net = require("net"),
-    Message = require("./BattleCon/Message.js");
-
 /**
 * Constructs a new BattleCon instance.
 * @exports BattleCon
@@ -25,121 +21,146 @@ var events = require("events"),
 * @extends events.EventEmitter
 */
 
-class BattleCon extends events.EventEmitter {
+const EventEmitter = require('events');
+const net = require('net');
+const Message = require('./BattleCon/Message.js');
+
+class BattleCon extends EventEmitter {
+    /**
+     * Constructs a new BattleCon instance.
+     * @param {string} host Hostname or IP
+     * @param {number} port Port
+     * @param {string} pass RCON password
+     */
     constructor(host, port, pass) {
         super();
+
+        // connection parameters
         this.host = host;
         this.port = port;
         this.pass = pass;
-        this.timeoutInterval = null;
+
+        // connection state
         this.loggedIn = false;
         this.sock = null;
         this.id = 0x3fffffff;
         this.buf = Buffer.alloc(0);
         this.cbs = {};
-        this.retryDelay = 5000;
+        // reconnection
+        this.reconnectInterval = 5_000;
+        // socket extra settings
+        this.socketTimeout = 70_000;
     }
 
-    static Message = Message;
-
+    /**
+     * Loads a game module.
+     * @param {string|function(BattleCon)} gameModule Plugin to use
+     * @param {*=} options Module options
+     * @returns {BattleCon} this
+     * @throws {Error} If the module could not be loaded
+     */
     use(gameModule, options) {
         if (typeof gameModule === 'function') {
             gameModule(this, options);
         } else if (typeof gameModule === 'string' && /^[a-zA-Z0-9_\-]+$/.test(gameModule)) {
-            require("./games/" + gameModule + ".js")(this, options);
+            require(`./games/${gameModule}.js`)(this, options);
         }
         return this;
     }
 
+    /**
+     * Connects and logs in to the server.
+     * @param {function(Error)=} callback Callback
+     */
     connect(callback) {
-        if (this.sock !== null) {
-            console.log("Socket exists?");
-            return;
-        }
+        if (this.sock !== null) return;
+
         this.sock = new net.Socket();
-
-        this.sock.setTimeout(20000, () => {
-            console.log("Initial connection timeout reached");
-            this._handleNoResponse();
-        });
-
         let cbCalled = false;
 
-        this.sock.on("error", (err) => {
-            console.log("Socket error:", err);
+        this.sock.setTimeout(this.socketTimeout);
+
+        this.sock.on('error', (err) => {
             if (!this.loggedIn && callback && !cbCalled) {
                 cbCalled = true;
                 callback(err);
             }
-            this.emit("error", err);
+            this.emit('error', err);
         });
 
-        this.sock.on("close", () => {
-            console.log("Socket closed");
-            this.emit("close");
+        this.sock.on('close', () => {
+            this.emit('close');
             this.sock = null;
-            clearInterval(this.timeoutInterval);
-            console.log(`Disconnect: ${new Date().toLocaleString()}`);
+            this.loggedIn = false;
 
-            this.disconnect();
+            setTimeout(() => {
+                this.connect(callback);
+            }, this.reconnectInterval);
         });
+
+        this.sock.on('timeout', () => {
+            console.error('socket timeout reached');
+            this.disconnect();
+        })
 
         this.sock.connect(this.port, this.host, () => {
-            console.log("Socket connected");
-            this.emit("connect");
-            this.sock.on("data", this._gather.bind(this));
+            this.emit('connect');
+            this.sock.on('data', this._gather.bind(this));
             if (this.login) this.login(callback);
-
-            this._startVersionCheck();
         });
     }
 
+    /**
+     * Disconnects from the server.
+     */
     disconnect() {
         if (this.sock !== null) {
-            this.sock.removeAllListeners("data");
-            this.sock.removeAllListeners("error");
-            this.sock.removeAllListeners("close");
             this.sock.end();
-            this.sock.destroy();
-            this.sock = null;
         }
     }
 
+    /**
+     * Gathers more data.
+     * @param {Buffer} chunk Chunk of data
+     * @private
+     */
     _gather(chunk) {
         this.buf = Buffer.concat([this.buf, chunk]);
         while (true) {
-            if (this.buf.length < 8) return;
+            if (this.buf.length < 8)
+                return;
             const size = this.buf.readUInt32LE(4);
-            if (this.buf.length < size) return;
+            if (this.buf.length < size)
+                return;
 
             const data = this.buf.subarray(0, size);
             this.buf = this.buf.subarray(size);
-
             try {
                 this._process(Message.decode(data));
             } catch (err) {
-                console.log("Error processing message:", err);
-                this.emit("error", err);
-
-                this._handleNoResponse(); // idk, some weird stuff UB
-                return;
+                this.emit('error', err);
             }
         }
     }
 
+    /**
+     * Processes the next message.
+     * @param {Message} msg Message
+     * @private
+     */
     _process(msg) {
         if (msg.data.length === 0) {
-            this.emit("error", "Empty message received");
+            this.emit('error', new Error('Empty message received'));
             return;
         }
         if (msg.isFromServer()) {
-            this.emit("event", msg);
+            this.emit('event', msg);
         } else {
-            this.emit("message", msg);
-            const callback = this.cbs["cb" + msg.id];
-            if (callback) {
-                delete this.cbs["cb" + msg.id];
-                if (msg.data[0] === "OK") {
+            this.emit('message', msg);
+            if (this.cbs[`cb${msg.id}`]) {
+                const callback = this.cbs[`cb${msg.id}`];
+                delete this.cbs[`cb${msg.id}`];
+                if (msg.data[0] === 'OK') {
                     callback(null, msg.data.slice(1));
                 } else {
                     callback(new Error(msg.data.join(' ')));
@@ -148,21 +169,18 @@ class BattleCon extends events.EventEmitter {
         }
     }
 
+    /**
+     * Executes a command.
+     * @param {string|Array<string>} command Command
+     * @param {function(Error, Message=)=} callback Callback
+     */
     exec(command, callback) {
-        if (this.sock === null) {
-            this.disconnect();
-            setTimeout(() => {
-                console.log("Retrying to connect (exec had null socket somehow)");
-                this.connect();
-            }, this.retryDelay);
-        }
-
         const msg = new Message(this.id, 0, command);
         if (typeof callback === 'function') {
-            this.cbs["cb" + this.id] = callback;
+            this.cbs[`cb${this.id}`] = callback;
         }
         try {
-            this.emit("exec", msg); // May throw to abort
+            this.emit('exec', msg); // May throw to abort
         } catch (aborted) {
             return;
         }
@@ -170,59 +188,39 @@ class BattleCon extends events.EventEmitter {
         this.id = (this.id + 1) & 0x3fffffff;
     }
 
-    _startVersionCheck() {
-        console.log("Starting version check interval");
-        clearInterval(this.timeoutInterval);
-        this.timeoutInterval = setInterval(() => {
-            //console.log("Executing version command");
-            this.exec('version', (err, msg) => {
-                if (err) {
-                    console.log("Exec version error:", err);
-                    this._handleNoResponse();
-                } else if (!msg) {
-                    console.log("No response to version command");
-                    this._handleNoResponse();
-                }
-            });
-        }, 10000);
-    }
-
-    _handleNoResponse() {
-        console.log("Handling reconnecting...");
-        this.disconnect();
-        setTimeout(() => {
-            console.log("Retrying to connect");
-            this.connect();
-        }, this.retryDelay);
-    }
-
+    /**
+     * Tabulates a result containing columns and rows.
+     * @param {Array<string>} res Result to tabulate
+     * @param {number=} offset Offset to start at, defaults to 0
+     * @returns {Array<Object<string, string>>}
+     */
     static tabulate(res, offset = 0) {
         const nColumns = parseInt(res[offset], 10);
         const columns = [];
-        let i = offset + 1;
-
-        for (; i <= nColumns; i++) {
+        for (let i = offset + 1; i <= offset + nColumns; i++) {
             columns.push(res[i]);
         }
-
-        const nRows = parseInt(res[i], 10);
+        const nRows = parseInt(res[offset + nColumns + 1], 10);
         const rows = [];
-        i++; // Move to the next element after column names
-
-        for (let n = 0; n < nRows; n++) {
+        for (let n = 0, i = offset + nColumns + 2; n < nRows; n++) {
             const row = {};
             for (let j = 0; j < columns.length; j++) {
                 row[columns[j]] = res[i++];
             }
             rows.push(row);
         }
-
         rows.columns = columns;
         return rows;
     }
 
-    tabulate(res, offset) {
-        return BattleCon.tabulate(res, offset);
+    /**
+     * Tabulates a result containing columns and rows.
+     * @function
+     * @param {Array<string>} res
+     * @returns {Array<Object<string, string>>}
+     */
+    tabulate(res) {
+        return BattleCon.tabulate(res);
     }
 }
 

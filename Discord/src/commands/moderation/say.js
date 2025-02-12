@@ -1,29 +1,76 @@
-const fetch = require("node-fetch");
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
+import Fetch from '../../helpers/fetch';
 
 module.exports = class Say {
     constructor() {
         this.name = 'say';
-        this.alias = ['sayall'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
+        this.description = 'Say a message to server';
     }
 
-    async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
-            message.reply("You don't have permission to use this command.")
-            return
-        }
+    async init() {
+        const servers = await Helpers.getServerChoices();
 
-        let server = await Helpers.selectServer(message)
-        if (!server) {
-            message.delete({ timeout: 5000 });
+        // TODO: handle player say, team say, squad say
+        // subcommand, or static choices
+        this.slashCommand = new SlashCommandBuilder()
+            .setName(this.name)
+            .setDescription(this.description)
+            .addStringOption(option =>
+                option.setName('server')
+                    .setDescription('Select the server')
+                    .setRequired(true)
+                    .addChoices(...servers)
+            )
+            .addStringOption(option =>
+                option.setName('message')
+                    .setDescription('Type what to say')
+                    .setRequired(true)
+            )
+    }
+
+    async runSlash(interaction) {
+        if (!Helpers.checkRoles(interaction, this))
+            return;
+
+        await interaction.deferReply();
+
+        const server = interaction.options.getString("server");
+        const content = interaction.option.getString("message");
+
+        const isWhitespaceString = str => !/\S/.test(str)
+        if (isWhitespaceString(content)) {
+            await interaction.editReply({ content: "It makes no sense to send whitespaces only", flags: MessageFlags.Ephemeral });
             return;
         }
 
-        message.delete();
+        const parameters = {
+            what: content
+        };
 
-        let parameters = await this.getParameters(message, server)
+        return Fetch.post(`${server}/admin/sayall`, parameters)
+            .then(response => {
+                return interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, response)] });
+            })
+            .catch(error => {
+                console.log(error)
+                return;
+            })
+    }
+
+    async run(bot, message, args) {
+        if (!Helpers.checkRoles(message, this))
+            return;
+
+        const server = await Helpers.selectServer(message)
+        if (!server) {
+            await message.delete();
+            return;
+        }
+
+        await message.delete();
+
+        const parameters = await this.getParameters(message, server)
             .then(parameters => {
                 return parameters;
             })
@@ -36,22 +83,13 @@ module.exports = class Say {
             return
         }
 
-        return fetch(`${server}/admin/sayall`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-            body: JSON.stringify(parameters)
-        })
-            .then(response => response.json())
-            .then(json => {
-                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] });
+        return Fetch.post(`${server}/admin/sayall`, parameters)
+            .then(response => {
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, response)] });
             })
             .catch(error => {
                 console.log(error)
-                return false
+                return;
             })
     }
 
@@ -103,20 +141,20 @@ module.exports = class Say {
     }
 
 
-    buildEmbed(message, parameters, response) {
+    buildEmbed(messageOrInteraction, parameters, response) {
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(response.status === "OK" ? 'Green' : 'Red')
-            .setAuthor({ name: 'Say all', iconURL: message.author.displayAvatarURL() })
+            .setAuthor({ name: 'Say all', iconURL: messageOrInteraction.user.displayAvatarURL() })
             .addFields(
-                { name: 'Issuer', value: message.author.username, inline: true },
+                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
                 { name: 'Content', value: `**${parameters.what}**`, inline: true },
                 { name: 'Status', value: response.status, inline: true }
             );
 
         if (response.status === "FAILED") {
             embed.addFields(
-                { name: 'Reason for failing', value: response.error.name, inline: true }
+                { name: 'Reason for failing', value: response.error, inline: true }
             );
         }
 

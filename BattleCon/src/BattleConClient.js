@@ -1,17 +1,14 @@
 import BattleCon from "../src/BattleCon";
 
-const fs = require("fs");
-const path = require("path");
-
-global.BasePlugin = require("./basePlugin");
+global.BasePlugin = require("./basePlugin"); // so you dont have to require it in plugins
 const { loadPlugins } = require("./pluginLoader");
 
 class BattleConClient {
   constructor(host, port, password, game) {
     this._connection = new BattleCon(host, port, password).use(game);
-    this.playerMap = new Map();
     this.initialize();
-    this.inEndRound = false;
+
+    this.isBusyState = false;
   }
 
   initialize() {
@@ -24,6 +21,8 @@ class BattleConClient {
 
     connection.on("login", () => {
       console.log("# Login successful");
+
+      this.isBusyState = false;
     });
 
     connection.on("ready", () => {
@@ -32,13 +31,15 @@ class BattleConClient {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
         version = msg[1];
 
-        //loadPlugins(this._connection);
+        loadPlugins(this._connection);
       });
     });
 
     connection.on("close", () => {
       const date = new Date();
-      console.log(`Disconnect: ${date.toLocaleString()}`);
+      console.log(`Disconnect at: ${date.toLocaleString()}`);
+
+      this.isBusyState = true;
     });
 
     connection.on("event", function (msg) {
@@ -51,6 +52,10 @@ class BattleConClient {
   }
 
   // define methods
+
+  isBusy() {
+    return this.isBusyState;
+  }
 
   getMapsRaw() {
     return this._connection.gameMaps;
@@ -105,7 +110,7 @@ class BattleConClient {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
       if (!playerName) reject('Player name is required.')
-      reason = reason ? reason : "Kicked by administrator"
+      reason = reason ? reason : "Kicked by administrator";
 
       connection.exec(["admin.kickPlayer", playerName, reason], function (err, msg) {
         err ? reject(err.message) : resolve({ playerName: playerName, reason: reason })
@@ -204,8 +209,9 @@ class BattleConClient {
   setNextMap(indexNum) {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
-      if (!indexNum) reject('Index is required.')
-
+      if (indexNum === null || indexNum === undefined) {
+        reject("Index is required.");
+      }
       connection.exec(["mapList.setNextMapIndex", indexNum.toString()], function (err, msg) {
         err ? reject(err.message) : resolve({ indexNum: indexNum })
       });
@@ -313,7 +319,7 @@ class BattleConClient {
       let arr = [];
       arr.push(command);
 
-      if (params.length) {
+      if (params && params.length) {
         for (const el of params) {
           arr.push(el); // and arguments if any
         }
@@ -323,6 +329,12 @@ class BattleConClient {
         err ? reject(err.message) : resolve(msg)
       });
     });
+  }
+
+  getCommands() {
+    let connection = this._connection;
+
+    return connection.commands;
   }
 
 }

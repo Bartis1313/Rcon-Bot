@@ -49,6 +49,7 @@ module.exports = function (bc) {
         bc.help(function (err, msg) {
             if (err) return;
             bc.commands = msg;
+            // Extract all command names
             var vars = [];
             for (var i = 0; i < msg.length; i++) {
                 if (msg[i].substring(0, 5) === "vars.") {
@@ -58,6 +59,8 @@ module.exports = function (bc) {
             bc.vars = vars;
             bc.emit("ready");
         });
+
+
     });
 
     /**

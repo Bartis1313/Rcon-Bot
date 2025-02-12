@@ -1,5 +1,5 @@
-const { createPool } = require('mysql2/promise');
-const fetch = require('node-fetch');
+import { createPool } from 'mysql2/promise';
+import Fetch from '../helpers/fetch';
 
 function getRandomInt(min, max) {
     min = Math.ceil(min);
@@ -7,7 +7,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-module.exports = class BanAnnouncer {
+export default class BanAnnouncer {
     constructor() {
         this.dbsConfig = [];
         this.lastBanIds = [];
@@ -31,7 +31,6 @@ module.exports = class BanAnnouncer {
                     port: sPorts[i],
                     connectionLimit: 1000,
                     connectTimeout: 60 * 60 * 1000,
-                    acquireTimeout: 60 * 60 * 1000,
                     waitForConnections: true,
                 });
                 this.lastBanIds.push(-1); // init
@@ -113,23 +112,18 @@ module.exports = class BanAnnouncer {
             ],
             color: 0xFF0000, // RED
             thumbnail: { url: randomUrl },
+            footer: { text: ban.ID.toString() }
         }));
 
         const payload = { embeds };
 
-        try {
-            const response = await fetch(webhookURL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+        Fetch.post(webhookURL, payload, true)
+            .then(response => {
+                
+            })
+            .catch(error => {
+                console.error('Error sending bans to Discord webhook:', error);
             });
-
-            if (!response.ok) {
-                console.error('Error sending bans to Discord webhook:', response.status, response.statusText);
-            }
-        } catch (error) {
-            console.error('Error sending bans to Discord webhook:', error);
-        }
     }
 
     async startBanAnnouncement(interval, delayBetweenConnections) {

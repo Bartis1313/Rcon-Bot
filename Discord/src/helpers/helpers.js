@@ -1,27 +1,31 @@
-import fetch from "node-fetch";
+import Fetch from "./fetch";
 import Prompter from "./prompter";
 
-const { EmbedBuilder } = require('@discordjs/builders');
-const { PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, userMention } = require('discord.js');
 
 class ActionType {
     static BAN = 'BANNED';
     static KICK = 'KICKED';
     static KILL = 'KILLED';
     static UNKNOWN = 'UNKNOWN';
-};
+}
+
+class DiscordLimits {
+    static maxFieldLength = 1024;
+    static maxDescriptionLength = 4096;
+    static maxFieldsPerEmbed = 25;
+    static accountsPerField = 10;
+    static maxChoices = 25;
+}
+
+let serverChoices = [];
 
 class Helpers {
+
     static async getPlayers(apiUrl) {
         try {
-            const response = await fetch(`${apiUrl}/players`, {
-                method: "get",
-                headers: {
-                    "Accept": "application/json",
-                    "Accept-Charset": "utf-8"
-                }
-            });
-            return await response.json();
+            const response = await Fetch.get(`${apiUrl}/players`)
+            return response;
         }
         catch (error) {
             console.error(error);
@@ -29,20 +33,71 @@ class Helpers {
         }
     }
 
+    // for something that doesn't need selection
+    static selectFirstServer() {
+        const servers = process.env.BATTLECON_API_URLS.split(',');
+        return servers && servers.length ? servers[0] : null;
+    }
+
+    static async getServerChoices() {
+        if (!serverChoices.length) {
+            const apiUrls = process.env.BATTLECON_API_URLS ? process.env.BATTLECON_API_URLS.split(',') : [];
+
+            await Promise.all(apiUrls.map(async (apiUrl, index) => {
+                try {
+                    const response = await Fetch.get(`${apiUrl}/serverName`);
+                    if (response) {
+                        serverChoices.push({ name: response.server, value: apiUrls[index] });
+                    }
+                } catch (error) {
+                    console.error(`Error fetching from ${apiUrl}:`, error);
+                }
+            }));
+        }
+
+        return serverChoices;
+    }
+
+    // arr -> values
+    // arrNames -> names
+    static getChoices(arr, arrNames) {
+        const a = [];
+        arr.forEach((n, index) => {
+            a.push({ name: arrNames[index], value: n });
+        });
+
+        return a;
+    }
+
+    static truncateString(str, maxLength) {
+        if (str.length > maxLength) {
+            return str.substring(0, maxLength - 3) + '...';
+        }
+        return str;
+    }
+
+    static checkRoles(messageOrInteraction, classObj) {
+        if (!messageOrInteraction.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID)) {
+            const mention = userMention(messageOrInteraction.user.id);
+            if (interaction.isCommand()) {
+                messageOrInteraction.reply(`${mention} You don't have permission to use this command (${classObj.name})`);
+            }
+            else {
+                messageOrInteraction.reply(`${mention} You don't have permission to use this command (${classObj.name})`);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
     static async selectServer(msg) {
         const apiUrls = process.env.BATTLECON_API_URLS ? process.env.BATTLECON_API_URLS.split(',') : [];
 
         const promises = apiUrls.map((apiUrl, index) => {
-            return fetch(`${apiUrl}/serverName`, {
-                method: 'get',
-                headers: {
-                    'Accept': 'application/json',
-                    'Accept-Charset': 'utf-8',
-                },
-                timeout: 10000, // test timeout
-            })
+            return Fetch.get(`${apiUrl}/serverName`)
                 .then(response => {
-                    return response.json();
+                    return response;
                 })
                 .catch(error => {
                     console.error(`Error fetching from ${apiUrl}:`, error);
@@ -124,86 +179,94 @@ class Helpers {
         }
     }
 
-    static async selectArray(msg, arr, desc = null) {
+    static async selectArray(msg, arr, arrNames, desc = null) {
         const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(0x00FF00)
-            .setAuthor({ name: desc ? desc : 'Select choice', iconURL: msg.author.displayAvatarURL() });
+            .setAuthor({ name: "Selection", iconURL: msg.author.displayAvatarURL() })
+            .setDescription(desc ? desc : 'Select choice');
 
-        arr.forEach((a, index) => {
-            embed.addFields(choices[index], `**${a}**`, false);
-        });
+        if (arr.length > 0 && arrNames.length > 0) {
+            arr.forEach((a, index) => {
+                embed.addFields({ name: choices[index], value: `**${arrNames[index]}**`, inline: false });
+            });
+        } else {
+            embed.addFields({ name: 'No Choices Available', value: 'There are no choices available at the moment.', inline: false });
+        }
 
-        const message = await msg.channel.send(embed).catch(sendError => {
+        const message = await msg.channel.send({ embeds: [embed] }).catch(sendError => {
             console.error('Error while sending embed:', sendError);
             return null;
         });
 
-        if (!message) return null;
 
-        const reactPromises = choices.slice(0, arr.length).map(choice => {
-            return message.react(choice).catch(reactError => {
-                console.error(`Failed to react with ${choice}:`, reactError);
-            });
-        });
-
-        await Promise.all(reactPromises);
+        const possibleChoices = choices.slice(0, arr.length);
+        // React with possible choices
+        for (const choice of possibleChoices) {
+            try {
+                await message.react(choice);
+            } catch (err) {
+                console.error(`Failed to react with ${choice}:`, err);
+            }
+        }
 
         const filter = (reaction, user) => {
-            return choices.includes(reaction.emoji.name) && user.id === msg.author.id;
+            return possibleChoices.includes(reaction.emoji.name) && user.id === msg.author.id;
         };
 
-        return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
-            .then(collected => {
-                const reaction = collected.first();
-                const index = choices.findIndex(x => x === reaction.emoji.name);
-
-                message.delete().catch(deleteError => {
-                    console.error('Failed to delete the message:', deleteError);
-                });
-
-                if (index >= 0) {
-                    return dbs[index];
-                }
-
-                return null;
-            })
-            .catch(collected => {
-                message.delete().catch(deleteError => {
-                    console.error('Failed to delete the message after timeout:', deleteError);
-                });
-
-                msg.reply('Command timed out').then(m => {
-                    setTimeout(() => m.delete().catch(console.error), 5000);
-                }).catch(sendError => {
-                    console.error('Failed to send timeout message:', sendError);
-                });
-
-                return null;
+        try {
+            const collected = await message.awaitReactions({
+                filter,
+                max: 1,
+                time: 60000,
+                errors: ['time'],
             });
+
+            const reaction = collected.first();
+            const selectedIndex = possibleChoices.indexOf(reaction.emoji.name);
+
+            await message.delete().catch(deleteError => {
+                console.error('Failed to delete the message:', deleteError);
+            });
+
+            if (selectedIndex >= 0) {
+                return arr[selectedIndex];
+            }
+
+            console.warn('No valid selection made.');
+            return null;
+        } catch (collected) {
+            console.warn('No reaction collected or timeout occurred.');
+            await message.delete().catch(deleteError => {
+                console.error('Failed to delete the message after timeout:', deleteError);
+            });
+            const timeoutMessage = await msg.reply('Command timed out');
+            setTimeout(() => timeoutMessage.delete().catch(console.error), 5000);
+            return null;
+        }
     }
 
-    static async selectPlayerName(msg, players) {
+    static async selectFromEmoteList(msg, arrNames) {
         const choices = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(0x00FF00)
-            .setAuthor({ name: 'Select player', iconURL: msg.author.displayAvatarURL() });
+            .setAuthor({ name: 'Select', iconURL: msg.user.displayAvatarURL() });
 
         let index = 0;
-        players.forEach(player => {
-            embed.addFields(choices[index], `**${player}**`, false);
+        arrNames.forEach(a => {
+            embed.addFields({ name: choices[index], value: `**${a}**`, inline: false });
             index++;
         });
 
         // Add "not in the list" entry
-        embed.addFields('❌', `The player is not in the list`, false);
+        embed.addFields({ name: '❌', value: 'is not in the list', inline: false });
 
         const possibleChoices = choices.slice(0, index);
         possibleChoices.push('❌');
 
-        const message = await msg.channel.send(embed).catch(sendError => {
+        const message = await msg.channel.send({ embeds: [embed] }).catch(sendError => {
             console.error('Error while sending embed:', sendError);
             return null;
         });
@@ -218,41 +281,44 @@ class Helpers {
 
         await Promise.all(reactPromises);
 
-        const filter = (reaction, user) =>
-            possibleChoices.includes(reaction.emoji.name) && user.id === msg.author.id;
+        const filter = (reaction, user) => {
+            return (choices.includes(reaction.emoji.name) || reaction.emoji.name === '❌') && user.id === msg.user.id;
+        };
 
-        return message.awaitReactions(filter, { max: 1, time: 60 * 1000, errors: ['time'] })
-            .then(collected => {
-                const reaction = collected.first();
+        try {
+            const collected = await message.awaitReactions({ filter, max: 1, time: 60 * 1000, errors: ['time'] });
+            const reaction = collected.first();
 
-                message.delete().catch(deleteError => {
-                    console.error('Failed to delete the message:', deleteError);
-                });
-
-                if (reaction.emoji.name === '❌') {
-                    return null;
-                }
-
-                const selectedIndex = possibleChoices.findIndex(x => x === reaction.emoji.name);
-                if (selectedIndex >= 0) {
-                    return players[selectedIndex];
-                }
-
-                return null;
-            })
-            .catch(collected => {
-                message.delete().catch(deleteError => {
-                    console.error('Failed to delete the message after timeout:', deleteError);
-                });
-
-                msg.reply('Command timed out').then(m => {
-                    setTimeout(() => m.delete().catch(console.error), 5000);
-                }).catch(sendError => {
-                    console.error('Failed to send timeout message:', sendError);
-                });
-
-                return null;
+            await message.delete().catch(deleteError => {
+                console.error('Failed to delete the message:', deleteError);
             });
+
+            if (reaction.emoji.name === '❌') {
+                return null;
+            }
+
+            const index = choices.findIndex(x => x === reaction.emoji.name);
+
+            if (index >= 0) {
+                return arrNames[index];
+            }
+
+            return null;
+        } catch (collected) {
+            console.error('Error while waiting for reactions:', collected);
+
+            await msg.channel.send('Command timed out').then(m => {
+                setTimeout(() => m.delete().catch(console.error), 5000);
+            }).catch(sendError => {
+                console.error('Failed to send timeout message:', sendError);
+            });
+
+            await message.delete().catch(deleteError => {
+                console.error('Failed to delete the message after timeout:', deleteError);
+            });
+
+            return null;
+        }
     }
 
     static async askTryAgain(msg, title, description) {
@@ -376,7 +442,7 @@ class Helpers {
         } catch (collected) {
             console.error('Error while waiting for reactions:', collected);
 
-            await msg.reply('Command timed out').then(m => {
+            await msg.channel.send('Command timed out').then(m => {
                 setTimeout(() => m.delete().catch(console.error), 5000);
             }).catch(sendError => {
                 console.error('Failed to send timeout message:', sendError);
@@ -391,4 +457,4 @@ class Helpers {
     }
 };
 
-export { Helpers, ActionType };
+export { Helpers, ActionType, DiscordLimits };

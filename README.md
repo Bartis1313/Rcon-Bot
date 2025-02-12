@@ -3,6 +3,14 @@ Easy way to communicate with battlefield servers.
 
 PLEASE USE CLEAN BRANCH!
 
+Discord part is for v14, as well as old legacy message.content handling
+So in practise, any version should work with small edits
+
+The Battlecon part was edited to handle disconnects, and exposed apis
+The Module of BattleConClient handles creating plugins as well. Without perfect handling of errors.
+
+Some of discord commands rely heavily on famous database plugin for bf servers, use them or just see as example.
+
 # Docker Example
 
 ## Full docker for two servers
