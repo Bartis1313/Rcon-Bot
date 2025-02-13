@@ -15,7 +15,7 @@ module.exports = class KickLogger extends BasePlugin {
         this.onEvent("punkBuster.onMessage", this.onPBListener);
     }
 
-    onChatHandler([name, text, ...subset]) {
+    async onChatHandler([name, text, ...subset]) {
         if (process.env.GAME !== 'BF3') return;
 
         if (name !== 'Server') return;
@@ -60,7 +60,7 @@ module.exports = class KickLogger extends BasePlugin {
 
         if (!kicker || !kicked || !reason) return;
 
-        const serverName = this.getServerName();
+        const serverName = await this.getServerName();
         const randomUrl = this.getRandomUrl();
 
         const message = {
@@ -88,7 +88,7 @@ module.exports = class KickLogger extends BasePlugin {
         }).catch(error => console.error('Error:', error, message));
     }
 
-    onKickListener(name, reason) {
+    async onKickListener([name, reason]) {
         if (process.env.GAME !== 'BF4') return;
 
         const blazeReason = 'PLAYER_LEFT';
@@ -96,7 +96,7 @@ module.exports = class KickLogger extends BasePlugin {
         if (reason === blazeReason) return;
         if (!reason) return; // blaze backend bug?
 
-        const serverName = this.getServerName();
+        const serverName = await this.getServerName();
         const randomUrl = this.getRandomUrl();
 
         const message = {
@@ -122,7 +122,7 @@ module.exports = class KickLogger extends BasePlugin {
         }).catch(error => console.error('Error:', error, message));
     }
 
-    onPBListener(msg) {
+    async onPBListener([msg]) {
         const webhookBANUrl = process.env.WEBHOOK_BAN_TOKEN;
         if (!webhookBANUrl)
             return;
@@ -142,7 +142,7 @@ module.exports = class KickLogger extends BasePlugin {
         const kicked = extractedText.split(' ')[1];
         const reason = extractedText;
 
-        const serverName = this.getServerName();
+        const serverName = await this.getServerName();
         const randomUrl = this.getRandomUrl();
 
         const message = {
@@ -168,15 +168,14 @@ module.exports = class KickLogger extends BasePlugin {
         }).catch(error => console.error('Error:', error, message));
     }
 
-    getServerName() {
-        this.exec("serverInfo", (err, msg) => {
-            if (err) {
-                console.error(err);
-                return null;
-            } else {
-                return msg[0];
-            }
-        });
+    async getServerName() {
+        try {
+            const msg = await this.exec("serverInfo");
+            return msg[0];
+        } catch (error) {
+            console.error('Error fetching server info:', error);
+            return null;
+        }
     }
 
     getRandomUrl() {

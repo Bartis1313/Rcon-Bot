@@ -16,17 +16,31 @@ class BasePlugin {
     }
 
     /**
-     * Executes raw ecent.
-     * @param {string|string[]} command - The name of the event, array is name + possible arguments
-     * @param {function} callback - The function to handle the exec response.
+     * Executes a raw command.
+     * @param {string|string[]} command - The name of the command, array is name + possible arguments
+     * @returns {Promise<any>} - A promise that resolves with the command response.
      */
-    exec(command, callback) {
-        if (!this.bc.commands.includes(Array.isArray(command) ? command[0] : command)) {
-            console.error(`${command[0]} is not a command!`);
-            return;
+    async exec(command) {
+        const cmdName = Array.isArray(command) ? command[0] : command;
+        if (!this.bc.commands.includes(cmdName)) {
+            console.error(`${cmdName} is not a valid command!`);
+            return Promise.reject(new Error(`${cmdName} is not a valid command!`));
         }
 
-        this.bc.exec(command, callback);
+        try {
+            return new Promise((resolve, reject) => {
+                this.bc.exec(command, (err, msg) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(msg);
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('Error executing command:', error);
+            throw error;
+        }
     }
 }
 
