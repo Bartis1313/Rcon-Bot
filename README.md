@@ -1,22 +1,18 @@
 # Rcon-Bot
 Easy way to communicate with battlefield servers.
 
-PLEASE USE CLEAN BRANCH!
-
 Discord part is for v14, as well as old legacy message.content handling
 So in practise, any version should work with small edits
 
 The Battlecon part was edited to handle disconnects, and exposed apis
 The Module of BattleConClient handles creating plugins as well. Without perfect handling of errors.
+Probably focused over this part too much, you can see KickLogger as example how to write own plugin.
 
 Some of discord commands rely heavily on famous database plugin for bf servers, use them or just see as example.
+Deleting the folder will simply solve it, though you will have to implement unban yourself. Should be easy, with so many command examples.
 
-# Docker Example
-
-## Full docker for two servers
+# Docker Example for 2 servers
 ```
-version: '3.3'
-
 services:
   server1:
     image: 
@@ -50,15 +46,14 @@ services:
     image: 
     environment: 
       - DISCORD_TOKEN=
+      - DISCORD_CLIENT_ID=ID_OF_BOT
+      - DISCORD_GUILD_ID=ID_OF_SERVER_OPTIONAL_IF_GLOBAL_COMMANDS_ARE_BAD_FOR_YOU
       - DISCORD_COMMAND_PREFIX=!
       - DISCORD_RCON_ROLEID=
       - BATTLECON_API_URLS=http://server1:3000,http://server2:3001
 ```
 
 And then use the command `docker-compose up`
-
-## Local test
-Use env variables ``$env:<var>=<value>`` for each proccess
 
 ## Credits 
 - [xFileFIN](https://github.com/Razer2015) -> Making helper with matching and rcon connection with apis
