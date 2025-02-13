@@ -183,11 +183,11 @@ module.exports = class BanCommand {
 
         const server = await Helpers.selectServer(message);
         if (!server) {
-            await message.delete().catch(() => { });
+            await message.delete();
             return;
         }
 
-        await message.delete().catch(() => { });
+        await message.delete();
 
         const parameters = await this.getParameters(message, server)
             .then(parameters => parameters)

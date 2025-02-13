@@ -43,11 +43,13 @@ module.exports = class Kick {
         const focusedOption = interaction.options.getFocused();
         const matchedPlayer = Matching.getBestMatch(focusedOption, playerNames);
         if (!matchedPlayer) {
+            await interaction.respond([]);
             return;
         }
 
         const type = matchedPlayer.type;
         if (type === "far") {
+            await interaction.respond([]);
             return;
         }
 
