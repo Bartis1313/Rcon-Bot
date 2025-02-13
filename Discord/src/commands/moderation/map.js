@@ -101,7 +101,7 @@ module.exports = class map {
                 return interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, json)] })
             })
             .catch(error => {
-                console.log(error)
+                console.error(error)
                 return false
             })
     }
