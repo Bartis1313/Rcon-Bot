@@ -18,62 +18,41 @@
  * Loads the BF (common) module.
  * @param {!BattleCon} bc
  */
-module.exports = function(bc) {
-    
+module.exports = function (bc) {
     // Extends core
     bc.use("core");
-    
-    // Parse events
-    bc.on("event", function(msg) {
-        switch (msg.data[0]) {
-            case "player.onJoin":
-                bc.emit("player.join", /* name */ msg.data[1], /* uid */ msg.data[2]);
-                break;
-            case "player.onAuthenticated":
-                bc.emit("player.authenticated", /* name */ msg.data[1]);
-                break;
-            case "player.onLeave":
-                bc.emit("player.leave", /* name */ msg.data[1], /* info */);
-                break;
-            case "player.onSpawn":
-                bc.emit("player.spawn", /* name */ msg.data[1], /* team */ parseInt(msg[2], 10));
-                break;
-            case "player.onSquadChange":
-                bc.emit("player.squadChange", /* name */ msg.data[1], /* team */ parseInt(msg.data[2], 10), /* squad */ parseInt(msg.data[3], 10));
-                break;
-            case "player.onTeamChange":
-                bc.emit("player.teamChange", /* name */ msg.data[1], /* team */ parseInt(msg.data[2], 10), /* squad */ parseInt(msg.data[3], 10));
-                break;
-            case "player.onKill":
-                bc.emit("player.kill", /* killer */ msg.data[1], /* victim */ msg.data[2], /* weapon */ msg.data[3], /* headshot */ msg.data[4] === "true");
-                break;
-            case "player.onChat":
-                bc.emit("player.chat", /* name */ msg.data[1], /* text */ msg.data[2], /* player subset */ msg.data.slice(3));
-                break;
-            case "player.onDisconnect":
-                bc.emit("player.disconnect", /* name */ msg.data[1], /* reason */ msg.data[2]);
-                break;
-            case "server.onLevelLoaded":
-                bc.emit("server.levelLoaded", /* name */ msg.data[1], /* mode name */ msg.data[2], /* round no. */ parseInt(msg.data[3], 10), /* of total rounds */ parseInt(msg.data[4], 10));
-                break;
-            case "server.onRoundOver":
-                bc.emit("server.roundOver", /* winning team */ parseInt(msg.data[1], 10));
-                break;
-            case "server.onRoundOverPlayers":
-                bc.emit("server.roundOverPlayers", /* players */ bc.tabulate(msg.data, 1));
-                break;
-            case "server.onRoundOverTeamScores":
-                var n = parseInt(msg.data[1], 10), // # scores
-                    scores = [];
-                for (var i=2; i<2+n; i++) {
-                    scores.push(parseFloat(msg.data[i]));
+
+    const eventListeners = {};
+
+    /**
+     * Registers an event listener for a specific event type.
+     * @param {string} eventName - The name of the event.
+     * @param {function} handler - The function to handle the event.
+     */
+    bc.onEvent = (eventName, handler) => {
+        if (!eventListeners[eventName]) {
+            eventListeners[eventName] = [];
+        }
+        eventListeners[eventName].push(handler);
+    };
+
+    /**
+     * Handles incoming messages dynamically.
+     * @param {Object} msg - The incoming message.
+     */
+    bc.on("event", (msg) => {
+        const [eventName, ...data] = msg.data;
+
+        if (eventListeners[eventName]) {
+            for (const listener of eventListeners[eventName]) {
+                try {
+                    listener(data);
+                } catch (err) {
+                    console.error(`Error in event "${eventName}":`, err);
                 }
-                bc.emit("server.roundOverTeamScores", /* scores array */ scores, /* target score */ parseInt(msg.data[i], 10));
-                break;
-            case "punkBuster.onMessage":
-                bc.emit("pb.message", /* message */  msg.data[1]);
-                break;
+            }
+        } else {
+            // console.warn(`No handlers registered for event "${eventName}"`);
         }
     });
-    
 };

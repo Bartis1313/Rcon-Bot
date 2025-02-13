@@ -1,35 +1,45 @@
-const Discord = require('discord.js');
-const client = new Discord.Client({ restRequestTimeout: 60_0000 });
-const BanAnnouncer = require('./misc/banChecker.js');
+import { Client, GatewayIntentBits, Events } from 'discord.js';
+import CommandHandler from './handler';
+import BanAnnouncer from './misc/banAnouncer';
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions
+    ],
+});
+
+const commandHandler = new CommandHandler({
+    folder: __dirname + '/commands/',
+    prefix: process.env.DISCORD_COMMAND_PREFIX || '!',
+    clientId: process.env.DISCORD_CLIENT_ID,
+    guildId: process.env.DISCORD_GUILD_ID || null,
+    token: process.env.DISCORD_TOKEN,
+});
+
 const banAnnouncer = new BanAnnouncer();
 
-const { CommandHandler } = require("djs-commands")
-const CH = new CommandHandler({
-    folder: __dirname + '/commands/',
-    prefix: [`${process.env.DISCORD_COMMAND_PREFIX}`]
-});
+client.once(Events.ClientReady, async () => {
+    await commandHandler._loadFrom(commandHandler.folder);
 
-
-client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
-    client.user.setActivity('Watching Servers');
+
     banAnnouncer.startBanAnnouncement(60_000, 60_000);
+    await commandHandler.registerSlashCommands();
 });
 
-client.on('message', message => {
-    if (message.channel.type === 'dm') return;
-    if (message.author.type === 'bot') return;
+client.on(Events.MessageCreate, async (message) => {
+    if (!message.guild || message.author.bot)
+        return;
 
-    let args = message.content.split(" ");
-    let command = args[0];
-    let cmd = CH.getCommand(command);
-    if (!cmd) return;
+    await commandHandler.handleMessageCommand(client, message);
+});
 
-    try {
-        cmd.run(client, message, args)
-    } catch (e) {
-        console.log(e)
-    }
+client.on(Events.InteractionCreate, async (interaction) => {
+    await commandHandler.handleSlashCommand(interaction);
+    await commandHandler.handleAutocomplete(interaction);
 });
 
 client.login(process.env.DISCORD_TOKEN);

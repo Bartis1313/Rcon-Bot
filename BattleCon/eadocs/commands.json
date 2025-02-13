@@ -1,0 +1,1558 @@
+{
+    "commands": [
+        {
+            "name": "login.plainText",
+            "request": "login.plainText <password: string>",
+            "responses": [
+                "OK - Login successful, you are now logged in regardless of prior status",
+                "InvalidPassword - Login unsuccessful, logged-in status unchanged",
+                "PasswordNotSet - Login unsuccessful, logged-in status unchanged",
+                "InvalidArguments"
+            ],
+            "effect": "Attempt to login to game server with password <password>",
+            "comments": "If you are connecting to the admin interface over the internet, then use login.hashed instead to avoid having evildoers sniff the admin password"
+        },
+        {
+            "name": "login.hashed",
+            "request": "login.hashed",
+            "responses": [
+                "OK <salt: HexString> - Retrieved salt for the current connection",
+                "PasswordNotSet - No password set for server, login impossible",
+                "InvalidArguments"
+            ],
+            "effect": "Retrieves the salt, used in the hashed password login process",
+            "comments": "This is step 1 in the 2-step hashed password process. When using this people cannot sniff your admin password."
+        },
+        {
+            "name": "login.hashed",
+            "request": "login.hashed <passwordHash: HexString>",
+            "responses": [
+                "OK - Login successful, you are now logged in regardless of prior status",
+                "PasswordNotSet - No password set for server, login impossible",
+                "InvalidPasswordHash - Login unsuccessful, logged-in status unchanged",
+                "InvalidArguments"
+            ],
+            "effect": "Sends a hashed password to the server, in an attempt to log in",
+            "comments": "This is step 2 in the 2-step hashed password process. When using this people cannot sniff your admin password."
+        },
+        {
+            "name": "serverInfo",
+            "request": "serverInfo",
+            "responses": [
+                "OK <serverName: string> <current playground: integer> <effective max playground: integer> <current gamemode: string> <current map: string> <roundsPlayed: integer> <roundsTotal: string> <scores: team scores> <onlineState: online state> <ranked: boolean> <punkBuster: boolean> <hasGamePassword: boolean> <punkBusterVersion: string> <joinQueueEnabled: boolean> <region: string> <closestPingSite: string> <country: string> <matchMakingEnabled: boolean> <blazePlayerCount: integer> <blazeGameState: string>",
+                "InvalidArguments"
+            ],
+            "effect": "Query for brief server info.",
+            "comments": "This command can be performed without being logged in. Some of the return values will be empty or zero when the server isn’t fully up and running or between levels. Some return values are not yet implemented, and will therefore be zero."
+        },
+        {
+            "name": "logout",
+            "request": "logout",
+            "responses": [
+                "OK - You are now logged out regardless of prior status",
+                "InvalidArguments"
+            ],
+            "effect": "Logout from game server"
+        },
+        {
+            "name": "quit",
+            "request": "quit",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Disconnect from server"
+        },
+        {
+            "name": "version",
+            "request": "version",
+            "responses": [
+                "OK BF4 <version>",
+                "InvalidArguments"
+            ],
+            "effect": "Reports game server type, and build ID",
+            "comments": "Game server type and build ID uniquely identify the server, and the protocol it is running."
+        },
+        {
+            "name": "currentLevel",
+            "request": "currentLevel",
+            "responses": [
+                "OK <map: string>",
+                "InvalidArguments"
+            ],
+            "effect": "Reports the current map running on the game server"
+        },
+        {
+            "name": "listPlayers",
+            "request": "listPlayers <players: player subset>",
+            "responses": [
+                "OK <player info>",
+                "InvalidArguments"
+            ],
+            "effect": "Return list of all players on the server, but with zeroed out GUIDs"
+        },
+        {
+            "name": "admin.eventsEnabled",
+            "request": "admin.eventsEnabled <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set whether or not the server will send events to the current connection"
+        },
+        {
+            "name": "admin.help",
+            "request": "admin.help",
+            "responses": [
+                "OK <all commands available on server, as separate words>",
+                "InvalidArguments"
+            ],
+            "effect": "Report which commands the server knows about"
+        },
+        {
+            "name": "admin.kickPlayer",
+            "request": "admin.kickPlayer <soldier name: player name> <reason: string>",
+            "responses": [
+                "OK - Player did exist, and got kicked",
+                "InvalidArguments",
+                "PlayerNotFound - Player name doesn't exist on server"
+            ],
+            "effect": "Kick player <soldier name> from server",
+            "comments": "Reason text is optional. Default reason is 'Kicked by administrator'."
+        },
+        {
+            "name": "admin.killPlayer",
+            "request": "admin.killPlayer <name: player name>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidPlayerName",
+                "SoldierNotAlive"
+            ],
+            "effect": "Kill a player without any stats effect"
+        },
+        {
+            "name": "admin.listPlayers",
+            "request": "admin.listPlayers <players: player subset>",
+            "responses": [
+                "OK <player info>",
+                "InvalidArguments"
+            ],
+            "effect": "Return list of all players on the server; including guids"
+        },
+        {
+            "name": "admin.movePlayer",
+            "request": "admin.movePlayer <name: player name> <teamId: TeamId> <squadId: SquadId> <forceKill: boolean>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidTeamId",
+                "InvalidSquadId",
+                "InvalidPlayerName",
+                "InvalidForceKill",
+                "PlayerNotDead - Player is alive and forceKill is false",
+                "SetTeamFailed",
+                "SetSquadFailed"
+            ],
+            "effect": "Move a player to another team and/or squad",
+            "comments": "Only works if player is dead. This command will kill player if forceKill is true"
+        },
+        {
+            "name": "admin.password",
+            "request": "admin.password <password: player name>",
+            "responses": [
+                "OK - for set operation",
+                "OK <password> - for get operation",
+                "InvalidArguments",
+                "InvalidPassword - password does not conform to password format rules"
+            ],
+            "effect": "Set the admin password for the server, use it with an empty string('') to reset"
+        },
+        {
+            "name": "admin.say",
+            "request": "admin.say <message: string> <players: player subset>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidTeam",
+                "InvalidSquad",
+                "PlayerNotFound",
+                "ToolongMessage"
+            ],
+            "effect": "Send a chat message to players. The message must be less than 128 characters long."
+        },
+        {
+            "name": "admin.shutDown",
+            "request": "admin.shutDown <gracefulShutdown: boolean> <timelnSeconds: integer>",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Game server shuts down",
+            "comments": "If no value given, command will perform an immediate shutdown. If set to true, the server will shut down at the end of round or when the set time has been reached"
+        },
+        {
+            "name": "admin.yell",
+            "request": "admin.yell <message: string> <duration: seconds> <players: player subset>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "PlayerNotFound",
+                "MessagesTooLong"
+            ],
+            "effect": "Show an obnoxious message on players’ screens for the specified duration. If duration is left out, a default of 10 seconds is assumed. If players are left out, the message will go to all players. The message must be less than 256 characters long."
+        },
+        {
+            "name": "banList.add",
+            "request": "banList.add <id-type: id-type> <id: string> <timeout: timeout> <reason: string>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "BanListFull"
+            ],
+            "effect": "Add player to ban list for a certain amount of time",
+            "comments": "Adding a new name/IP/GUID ban will replace any previous ban for that name/IP/GUID. timeout can take three forms: perm - permanent <default>, rounds <integer> - until the given number of rounds has passed, seconds <integer> - number of seconds until ban expires. Id-type can be any of these: name – A soldier name, ip – An IP address, guid – A player guid. Id could be either a soldier name, ip address or guid depending on id-type. Reason is optional and defaults to 'Banned by admin'; max length 80 chars."
+        },
+        {
+            "name": "banList.clear",
+            "request": "banList.clear",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Clears ban list"
+        },
+        {
+            "name": "banList.list",
+            "request": "banList.list <startOffset: integer>",
+            "responses": [
+                "OK <player ban entries>",
+                "InvalidArguments"
+            ],
+            "effect": "Return a section of the list of banned players’ name/IPs/GUIDs.",
+            "comments": "6 words (Id-type, id, ban-type, seconds left, rounds left, and reason) are received for every ban in the list. If no startOffset is supplied, it is assumed to be 0. At most 100 entries will be returned by the command. To retrieve the full list, perform several banList.list calls with increasing offset until the server returns 0 entries. (There is an unsolved synchronization problem hidden there: if a ban expires during this process, then one other entry will be skipped during retrieval. There is no known workaround for this.)"
+        },
+        {
+            "name": "banList.load",
+            "request": "banList.load",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidIdType",
+                "InvalidBanType",
+                "InvalidTimeStamp - A time stamp could not be read",
+                "IncompleteBan - Incomplete ban entry at end of file",
+                "AccessError - Could not read from file"
+            ],
+            "effect": "Load list of banned players/IPs/GUIDs from file",
+            "comments": "6 lines (Id-type, id, ban-type, seconds left, rounds left, and reason) are retrieved for every ban in the list. Entries read before getting InvalidIdType, InvalidBanType, InvalidTimeStamp and IncompleteBan is still loaded."
+        },
+        {
+            "name": "banList.remove",
+            "request": "banList.remove <id-type: id-type> <id: string>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "NotFound - Id not found in banlist; banlist unchanged"
+            ],
+            "effect": "Remove name/ip/guid from banlist"
+        },
+        {
+            "name": "banList.save",
+            "request": "banList.save",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "AccessError - Could not save to file"
+            ],
+            "effect": "Save list of banned players/IPs/GUIDs to file",
+            "comments": "6 lines (Id-type, id, ban-type, seconds left, rounds left, and reason) are stored for every ban in the list. Every line break has windows '\\n' characters."
+        },
+        {
+            "name": "fairFight.activate",
+            "request": "fairFight.activate",
+            "responses": [
+                "OK AlreadyActive",
+                "OK Connecting"
+            ],
+            "effect": "Attempt to activate FairFight server module if it currently is inactive"
+        },
+        {
+            "name": "fairFight.deactivate",
+            "request": "fairFight.deactivate",
+            "responses": [
+                "OK",
+                "Denied"
+            ],
+            "effect": "Attempt to deactivate FairFight server module if it is currently active"
+        },
+        {
+            "name": "fairFight.isActive",
+            "request": "fairFight.isActive",
+            "responses": [
+                "OK <active: Boolean>"
+            ],
+            "effect": "Query whether the FairFight server module is active"
+        },
+        {
+            "name": "mapList.add",
+            "request": "mapList.add <map: string> <gamemode: string> <rounds: integer> <index: integer>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidMap – incorrect map name",
+                "InvalidGameModeOnMap – gamemode does not exist for that map",
+                "InvalidRoundsPerMap – number of rounds must be 1 or greater",
+                "Full – Map list maximum size has been reached",
+                "InvalidMapIndex – Index value is out of range"
+            ],
+            "effect": "Adds the map <map>, with gamemode <gamemode>, for <rounds> rounds, to the maplist. If <index> is not specified, it is appended to the end; otherwise, it is inserted before the map which is currently at position <index>."
+        },
+        {
+            "name": "mapList.availableMaps",
+            "request": "mapList.availableMaps <filter: string>",
+            "responses": [
+                "OK <map name> <list of available gamemodes>",
+                "OK <gamemode> <list of available maps>",
+                "InvalidArguments"
+            ],
+            "effect": "Return list of available maps or gamemodes",
+            "comments": "The only two strings accepted are 'perMap' and 'perGameMode'"
+        },
+        {
+            "name": "mapList.clear",
+            "request": "mapList.clear",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Clears the map list."
+        },
+        {
+            "name": "mapList.endRound",
+            "request": "mapList.endRound <winner: Team ID>",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "End the current round, declaring <winner> as the winning team"
+        },
+        {
+            "name": "mapList.getMapIndices",
+            "request": "mapList.getMapIndices",
+            "responses": [
+                "OK <current map index: integer> <next map index: integer>",
+                "InvalidArguments"
+            ],
+            "effect": "Returns the index of the map that is currently being played, and the index of the next map to run."
+        },
+        {
+            "name": "mapList.getRounds",
+            "request": "mapList.getRounds",
+            "responses": [
+                "OK <current round: integer> <total rounds to play on this map: integer>",
+                "InvalidArguments"
+            ],
+            "effect": "Returns the (1-based) current round number, and total number of rounds before switching map."
+        },
+        {
+            "name": "mapList.list",
+            "request": "mapList.list <startIndex>",
+            "responses": [
+                "OK <map list: MapList>",
+                "InvalidArguments"
+            ],
+            "effect": "Returns a section of the map list. If no startOffset is supplied, it is assumed to be 0. At most 100 entries will be returned by the command. To retrieve the full list, perform several mapList.list calls with increasing offset until the server returns 0 entries. (There is an unsolved synchronization problem hidden there: if the map list is edited by another RCON client during this process, then entries may be missed during retrieval. There is no known workaround for this.)"
+        },
+        {
+            "name": "mapList.load",
+            "request": "mapList.load",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "AccessError – file I/O error",
+                "InvalidMap – incorrect map name",
+                "InvalidGameModeOnMap – gamemode does not exist for that map",
+                "InvalidRoundsPerMap – number of rounds must be 1 or greater",
+                "Full – Map list maximum size has been reached"
+            ],
+            "effect": "Clears the map list and loads it from disk again.",
+            "comments": "If loading fails, the map list will be in an undefined state."
+        },
+        {
+            "name": "mapList.remove",
+            "request": "mapList.remove <index: integer>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidMapIndex – Index value is out of range"
+            ],
+            "effect": "Removes the map at offset <index> from the maplist."
+        },
+        {
+            "name": "mapList.restartRound",
+            "request": "mapList.restartRound",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Restarts the current round, without going through the end-of-round sequence."
+        },
+        {
+            "name": "mapList.runNextRound",
+            "request": "mapList.runNextRound",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Switches immediately to the next round, without going through the end-of-round sequence."
+        },
+        {
+            "name": "mapList.save",
+            "request": "mapList.save",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "AccessError – file I/O error"
+            ],
+            "effect": "Saves the map list to disk."
+        },
+        {
+            "name": "mapList.setNextMapIndex",
+            "request": "mapList.setNextMapIndex <index: integer>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidMapIndex – Index value is out of range"
+            ],
+            "effect": "Specifies which map to switch to once the current round completes. If there are rounds remaining on the current map, those rounds will be skipped."
+        },
+        {
+            "name": "player.idleDuration",
+            "request": "player.idleDuration <soldier name: player name>",
+            "responses": [
+                "OK <idleDuration: float>",
+                "InvalidArguments",
+                "InvalidPlayerName"
+            ],
+            "effect": "Returns the amount of seconds that a certain player has been idle for"
+        },
+        {
+            "name": "player.isAlive",
+            "request": "player.isAlive <soldier name: player name>",
+            "responses": [
+                "OK <alive: boolean>",
+                "InvalidArguments",
+                "InvalidPlayerName"
+            ],
+            "effect": "Returns whether the player is alive or not"
+        },
+        {
+            "name": "player.ping",
+            "request": "player.ping <soldier name: player name>",
+            "responses": [
+                "OK <soldier name: player name> <ping: integer>",
+                "InvalidArguments",
+                "InvalidPlayerName"
+            ],
+            "effect": "Returns the player’s ping"
+        },
+        {
+            "name": "punkBuster.activate",
+            "request": "punkBuster.activate",
+            "responses": [
+                "OK"
+            ],
+            "effect": "Attempt to activate PunkBuster server module if it currently is inactive"
+        },
+        {
+            "name": "punkBuster.isActive",
+            "request": "punkBuster.isActive",
+            "responses": [
+                "OK <active: Boolean>"
+            ],
+            "effect": "Query whether the PunkBuster server module is active"
+        },
+        {
+            "name": "punkBuster.pb_sv_command",
+            "request": "punkBuster.pb_sv_command <command: string>",
+            "responses": [
+                "OK - Command sent to PunkBuster server module",
+                "InvalidArguments",
+                "InvalidPbServerCommand - Command does not begin with 'pb_sv_'"
+            ],
+            "effect": "Send a raw PunkBuster command to the PunkBuster server",
+            "comments": "The entire command is to be sent as a single string. Don’t split it into multiple words."
+        },
+        {
+            "name": "reservedSlotsList.add",
+            "request": "reservedSlotsList.add <id: string>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "InvalidName",
+                "PlayerAlreadyInList",
+                "Full"
+            ],
+            "effect": "Add player to VIP list"
+        },
+        {
+            "name": "reservedSlotsList.aggressiveJoin",
+            "request": "reservedSlotsList.aggressiveJoin",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "If set to true, a non-VIP player will be kicked to give room when a VIP enters the queue."
+        },
+        {
+            "name": "reservedSlotsList.clear",
+            "request": "reservedSlotsList.clear",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Clears VIP list"
+        },
+        {
+            "name": "reservedSlotsList.list",
+            "request": "reservedSlotsList.list <startOffset: integer>",
+            "responses": [
+                "OK <player entries>",
+                "InvalidArguments"
+            ],
+            "effect": "Return a section of the list of VIP players’ names.",
+            "comments": "1 line for each player. If no startOffset is supplied, it is assumed to be 0. At most 100 entries will be returned by the command. To retrieve the full list, perform several reservedSlots.list calls with increasing offset until the server returns 0 entries."
+        },
+        {
+            "name": "reservedSlotsList.load",
+            "request": "reservedSlotsList.load",
+            "responses": [
+                "OK",
+                "PlayerAlreadyInList",
+                "InvalidArguments",
+                "Full",
+                "InvalidName",
+                "AccessError - Could not read from file",
+                "IncompleteRead - Could not read the full file"
+            ],
+            "effect": "Load list of VIP players from file",
+            "comments": "1 line for each entry with player name"
+        },
+        {
+            "name": "reservedSlotsList.remove",
+            "request": "reservedSlotsList.remove <id-type: id-type> <id: string>",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "PlayerNotInList"
+            ],
+            "effect": "Remove a player from the VIP list"
+        },
+        {
+            "name": "reservedSlotsList.save",
+            "request": "reservedSlotsList.save",
+            "responses": [
+                "OK",
+                "InvalidArguments",
+                "AccessError - Could not save to file"
+            ],
+            "effect": "Save list of VIP player names to file",
+            "comments": "1 line for each player name. Every line break has windows '\\n' characters."
+        },
+        {
+            "name": "spectatorList.add",
+            "request": "spectatorList.add <id: string>",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Add player to spectator list"
+        },
+        {
+            "name": "spectatorList.clear",
+            "request": "spectatorList.clear",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Clear the spectator list"
+        },
+        {
+            "name": "spectatorList.list",
+            "request": "spectatorList.list",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Return list of players in the spectator list"
+        },
+        {
+            "name": "spectatorList.load",
+            "request": "spectatorList.load",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Loads the spectator list from file"
+        },
+        {
+            "name": "spectatorList.remove",
+            "request": "spectatorList.remove <id: string>",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Remove player from spectator list"
+        },
+        {
+            "name": "spectatorList.save",
+            "request": "spectatorList.save",
+            "responses": [
+                "OK",
+                "InvalidArguments"
+            ],
+            "effect": "Save spectator list to file"
+        },
+        {
+            "name": "squad.leader",
+            "request": "squad.leader <teamId: integer> <squadId: integer> <soldier name: string>",
+            "responses": [
+                "OK <soldier name: string> - for get operation",
+                "OK - for set operation",
+                "InvalidArguments",
+                "InvalidTeam",
+                "InvalidSquad",
+                "EmptySquad"
+            ],
+            "effect": "Gets or sets who’s the leader of a squad."
+        },
+        {
+            "name": "squad.listActive",
+            "request": "squad.listActive <teamId: integer>",
+            "responses": [
+                "OK <squadCount: integer> <squadIds: integer>",
+                "InvalidArguments",
+                "InvalidTeam"
+            ],
+            "effect": "Returns the number of active squads on a team together with the squad ids"
+        },
+        {
+            "name": "squad.listPlayers",
+            "request": "squad.listPlayers <teamId: integer> <squadId: integer>",
+            "responses": [
+                "OK <playerCount: integer> <soldier names: string>",
+                "InvalidArguments",
+                "InvalidTeam",
+                "InvalidSquad"
+            ],
+            "effect": "Returns the number of players in the squad together with the player names"
+        },
+        {
+            "name": "squad.private",
+            "request": "squad.private <teamId: integer> <squadId: integer> <private: boolean>",
+            "responses": [
+                "OK <private: boolean> - for get operation",
+                "OK - for set operation",
+                "InvalidArguments",
+                "InvalidTeam",
+                "InvalidSquad",
+                "EmptySquad"
+            ],
+            "effect": "Gets or sets whether a certain squad is private or not."
+        },
+        {
+            "name": "vars.3dSpotting",
+            "request": "vars.3dSpotting <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if spotted targets are visible in the 3d-world",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.3pCam",
+            "request": "vars.3pCam <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if players should be allowed to switch to third-person vehicle cameras",
+            "delay": "Unknown"
+        },
+        {
+            "name": "vars.alwaysAllowSpectators",
+            "request": "vars.alwaysAllowSpectators <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "CommandIsReadOnly"
+            ],
+            "effect": "Set whether spectators are allowed to join without being on the spectator list",
+            "comments": "This command can only be used during startup"
+        },
+        {
+            "name": "vars.autoBalance",
+            "request": "vars.autoBalance <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if the server should autobalance"
+        },
+        {
+            "name": "vars.bulletDamage",
+            "request": "vars.bulletDamage <modifier: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set bullet damage scale factor, in percent",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.commander",
+            "request": "vars.commander <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if commander is allowed or not on the game server",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.crossHair",
+            "request": "vars.crossHair <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if crosshair for all weapons is enabled",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.forceReloadWholeMags",
+            "request": "vars.forceReloadWholeMags <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set hardcore reload on or off",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.friendlyFire",
+            "request": "vars.friendlyFire <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments",
+                "LevelNotLoaded - for set operation"
+            ],
+            "effect": "Set if the server should allow team damage",
+            "delay": "Works after round restart",
+            "comments": "Not available during level load."
+        },
+        {
+            "name": "vars.gameModeCounter",
+            "request": "vars.gameModeCounter <modifier: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set scale factor for number of tickets to end round, in percent",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.gamePassword",
+            "request": "vars.gamePassword <password: password>",
+            "responses": [
+                "OK - for set operation",
+                "OK <password> - for get operation",
+                "InvalidArguments",
+                "InvalidPassword - password does not conform to password format rules",
+                "InvalidConfig - password can’t be set if ranked is enabled"
+            ],
+            "effect": "Set the game password for the server, use it with an empty string('') to reset"
+        },
+        {
+            "name": "vars.hitIndicatorsEnabled",
+            "request": "vars.hitIndicatorsEnabled <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if hit indicators are enabled or not",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.hud",
+            "request": "vars.hud <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if players hud is available",
+            "delay": "Works after round restart"
+        },
+        {
+            "name": "vars.idleBanRounds",
+            "request": "vars.idleBanRounds <numRounds: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <rounds: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set how many rounds an idle-kick person should be banned. Set to 0 to disable ban mechanism",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.idleTimeout",
+            "request": "vars.idleTimeout <time: seconds>",
+            "responses": [
+                "OK - for set operation",
+                "OK <time: seconds> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set how many seconds a player can be idle before he/she is kicked from server. Set to 0 to disable idle kick",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.killCam",
+            "request": "vars.killCam <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if killcam is enabled",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.maxPlayers",
+            "request": "vars.maxPlayers <nr of players: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <nr of players: integer> - for get operation",
+                "InvalidArguments",
+                "InvalidNrOfPlayers - vars.maxPlayers capped to 64"
+            ],
+            "effect": "Set desired maximum number of players",
+            "comments": "The effective maximum number of players is also effected by the server provider, and the game engine. If the desired maximum number of players is set to something that is accepted by the server, the effective maximum number of players will usually change within a second. If the value is currently not accepted, then the server will continue to check every 10 seconds and change the effective count whenever the game engine allows it. It can only be changed at runtime on UNRANKED and PRIVATE servers."
+        },
+        {
+            "name": "vars.maxSpectators",
+            "request": "vars.maxSpectators <numSpectators: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <numSpectators: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set desired maximum number of spectators"
+        },
+        {
+            "name": "vars.miniMap",
+            "request": "vars.miniMap <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if minimap is enabled",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.miniMapSpotting",
+            "request": "vars.miniMapSpotting <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if spotted targets are visible on the minimap",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.mpExperience",
+            "request": "vars.mpExperience <experience: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <experience: string> - for get operation",
+                "CommandIsReadOnly",
+                "InvalidArguments"
+            ],
+            "effect": "Set the MP experience of the server: CQCLASSIC, RUSHCLASSIC, TDM0, OBLITERATION, ELIMINATION, SQDMCLASSIC or DOMCLASSIC",
+            "comments": "This command can only be used during startup"
+        },
+        {
+            "name": "vars.nameTag",
+            "request": "vars.nameTag <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if nametags should be displayed",
+            "delay": "Works after map switch"
+        },
+        {
+            "name": "vars.onlySquadLeaderSpawn",
+            "request": "vars.onlySquadLeaderSpawn <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if players can only spawn on their squad leader",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.playerRespawnTime",
+            "request": "vars.playerRespawnTime <modifier: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set player respawn time scale factor, in percent",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.preset",
+            "request": "vars.preset <serverPreset: string> <lockPresetSetting: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <serverPreset: string> <lockPresetSetting: boolean> - for get operation",
+                "CommandIsReadOnly",
+                "InvalidArguments"
+            ],
+            "effect": "Set the server preset: NORMAL, HARDCORE, CLASSIC, or CUSTOM. If lockPresetSetting is set to true, the preset will override any settings that conflicts with it and make sure that these settings cannot be changed without setting the server to Custom",
+            "comments": "This command can only be used during startup."
+        },
+        {
+            "name": "vars.regenerateHealth",
+            "request": "vars.regenerateHealth <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if players health regeneration is active",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.roundLockdownCountdown",
+            "request": "vars.roundLockdownCountdown <time: seconds>",
+            "responses": [
+                "OK <time: seconds> - for set operation",
+                "OK <time: seconds> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the duration of pre-round",
+            "delay": "Takes effect next round",
+            "comments": "Allowed durations are between 15 and 30 seconds for ranked servers, and between 10 and 900 seconds for unranked servers. If the value gets clamped during a set operation, then the clamped value is returned as part of the response"
+        },
+        {
+            "name": "vars.roundRestartPlayerCount",
+            "request": "vars.roundRestartPlayerCount <numPlayers: integer>",
+            "responses": [
+                "OK <numPlayers: integer> - for set operation",
+                "OK <numPlayers: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the minimum number of players for the round to restart in pre-round",
+            "delay": "Takes effect next round",
+            "comments": "If the server is ranked, and the value gets clamped during a set operation, then the clamped value is returned as part of the response"
+        },
+        {
+            "name": "vars.roundStartPlayerCount",
+            "request": "vars.roundStartPlayerCount <numPlayers: integer>",
+            "responses": [
+                "OK <numPlayers: integer> - for set operation",
+                "OK <numPlayers: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the minimum number of players required to begin a round",
+            "delay": "Takes effect next round",
+            "comments": "If the server is ranked, and the value gets clamped during a set operation, then the clamped value is returned as part of the response"
+        },
+        {
+            "name": "vars.roundTimeLimit",
+            "request": "vars.roundTimeLimit <modifier: percentage>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: percentage> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set percentage of the default time limit value",
+            "delay": "Takes effect next round",
+            "comments": "If set to 0, there will be no time limit"
+        },
+        {
+            "name": "vars.roundWarmupTimeout",
+            "request": "vars.roundWarmupTimeout <time: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <time: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set time to transition in to game round after player requirement has been met",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.serverDescription",
+            "request": "vars.serverDescription <description: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <description: string> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Sets the server description. This string is displayed on the server’s detail page on Battlelog. This string must be less than 256 characters in length."
+        },
+        {
+            "name": "vars.serverMessage",
+            "request": "vars.serverMessage <description: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <description: string> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Sets the server welcome message. This message will be displayed via an admin.yell to each player the first time that player deploys in on the server. The message is displayed for 5 seconds. This string must be less than 256 characters in length."
+        },
+        {
+            "name": "vars.serverName",
+            "request": "vars.serverName <name: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <name> - for get operation",
+                "InvalidArguments",
+                "ToolongName - for set operation"
+            ],
+            "effect": "Set server name"
+        },
+        {
+            "name": "vars.serverType",
+            "request": "vars.serverType <type: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <type: string> - for get operation",
+                "CommandIsReadOnly",
+                "InvalidArguments"
+            ],
+            "effect": "Set the server type: Official, Ranked, Unranked or Private",
+            "comments": "This command can only be used during startup"
+        },
+        {
+            "name": "vars.soldierHealth",
+            "request": "vars.soldierHealth <modifier: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set soldier max health scale factor, in percent",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.team1FactionOverride",
+            "request": "vars.team1FactionOverride <factionId: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <factionId: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the faction of team 1",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.team2FactionOverride",
+            "request": "vars.team2FactionOverride <factionId: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <factionId: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the faction of team 2",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.team3FactionOverride",
+            "request": "vars.team3FactionOverride <factionId: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <factionId: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the faction of team 3",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.team4FactionOverride",
+            "request": "vars.team4FactionOverride <factionId: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <factionId: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the faction of team 4",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.teamKillKickForBan",
+            "request": "vars.teamKillKickForBan <count: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <count: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set how many teamkill-kicks will lead to a permanent ban. Set to 0 to disable feature",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.teamKillValueDecreasePerSecond",
+            "request": "vars.teamKillValueDecreasePerSecond <count: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <count: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set how much every player’s kill-value should decrease per second",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.teamKillCountForKick",
+            "request": "vars.teamKillCountForKick <count: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <count: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set number of teamkills allowed during one round, before the game kicks the player in question. Set to 0 to disable kill counting",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.teamKillValueForKick",
+            "request": "vars.teamKillValueForKick <count: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <count: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the highest kill-value allowed before a player is kicked for teamkilling. Set to 0 to disable kill value mechanism",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.teamKillValueIncrease",
+            "request": "vars.teamKillValueIncrease <count: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <count: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the value of a teamkill (adds to the player’s current kill-value)",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.ticketBleedRate",
+            "request": "vars.ticketBleedRate <modifier: percent>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: percent> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the percentage of the ticket bleed rate",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.unlockMode",
+            "request": "vars.unlockMode <type: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <type: string> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set what weapons are unlocked for players on the server",
+            "delay": "Takes effect next round",
+            "comments": "Allowed strings are – all, common, none, stats, list, blacklist – the last two arguments are currently not working"
+        },
+        {
+            "name": "vars.vehicleSpawnAllowed",
+            "request": "vars.vehicleSpawnAllowed <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set whether vehicles should spawn in-game",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.vehicleSpawnDelay",
+            "request": "vars.vehicleSpawnDelay <modifier: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set vehicle spawn delay scale factor, in percent",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.roundPlayersReadyBypassTimer",
+            "request": "vars.roundPlayersReadyBypassTimer <time: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <time: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the time (in seconds) that must pass before the round can start, even if all players are ready. It starts counting from when the first player selects Ready.",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.roundPlayersReadyMinCount",
+            "request": "vars.roundPlayersReadyMinCount <count: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <count: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the minimum number of players that must be ready before the round can start.",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.roundPlayersReadyPercent",
+            "request": "vars.roundPlayersReadyPercent <modifier: percent>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: percent> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set the percentage of players that must be ready before the round can start. The value is calculated based on the number of players connected in the smallest team.",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.isNoobOnlyJoin",
+            "request": "vars.isNoobOnlyJoin <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "If true, only players with rank <= 10 can join the server.",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.gunMasterWeaponsPreset",
+            "request": "vars.gunMasterWeaponsPreset <index: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <index: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Sets the weapons playlist in Gun Master. The argument can assume any value between 0 and 4 (included).",
+            "delay": "Instantaneous"
+        },
+        {
+            "name": "vars.idleTimeoutActiveMinPlayersPercent",
+            "request": "vars.idleTimeoutActiveMinPlayersPercent <number: intiger>",
+            "responses": [
+                "OK - for set operation",
+                "OK <number: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "minimum percentage of players that must be present in a game/server for the idle timeout to activate",
+            "delay": "Next round"
+        },
+        {
+            "name": "vars.IsCompetitive",
+            "request": "vars.IsCompetitive <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "This is probably not complete...",
+            "delay": "None"
+        },
+        {
+            "name": "vars.outHighFrequency",
+            "request": "vars.outHighFrequency <number: intiger>",
+            "responses": [
+                "OK - for set operation",
+                "OK <number: intiger> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Changes the tickrate of the server, it is clamped",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "vars.outHighFrequencyRconCap",
+            "request": "vars.outHighFrequencyRconCap <number: intiger>",
+            "responses": [
+                "OK - for set operation",
+                "OK <number: intiger> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Changes max tickrate to set, internally clamped",
+            "delay": "None"
+        },
+        {
+            "name": "vars.serverTickTime",
+            "request": "vars.serverTickTime",
+            "responses": [
+                "OK <number: intiger> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Response in server FPS, more like FPMS",
+            "delay": "None"
+        },
+        {
+            "name": "vars.SkillBasedBalance",
+            "request": "vars.SkillBasedBalance <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if the server should use the Skill Based Team Balancer",
+            "delay": "None"
+        },
+        {
+            "name": "vars.teamFactionOverride",
+            "request": "vars.teamFactionOverride <teamId: intiger> <factionId: intiger>",
+            "responses": [
+                "OK <maxPlayers: integer> - for get operation",
+                "OK - for set operation",
+                "InvalidArguments"
+            ],
+            "effect": "teamFactionOverride is deprecated, it essentially is wrapped up under team1Faction, tema2...",
+            "delay": "Takes effect next round"
+        },
+        {
+            "name": "admin.effectiveMaxPlayers",
+            "request": "admin.effectiveMaxPlayers",
+            "responses": [
+                "OK <maxPlayers: integer> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Get the effective maximum number of players allowed on the server."
+        },
+        {
+            "name": "admin.teamSwitchPlayer",
+            "request": "admin.teamSwitchPlayer <player name: string> <teamId: Team ID>",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "InvalidPlayerName",
+                "InvalidTeamId"
+            ],
+            "effect": "Switch a player to a different team."
+        },
+        {
+            "name": "gameAdmin.add",
+            "request": "gameAdmin.add <player name: string> <restLevel: integer>",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "InvalidPlayerName",
+                "InvalidRestLevel"
+            ],
+            "effect": "Add a player to the list of game admins with a specific restriction level."
+        },
+        {
+            "name": "gameAdmin.clear",
+            "request": "gameAdmin.clear",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments"
+            ],
+            "effect": "Clear the list of game admins."
+        },
+        {
+            "name": "gameAdmin.list",
+            "request": "gameAdmin.list",
+            "responses": [
+                "OK <gameAdminList: list of player names> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "List all game admins on the server."
+        },
+        {
+            "name": "gameAdmin.load",
+            "request": "gameAdmin.load",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "AccessError - Could not read from file"
+            ],
+            "effect": "Load the list of game admins from a file."
+        },
+        {
+            "name": "gameAdmin.remove",
+            "request": "gameAdmin.remove <player name: string>",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "InvalidPlayerName",
+                "PlayerNotFound"
+            ],
+            "effect": "Remove a player from the list of game admins."
+        },
+        {
+            "name": "gameAdmin.save",
+            "request": "gameAdmin.save",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "AccessError - Could not save to file"
+            ],
+            "effect": "Save the list of game admins to a file."
+        },
+        {
+            "name": "unlockList.add",
+            "request": "unlockList.add <unlock: string>",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "InvalidUnlock"
+            ],
+            "effect": "Add an unlock to the unlock list."
+        },
+        {
+            "name": "unlockList.clear",
+            "request": "unlockList.clear",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments"
+            ],
+            "effect": "Clear the unlock list."
+        },
+        {
+            "name": "unlockList.list",
+            "request": "unlockList.list",
+            "responses": [
+                "OK <unlockList: list of unlocks> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "List all unlocks in the unlock list."
+        },
+        {
+            "name": "unlockList.remove",
+            "request": "unlockList.remove <unlock: string>",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "InvalidUnlock",
+                "UnlockNotFound"
+            ],
+            "effect": "Remove an unlock from the unlock list."
+        },
+        {
+            "name": "unlockList.save",
+            "request": "unlockList.save",
+            "responses": [
+                "OK - for set operation",
+                "InvalidArguments",
+                "AccessError - Could not save to file"
+            ],
+            "effect": "Save the unlock list to a file."
+        },
+        {
+            "name": "unlockList.set",
+            "request": "unlockList.set <unlock: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <unlock: string> - for get operation",
+                "InvalidArguments",
+                "InvalidUnlock"
+            ],
+            "effect": "Set the unlock list to a specific unlock."
+        },
+        {
+            "name": "vars.bannerUrl",
+            "request": "vars.bannerUrl <url: string>",
+            "responses": [
+                "OK - for set operation",
+                "OK <url: string> - for get operation",
+                "InvalidArguments",
+                "InvalidUrl"
+            ],
+            "effect": "Set the banner URL for the server."
+        },
+        {
+            "name": "vars.ctfRoundTimeModifier",
+            "request": "vars.ctfRoundTimeModifier <modifier: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: integer> - for get operation",
+                "InvalidArguments",
+                "InvalidModifier"
+            ],
+            "effect": "Set the round time modifier for Capture the Flag (CTF) mode."
+        },
+        {
+            "name": "vars.killRotation",
+            "request": "vars.killRotation <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Enable or disable kill rotation."
+        },
+        {
+            "name": "vars.playerManDownTime",
+            "request": "vars.playerManDownTime <modifier: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <modifier: integer> - for get operation",
+                "InvalidArguments",
+                "InvalidModifier"
+            ],
+            "effect": "Set the player man-down time scale factor, in percent."
+        },
+        {
+            "name": "vars.premiumStatus",
+            "request": "vars.premiumStatus <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if the server should be exclusive to Premium players."
+        },
+        {
+            "name": "vars.ranked",
+            "request": "vars.ranked <enabled: boolean>",
+            "responses": [
+                "OK - for set operation",
+                "OK <enabled: boolean> - for get operation",
+                "InvalidArguments"
+            ],
+            "effect": "Set if the server is ranked or unranked."
+        },
+        {
+            "name": "vars.roundsPerMap",
+            "request": "vars.roundsPerMap <rounds: integer>",
+            "responses": [
+                "OK - for set operation",
+                "OK <rounds: integer> - for get operation",
+                "InvalidArguments",
+                "InvalidRounds"
+            ],
+            "effect": "Set the number of rounds per map."
+        }
+    ]
+}

@@ -1,29 +1,76 @@
-const fetch = require("node-fetch");
-const Discord = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
+import Fetch from '../../helpers/fetch';
 
-module.exports = class say {
+module.exports = class Say {
     constructor() {
         this.name = 'say';
-        this.alias = ['sayall'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
+        this.description = 'Say a message to server';
     }
 
-    async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
-            message.reply("You don't have permission to use this command.")
-            return
-        }
+    async init() {
+        const servers = await Helpers.getServerChoices();
 
-        let server = await Helpers.selectServer(message)
-        if (!server) {
-            message.delete({ timeout: 5000 });
+        // TODO: handle player say, team say, squad say
+        // subcommand, or static choices
+        this.slashCommand = new SlashCommandBuilder()
+            .setName(this.name)
+            .setDescription(this.description)
+            .addStringOption(option =>
+                option.setName('server')
+                    .setDescription('Select the server')
+                    .setRequired(true)
+                    .addChoices(...servers)
+            )
+            .addStringOption(option =>
+                option.setName('message')
+                    .setDescription('Type what to say')
+                    .setRequired(true)
+            )
+    }
+
+    async runSlash(interaction) {
+        if (!Helpers.checkRoles(interaction, this))
+            return;
+
+        await interaction.deferReply();
+
+        const server = interaction.options.getString("server");
+        const content = interaction.option.getString("message");
+
+        const isWhitespaceString = str => !/\S/.test(str)
+        if (isWhitespaceString(content)) {
+            await interaction.editReply({ content: "It makes no sense to send whitespaces only", flags: MessageFlags.Ephemeral });
             return;
         }
 
-        message.delete();
+        const parameters = {
+            what: content
+        };
 
-        let parameters = await this.getParameters(message, server)
+        return Fetch.post(`${server}/admin/sayall`, parameters)
+            .then(response => {
+                return interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, response)] });
+            })
+            .catch(error => {
+                console.log(error)
+                return;
+            })
+    }
+
+    async run(bot, message, args) {
+        if (!Helpers.checkRoles(message, this))
+            return;
+
+        const server = await Helpers.selectServer(message)
+        if (!server) {
+            await message.delete();
+            return;
+        }
+
+        await message.delete();
+
+        const parameters = await this.getParameters(message, server)
             .then(parameters => {
                 return parameters;
             })
@@ -36,22 +83,13 @@ module.exports = class say {
             return
         }
 
-        return fetch(`${server}/admin/sayall`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-            body: JSON.stringify(parameters)
-        })
-            .then(response => response.json())
-            .then(json => {  
-                return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
+        return Fetch.post(`${server}/admin/sayall`, parameters)
+            .then(response => {
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, response)] });
             })
             .catch(error => {
                 console.log(error)
-                return false
+                return;
             })
     }
 
@@ -66,10 +104,10 @@ module.exports = class say {
 
             let what;
 
-            askMessage: while(true) {
-                what = await Helpers.askMessage(message);
-                if(!what) {
-                    if(await Helpers.askTryAgain(message)) {
+            askMessage: while (true) {
+                what = await Helpers.ask(message, "Global say", "Type message to all players");
+                if (!what) {
+                    if (await Helpers.askTryAgain(message)) {
                         continue askMessage;
                     }
                     return reject(console.error("Couldn't get the message"))
@@ -77,50 +115,53 @@ module.exports = class say {
                 break;
             }
 
-            const embed = new Discord.MessageEmbed()
+            const embed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Given Properties', message.author.avatarURL());
+                .setColor('Yellow')
+                .setAuthor({ name: 'Given Properties', iconURL: message.author.displayAvatarURL() })
+                .addFields({ name: 'Given content', value: `**${what}**`, inline: false });
 
-            embed.addField('Given content', `**${what}**`, false);
+            const msg = await message.channel.send({ embeds: [embed] });
 
-            const msg = await message.channel.send(embed);
-
-            const confirmEmbed = new Discord.MessageEmbed()
+            const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Are you sure you want say it to all as admin?', message.author.avatarURL());
+                .setColor('Yellow')
+                .setAuthor({ name: 'Are you sure you want to say it to all as admin?', iconURL: message.author.displayAvatarURL() });
 
             if (await Helpers.confirm(message, confirmEmbed)) {
-                msg.delete();
+                await msg.delete().catch(err => console.error('Failed to delete message:', err));
                 return resolve({
                     what: what,
                 });
-                
-            }
-            else {
-                msg.delete();
-                return reject(console.error("say interrupted!"))
+            } else {
+                await msg.delete().catch(err => console.error('Failed to delete message:', err));
+                return reject(console.error("say interrupted!"));
             }
         })
     }
 
 
-    buildEmbed(message, parameters, response) {
-        const embed = new Discord.MessageEmbed()
+    buildEmbed(messageOrInteraction, parameters, response) {
+        const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? "00FF00" : "FF0000")
-            .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png')
-            .setFooter('Author: Bartis', 'https://cdn.discordapp.com/attachments/608427147039866888/688075162608074872/skull2-9b2d7622.png')
-            .setAuthor('Say all', message.author.avatarURL())
-            .addField('Issuer', message.author.username, true)
-            .addField('Content', `**${parameters.what}**`, true)
-            .addField('Status', response.status, true)
-        if (response.status === "FAILED") {
-            embed.addField('Reason for failing', response.error, true)
-        }
-        embed.addField('Server', response.server, false)
+            .setColor(response.status === "OK" ? 'Green' : 'Red')
+            .setAuthor({ name: 'Say all', iconURL: messageOrInteraction.user.displayAvatarURL() })
+            .addFields(
+                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
+                { name: 'Content', value: `**${parameters.what}**`, inline: true },
+                { name: 'Status', value: response.status, inline: true }
+            );
 
-        return embed
+        if (response.status === "FAILED") {
+            embed.addFields(
+                { name: 'Reason for failing', value: response.error, inline: true }
+            );
+        }
+
+        embed.addFields(
+            { name: 'Server', value: response.server, inline: false }
+        );
+
+        return embed;
     }
 }

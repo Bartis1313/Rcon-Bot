@@ -20,7 +20,7 @@ var crypto = require("crypto");
  * Loads the core Frostbite module.
  * @param {!BattleCon} bc
  */
-module.exports = function(bc) {
+module.exports = function (bc) {
 
     /**
      * Available commands.
@@ -40,17 +40,18 @@ module.exports = function(bc) {
      */
     bc.serverVersion = null;
 
-    bc.on("login", function() {
-        
+    bc.on("login", function () {
+
         // Enable events
-        bc.eventsEnabled(true, function(err, enabled) {});
+        bc.eventsEnabled(true, function (err, enabled) { });
 
         // Get list of available commands / vars
-        bc.help(function(err, msg) {
+        bc.help(function (err, msg) {
             if (err) return;
             bc.commands = msg;
+            // Extract all command names
             var vars = [];
-            for (var i=0; i<msg.length; i++) {
+            for (var i = 0; i < msg.length; i++) {
                 if (msg[i].substring(0, 5) === "vars.") {
                     vars.push(msg[i]);
                 }
@@ -58,14 +59,16 @@ module.exports = function(bc) {
             bc.vars = vars;
             bc.emit("ready");
         });
+
+
     });
 
     /**
      * Gets the server's version.
      * @param {function(Error, string=, string=)} callback Callback
      */
-    bc.version = function(callback) {
-        bc.exec(["version"], function(err, res) {
+    bc.version = function (callback) {
+        bc.exec(["version"], function (err, res) {
             if (err) {
                 callback(err);
                 return;
@@ -78,8 +81,8 @@ module.exports = function(bc) {
      * Gets a list of available commands.
      * @param {function(Error, Array.<string>=)} callback Callback
      */
-    bc.help = function(callback) {
-        bc.exec("admin.help", function(err, res) {
+    bc.help = function (callback) {
+        bc.exec("admin.help", function (err, res) {
             if (err) {
                 callback(err);
                 return;
@@ -93,13 +96,13 @@ module.exports = function(bc) {
      * @param {boolean|function(Error, boolean=)} enabled true to enable, false to disable
      * @param {function(Error, boolean=)} callback Callback
      */
-    bc.eventsEnabled = function(enabled, callback) {
+    bc.eventsEnabled = function (enabled, callback) {
         if (typeof enabled === 'function') {
             callback = enabled;
             enabled = null;
         }
         if (typeof enabled !== 'boolean') { // Just query
-            bc.exec(["admin.eventsEnabled"], function(err, res) {
+            bc.exec(["admin.eventsEnabled"], function (err, res) {
                 if (err) {
                     callback(err);
                     return;
@@ -107,12 +110,12 @@ module.exports = function(bc) {
                 callback(null, res[0] === "true");
             });
         } else { // Set and query
-            bc.exec(["admin.eventsEnabled", enabled ? "true" : "false"], function(err, res) {
+            bc.exec(["admin.eventsEnabled", enabled ? "true" : "false"], function (err, res) {
                 if (err) {
                     callback(err);
                     return;
                 }
-                bc.exec(["admin.eventsEnabled"], function(err, res) {
+                bc.exec(["admin.eventsEnabled"], function (err, res) {
                     if (err) {
                         callback(err);
                         return;
@@ -127,44 +130,12 @@ module.exports = function(bc) {
      * Gets the list of players.
      * @param {function(Error, Array.<Object.<string,string>>=)} callback Callback
      */
-    bc.listPlayers = function(callback) {
-        bc.exec(["listPlayers", "all"], function(err, res) { // BF4-like
+    bc.listPlayers = function (callback) {
+        bc.exec(["listPlayers", "all"], function (err, res) { // BF4-like
             if (err) {
-                bc.exec(["listPlayers"], function(err2, res2) { // Possible fallback
+                bc.exec(["listPlayers"], function (err2, res2) { // Possible fallback
                     if (err2) {
                         callback(err);
-                        return;
-                    }
-                    callback(null, bc.tabulate(res2));
-                });
-                return;
-            }
-            callback(null, bc.tabulate(res));
-        });
-    };
-
-    bc.team_1 = function(callback) {
-        bc.exec(["listPlayers", "team", "1"], function(err, res) { // BF4-like
-            if (err) {
-                bc.exec(["listPlayers"], function(err2, res2) { // Possible fallback
-                    if (err2) {
-                        ccallback("players list", err);
-                        return;
-                    }
-                    callback(null, bc.tabulate(res2));
-                });
-                return;
-            }
-            callback(null, bc.tabulate(res));
-        });
-    };
-
-    bc.team_2 = function(callback) {
-        bc.exec(["listPlayers", "team", "2"], function(err, res) { // BF4-like
-            if (err) {
-                bc.exec(["listPlayers"], function(err2, res2) { // Possible fallback
-                    if (err2) {
-                        callback("players list", err);
                         return;
                     }
                     callback(null, bc.tabulate(res2));
@@ -179,8 +150,8 @@ module.exports = function(bc) {
      * Gets information about the server.
      * @param {function(Error, Array.<string>=)} callback Callback
      */
-    bc.serverInfo = function(callback) {
-        bc.exec(["serverInfo"], function(err, res) {
+    bc.serverInfo = function (callback) {
+        bc.exec(["serverInfo"], function (err, res) {
             if (err) {
                 callback(err);
                 return;
@@ -193,8 +164,8 @@ module.exports = function(bc) {
      * Logs in.
      * @param {function(Error)=} callback Callback
      */
-    bc.login = function(callback) {
-        this.exec(["login.hashed"], function(err, res) {
+    bc.login = function (callback) {
+        this.exec(["login.hashed"], function (err, res) {
             if (err) {
                 this.sock.end();
                 this.emit("error", err);
@@ -204,7 +175,7 @@ module.exports = function(bc) {
             var md = crypto.createHash("md5");
             md.update(res[0], "hex");
             md.update(this.pass, "utf8");
-            this.exec(["login.hashed", md.digest("hex").toUpperCase()], function(err) {
+            this.exec(["login.hashed", md.digest("hex").toUpperCase()], function (err) {
                 if (err) {
                     this.sock.end();
                     this.emit("error", err);
@@ -222,8 +193,8 @@ module.exports = function(bc) {
      * Logs out.
      * @param {function(Error)=} callback Callback
      */
-    bc.logout = function(callback) {
-        this.exec(["logout"], function(err) {
+    bc.logout = function (callback) {
+        this.exec(["logout"], function (err) {
             if (err) {
                 if (callback) callback(err);
                 return;
@@ -236,8 +207,8 @@ module.exports = function(bc) {
      * Ends the session.
      * @param {function(Error)=} callback Callback
      */
-    bc.quit = function(callback) {
-        bc.exec(["quit"], function(err, res) {
+    bc.quit = function (callback) {
+        bc.exec(["quit"], function (err, res) {
             if (err) {
                 if (callback) callback(err);
                 return;

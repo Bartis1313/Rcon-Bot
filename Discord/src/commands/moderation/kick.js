@@ -1,30 +1,112 @@
-const fetch = require("node-fetch");
-const Discord = require('discord.js');
-import { Helpers, ActionType } from '../../helpers/helpers'
-import PlayerMatching from '../../helpers/playerMatching'
+const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
+import { Helpers } from '../../helpers/helpers'
+import Matching from '../../helpers/matching'
+import Fetch from '../../helpers/fetch';
 
-module.exports = class kick {
+module.exports = class Kick {
     constructor() {
         this.name = 'kick';
-        this.alias = ['kickplayer'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}${this.name}`;
+        this.description = 'Kicks a player from the server';
     }
 
-    async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
-            message.reply("You don't have permission to use this command.")
-            return
-        }
+    async init() {
+        const servers = await Helpers.getServerChoices();
 
-        let server = await Helpers.selectServer(message)
-        if (!server) {
-            message.delete({ timeout: 5000 });
+        this.slashCommand = new SlashCommandBuilder()
+            .setName(this.name)
+            .setDescription(this.description)
+            .addStringOption(option =>
+                option.setName('server')
+                    .setDescription('Select the server')
+                    .setRequired(true)
+                    .addChoices(...servers)
+            )
+            .addStringOption(option =>
+                option.setName('name')
+                    .setDescription('Select player name')
+                    .setRequired(true)
+                    .setAutocomplete(true)
+            )
+            .addStringOption(option =>
+                option.setName('reason')
+                    .setDescription('Give reason to kick player')
+                    .setRequired(false)
+            );
+    }
+
+    async handleAutocomplete(interaction) {
+        const server = interaction.options.getString("server");
+
+        const response = await Helpers.getPlayers(server);
+        const playerNames = response.data.players.map(player => player.name);
+
+        const focusedOption = interaction.options.getFocused();
+        const matchedPlayer = Matching.getBestMatch(focusedOption, playerNames);
+        if (!matchedPlayer) {
             return;
         }
 
-        message.delete();
+        const type = matchedPlayer.type;
+        if (type === "far") {
+            return;
+        }
 
-        let parameters = await this.getParameters(message, server)
+        let players = [];
+        if (type === "good") {
+            players = [matchedPlayer.name];
+        }
+        else if (type === "multi") {
+            players = matchedPlayer.names;
+        }
+
+        await interaction.respond(
+            players.map(name => ({ name: name, value: name }))
+        );
+    }
+
+    async runSlash(interaction) {
+        if (!Helpers.checkRoles(interaction, this))
+            return;
+
+        await interaction.deferReply();
+
+        const server = interaction.options.getString("server");
+        const playerName = interaction.options.getString('name');
+        const reason = interaction.options.getString('reason');
+
+        if (!playerName) {
+            await interaction.editReply("playerName can't be null");
+            return;
+        }
+
+        const parameters = {
+            playerName,
+            reason
+        };
+
+        return Fetch.post(`${server}/admin/kick`, parameters)
+            .then(response => {
+                return interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, response)] });
+            })
+            .catch(error => {
+                console.error(error);
+                return false;
+            });
+    }
+
+    async run(bot, message, args) {
+        if (!Helpers.checkRoles(message, this))
+            return;
+
+        const server = await Helpers.selectServer(message);
+        if (!server) {
+            await message.delete();
+            return;
+        }
+
+        await message.delete();
+
+        const parameters = await this.getParameters(message, server)
             .then(parameters => {
                 return parameters;
             })
@@ -37,155 +119,135 @@ module.exports = class kick {
             return
         }
 
-        await Helpers.sendDisconnectInfo(ActionType.KICK, server, parameters, 10000);
-
-        return fetch(`${server}/admin/kick`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-            body: JSON.stringify(parameters)
-        })
-            .then(response => response.json())
-            .then(async json => {
-
-                return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
+        return Fetch.post(`${server}/admin/kick`, parameters)
+            .then(response => {
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, response)] });
             })
             .catch(error => {
-                console.log(error)
-                return false
-            })
+                console.error(error);
+                return false;
+            });
     }
 
-    getParameters(message, server) {
+    async getParameters(message, server) {
         return new Promise(async (resolve, reject) => {
-            const response = await Helpers.getPlayers(server)
-            if (!response.data.players) return reject(console.error("No players in the server."))
-            const playerNames = response.data.players.map((player) => player.name);
+            const response = await Helpers.getPlayers(server);
+            if (!response.data.players) return reject(new Error("No players in the server."));
 
             let playerName;
             let reason;
 
-            askPlayerName: while (true) {
-                playerName = await Helpers.askPlayerName(message);
+            while (true) {
+                playerName = await Helpers.ask(message, "Player name", "Give player name to kick");
                 if (!playerName) {
-                    if (await Helpers.askTryAgain(message)) {
-                        continue askPlayerName;
-                    }
-
-                    return reject(console.error("Couldn't get the playerName"))
+                    if (await Helpers.askTryAgain(message)) continue;
+                    return reject(new Error("Couldn't get the player name."));
                 }
 
-                // Do matching
-                const matchedPlayer = PlayerMatching.getBestPlayerMatch(playerName, playerNames);
+                const playerNames = response.data.players.map(player => player.name);
+                const matchedPlayer = Matching.getBestMatch(playerName, playerNames);
                 if (!matchedPlayer) {
-                    if (await Helpers.askTryAgain(message, 'No matches')) {
-                        continue askPlayerName;
-                    }
-
-                    return reject(console.error("Couldn't match the player to any player in the server."))
+                    if (await Helpers.askTryAgain(message, "No matches")) continue;
+                    return reject(new Error("Couldn't match the player to any player in the server."));
                 }
 
                 switch (matchedPlayer.type) {
                     case "good":
-                        playerName = matchedPlayer.playerName;
-                        break askPlayerName;
+                        playerName = matchedPlayer.name;
+                        break;
                     case "far":
-                        const embed = new Discord.MessageEmbed()
+                        const confirmEmbed = new EmbedBuilder()
                             .setTimestamp()
-                            .setColor("00FF00")
-                            .setAuthor('Confirm', message.author.avatarURL())
-                            .setDescription(`Did you mean ${matchedPlayer.playerName}?`);
-                        if (await Helpers.confirm(message, embed)) {
-                            playerName = matchedPlayer.playerName;
-                            break askPlayerName;
+                            .setColor('Yellow')
+                            .setAuthor({ name: 'Confirm', iconURL: message.author.displayAvatarURL() })
+                            .setDescription(`Did you mean ${matchedPlayer.name}?`);
+
+                        if (await Helpers.confirm(message, confirmEmbed)) {
+                            playerName = matchedPlayer.name;
+                            break;
                         }
-                        if (await Helpers.askTryAgain(message)) {
-                            continue askPlayerName;
-                        }
+                        if (await Helpers.askTryAgain(message))
+                            continue;
                         break;
                     case "multi":
-                        let selectedPlayer = await Helpers.selectPlayerName(message, matchedPlayer.playerNames);
+                        const selectedPlayer = await Helpers.selectFromEmoteList(message, matchedPlayer.names);
+                        if (selectedPlayer === null) {
+                            return reject(new Error("Canceled selection"));
+                        }
                         if (selectedPlayer) {
                             playerName = selectedPlayer;
-                            break askPlayerName;
+                            break;
                         }
-                        if (await Helpers.askTryAgain(message, 'Didn\'t match')) {
-                            continue askPlayerName;
-                        }
+                        if (await Helpers.askTryAgain(message, "Didn't match"))
+                            continue;
                         break;
                 }
 
-                playerName = matchedPlayer
-
                 break;
             }
 
-            const embed = new Discord.MessageEmbed()
+            const embed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Given Properties', message.author.avatarURL());
+                .setColor('Green')
+                .setAuthor({ name: 'Given Properties', iconURL: message.author.displayAvatarURL() })
+                .addFields({ name: 'Given playername', value: `**${playerName}**` });
 
-            embed.addField('Given playername', `**${playerName}**`, false);
+            const msg = await message.channel.send({ embeds: [embed] });
 
-            const msg = await message.channel.send(embed);
-
-            askReason: while (true) {
-                reason = await Helpers.askReason(message);
+            while (true) {
+                reason = await Helpers.ask(message, "Kick Reason", "Give kick reason");
                 if (!reason) {
-                    if (await Helpers.askTryAgain(message)) {
-                        continue askReason;
-                    }
-
-                    return reject(console.error("Couldn't get the reason"))
+                    if (await Helpers.askTryAgain(message)) continue;
+                    return reject(new Error("Couldn't get the reason."));
                 }
-
                 break;
             }
 
-            msg.delete();
-            const confirmEmbed = new Discord.MessageEmbed()
-                .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Are you sure you want to kick the player?', message.author.avatarURL());
+            msg.delete().catch(() => { });
 
-            confirmEmbed.addField('Given playername', `**${playerName}**`, false);
-            confirmEmbed.addField('Given reason', `**${reason}**`, false);
+            const confirmEmbed = new EmbedBuilder()
+                .setTimestamp()
+                .setColor('Yellow')
+                .setAuthor({ name: 'Are you sure you want to kick player?', iconURL: message.author.displayAvatarURL() })
+                .addFields(
+                    { name: 'Given playername', value: `**${playerName}**` },
+                    { name: 'Given reason', value: `**${reason}**` },
+                );
 
             if (await Helpers.confirm(message, confirmEmbed)) {
                 return resolve({
-                    playerName: playerName,
-                    reason: reason,
+                    playerName,
+                    reason,
                 });
+            } else {
+                return reject(new Error("Kick interrupted!"));
             }
-            else {
-                return reject(console.error("Kick interrupted!"))
-            }
-        })
+        });
     }
 
-
-    buildEmbed(message, parameters, response) {
-        const embed = new Discord.MessageEmbed()
+    buildEmbed(messageOrInteraction, parameters, response) {
+        const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? "00FF00" : "FF0000")
+            .setColor(response.status === "OK" ? 'Green' : 'Red')
             .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688004144165945344/cross.png')
-            .setFooter('Author: Bartis', 'https://cdn.discordapp.com/attachments/608427147039866888/688004144165945344/cross.png')
-            .setAuthor('Player Kick', message.author.avatarURL())
-            .addField('Issuer', message.author.username, true)
-            .addField('Target', `**${parameters.playerName}**`, true)
+            .setFooter({ text: 'Author: Bartis', iconURL: 'https://cdn.discordapp.com/attachments/608427147039866888/688004144165945344/cross.png' })
+            .setAuthor({ name: 'Player Kick', iconURL: messageOrInteraction.user.displayAvatarURL() })
+            .addFields(
+                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
+                { name: 'Target', value: `**${parameters.playerName}**`, inline: true },
+                { name: 'Status', value: response.status, inline: true }
+            );
+
         if (response?.data?.reason) {
-            embed.addField('Reason', response.data.reason, true)
+            embed.addFields({ name: 'Reason', value: response.data.reason, inline: true });
         }
 
-        embed.addField('Status', response.status, true)
         if (response.status === "FAILED") {
-            embed.addField('Reason for failing', response.error, true)
+            embed.addFields({ name: 'Reason for failing', value: response.error, inline: true });
         }
-        embed.addField('Server', response.server, false)
 
-        return embed
+        embed.addFields({ name: 'Server', value: response.server, inline: false });
+
+        return embed;
     }
-}
+};

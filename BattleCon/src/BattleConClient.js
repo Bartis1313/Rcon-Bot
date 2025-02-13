@@ -1,32 +1,28 @@
 import BattleCon from "../src/BattleCon";
-import { webHookKickSenderBF4, webHookKickSenderBF3, webHookPB } from './webHook.js'
-import {
-  ticketsScript, ticketsChat, factionScript, tickrateScript
-} from './scripts.js'
+
+global.BasePlugin = require("./basePlugin"); // so you dont have to require it in plugins
+const { loadPlugins } = require("./pluginLoader");
 
 class BattleConClient {
-  constructor(host, port, password) {
-    this._connection = new BattleCon(host, port, password).use(process.env.GAME);
-    this.playerMap = new Map();
+  constructor(host, port, password, game) {
+    this._connection = new BattleCon(host, port, password).use(game);
     this.initialize();
-    this.inEndRound = false;
+
+    this.isBusyState = false;
   }
 
   initialize() {
-    let reconnectInterval = null;
     const connection = this._connection
     let version = '';
 
     connection.on("connect", () => {
       console.log("# Connected to " + connection.host + ":" + connection.port);
-      if (reconnectInterval !== null) {
-        clearInterval(reconnectInterval);
-        reconnectInterval = null;
-      }
     });
 
     connection.on("login", () => {
       console.log("# Login successful");
+
+      this.isBusyState = false;
     });
 
     connection.on("ready", () => {
@@ -34,30 +30,16 @@ class BattleConClient {
       connection.exec("version", (err, msg) => {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
         version = msg[1];
+
+        loadPlugins(this._connection);
       });
-
-      // Execute module commands (core.js):
-      connection.serverInfo((err, info) => {
-
-      });
-
-      connection.on("event", (msg) => {
-        //console.log("event", msg);
-      });
-
-      connection.listPlayers((err, players) => {
-        console.log("There are " + players.length + " connected players");
-      });
-    });
-
-    connection.on("player.disconnect", (name, reason) => {
-      webHookKickSenderBF4(connection, name, reason);
     });
 
     connection.on("close", () => {
       const date = new Date();
-      console.log(`Disconnect: ${date.toLocaleString()}`);
-      handleOnDisconnect();
+      console.log(`Disconnect at: ${date.toLocaleString()}`);
+
+      this.isBusyState = true;
     });
 
     connection.on("event", function (msg) {
@@ -67,53 +49,28 @@ class BattleConClient {
     connection.on("error", (err) => {
       console.log("# Error: " + err.message, err.stack);
     });
+  }
 
-    connection.on("player.chat", (name, text, subset) => {
-      //console.log("# " + name + " -> " + subset.join(' ') + ": " + text);
-      webHookKickSenderBF3(connection, name, text, subset, this.playerMap);
+  // define methods
 
-      ticketsChat(connection, text);
-      tickrateScript(connection, true, text);
-    });
+  isBusy() {
+    return this.isBusyState;
+  }
 
-    connection.on("server.roundOver", () => {
-      this.inEndRound = true;
+  getMapsRaw() {
+    return this._connection.gameMaps;
+  }
 
-      factionScript(connection);
-      ticketsScript(connection, true);
-    })
+  getModesRaw() {
+    return this._connection.gameModes;
+  }
 
-    connection.on("server.onLevelLoaded", () => {
-      this.inEndRound = false;
-    })
+  getPrettyMap(map) {
+    return this._connection.gameMaps[map] || "Map not found";
+  }
 
-    connection.on("pb.message", (msg) => {
-      //console.log(msg)
-      webHookPB(connection, version, msg);
-    });
-
-    connection.on("player.join", (name, guid) => {
-      this.playerMap.set(name, guid);
-
-      //joinLogScript(connection, name, guid);
-    })
-
-    connection.on("player.spawn", (name, team) => {
-
-      //handleOnSpawn(name, team);
-    })
-
-    connection.on("player.leave", (name, info) => {
-      //handleOnLeave(name);
-    })
-
-    connection.on("player.kill", (killerName, victimName, weaponName, isHeadshot) => {
-      //handleOnKill(killerName, victimName, weaponName, isHeadshot);
-    })
-
-    connection.on("player.leave", (name) => {
-      this.playerMap.delete(name);
-    })
+  getPrettyMode(mode) {
+    return this._connection.gameModes[mode] || "Mode not found";
   }
 
   connect() {
@@ -153,7 +110,7 @@ class BattleConClient {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
       if (!playerName) reject('Player name is required.')
-      reason = reason ? reason : "Kicked by administrator"
+      reason = reason ? reason : "Kicked by administrator";
 
       connection.exec(["admin.kickPlayer", playerName, reason], function (err, msg) {
         err ? reject(err.message) : resolve({ playerName: playerName, reason: reason })
@@ -223,27 +180,16 @@ class BattleConClient {
     })
   }
 
-  team_1() {
+  team(number) {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
-      connection.team_1(function (err, players) {
-        for (var i = 0; i < players.length; i++) {
-        }
-        err ? reject(err.message) : resolve({ players: players })
+
+      connection.exec(["listPlayers", "team", number.toString()], function (err, players) {
+        err ? reject(err.message) : resolve({ players: connection.tabulate(players) })
       });
     })
   }
 
-  team_2() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.team_2(function (err, players) {
-        for (var i = 0; i < players.length; i++) {
-        }
-        err ? reject(err.message) : resolve({ players: players })
-      });
-    })
-  }
   serverFPS() {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
@@ -263,9 +209,10 @@ class BattleConClient {
   setNextMap(indexNum) {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
-      if (!indexNum) reject('Index is required.')
-
-      connection.exec(["mapList.setNextMapIndex", indexNum], function (err, msg) {
+      if (indexNum === null || indexNum === undefined) {
+        reject("Index is required.");
+      }
+      connection.exec(["mapList.setNextMapIndex", indexNum.toString()], function (err, msg) {
         err ? reject(err.message) : resolve({ indexNum: indexNum })
       });
     })
@@ -372,7 +319,7 @@ class BattleConClient {
       let arr = [];
       arr.push(command);
 
-      if (params.length) {
+      if (params && params.length) {
         for (const el of params) {
           arr.push(el); // and arguments if any
         }
@@ -382,6 +329,12 @@ class BattleConClient {
         err ? reject(err.message) : resolve(msg)
       });
     });
+  }
+
+  getCommands() {
+    let connection = this._connection;
+
+    return connection.commands;
   }
 
 }

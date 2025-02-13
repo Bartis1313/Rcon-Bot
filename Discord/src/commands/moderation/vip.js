@@ -1,63 +1,153 @@
-const fetch = require("node-fetch");
-const Discord = require('discord.js');
-import { Helpers } from '../../helpers/helpers'
+const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
+import { Helpers, DiscordLimits } from '../../helpers/helpers'
+import Matching from '../../helpers/matching'
+import Fetch from '../../helpers/fetch';
 
-module.exports = class vip {
+module.exports = class Vip {
     constructor() {
         this.name = 'vip';
-        this.alias = ['reservedslots'];
-        this.usage = `${process.env.DISCORD_COMMAND_PREFIX}`;
+        this.description = 'Add vip to selected player';
     }
 
-    async run(bot, message, args) {
-        if (!(message.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID))) {
-            message.reply("You don't have permission to use this command.")
-            return
-        }
+    async init() {
+        const servers = await Helpers.getServerChoices();
 
-        let server = await Helpers.selectServer(message)
-        this.serverUrl = server;
-        if (!server) {
-            message.delete({ timeout: 5000 });
+        this.slashCommand = new SlashCommandBuilder()
+            .setName(this.name)
+            .setDescription(this.description)
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('manual')
+                    .setDescription('Add vip to the player, without matching')
+                    .addStringOption(option =>
+                        option.setName('server')
+                            .setDescription("Select the server")
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('name')
+                            .setDescription('Type player name')
+                            .setRequired(true)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('online')
+                    .setDescription('Add vip to the player, with matching')
+                    .addStringOption(option =>
+                        option.setName('server')
+                            .setDescription("Select the server")
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('name')
+                            .setDescription('Type player name')
+                            .setRequired(true)
+                            .setAutocomplete(true)
+                    )
+            );
+    }
+
+    async handleAutocomplete(interaction) {
+        const server = interaction.options.getString("server");
+        const focusedValue = interaction.options.getFocused();
+
+        const response = await Helpers.getPlayers(server);
+        if (!response) {
+            await interaction.respond([]);
+            return;
+        }
+        const playerNames = response.data.players.map(player => player.name);
+        const matchedPlayer = Matching.getBestMatch(focusedValue, playerNames, DiscordLimits.maxChoices);
+        if (!matchedPlayer) {
+            await interaction.respond([]);
             return;
         }
 
-        message.delete();
-
-        let parameters = await this.getParameters(message, server)
-            .then(parameters => {
-                return parameters;
-            })
-            .catch(err => {
-                console.log(err);
-                return null;
-            })
-
-        if (!parameters) {
-            return
+        const type = matchedPlayer.type;
+        if (type === "far") {
+            await interaction.respond([]);
+            return;
         }
 
-        return fetch(`${server}/reservedSlots`, {
-            method: "post",
-            headers: {
-                "Content-type": "application/json",
-                "Accept": "application/json",
-                "Accept-Charset": "utf-8"
-            },
-            body: JSON.stringify(parameters)
-        })
-            .then(response => response.json())
-            .then(json => {
-                console.log(json)
-                return message.channel.send({ embed: this.buildEmbed(message, parameters, json) })
-            })
-            .catch(error => {
-                console.log(error)
-                return false
-            })
+        let players = [];
+        if (type === "good") {
+            players = [matchedPlayer.name];
+        }
+        else if (type === "multi") {
+            players = matchedPlayer.names;
+        }
+
+        await interaction.respond(
+            players.map(name => ({ name: name, value: name }))
+        );
     }
 
-    getParameters(message, server) {
+    async runSlash(interaction) {
+        if (!Helpers.checkRoles(interaction, this))
+            return;
+
+        await interaction.deferReply();
+
+        const server = interaction.options.getString("server");
+        const playerName = interaction.options.getString('name');
+
+        const isWhitespaceString = str => !/\S/.test(str)
+        if (isWhitespaceString(playerName)) {
+            await interaction.editReply("It makes no sense to send whitespaces only");
+            return;
+        }
+
+        const parameters = {
+            soldierName: playerName
+        };
+
+        return Fetch.post(`${server}/reservedSlots`, parameters)
+            .then(response => {
+                return interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, response)] });
+            })
+            .catch(error => {
+                console.error(error)
+                return;
+            });
+    }
+
+    async run(bot, message, args) {
+        if (!Helpers.checkRoles(message, this))
+            return;
+
+        let server = await Helpers.selectServer(message);
+        if (!server) {
+            await message.delete();
+            return;
+        }
+
+        await message.delete();
+
+        const parameters = await this.getParameters(message, server)
+            .then(parameters => parameters)
+            .catch(err => {
+                console.error(err);
+                return null;
+            });
+
+        if (!parameters) {
+            return;
+        }
+
+        return Fetch.post(`${server}/reservedSlots`, parameters)
+            .then(response => {
+                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, response)] });
+            })
+            .catch(error => {
+                console.error(error)
+                return;
+            });
+    }
+
+    async getParameters(message) {
         return new Promise(async (resolve, reject) => {
             let soldierName;
 
@@ -68,43 +158,53 @@ module.exports = class vip {
                         continue askPlayerName;
                     }
 
-                    return reject(console.error("Couldn't get the soldierName"))
+                    return reject(console.error("Couldn't get the soldierName"));
                 }
                 break;
             }
 
-            const confirmEmbed = new Discord.MessageEmbed()
+            const confirmEmbed = new EmbedBuilder()
                 .setTimestamp()
-                .setColor("00FF00")
-                .setAuthor('Are you sure you want to add VIP for this player?', message.author.avatarURL());
-
-            confirmEmbed.addField('Given playerName', `**${soldierName}**`, false);
+                .setColor('Yellow')
+                .setAuthor({
+                    name: 'Are you sure you want to add VIP for this player?',
+                    iconURL: message.author.displayAvatarURL(),
+                })
+                .addFields({ name: 'Given playerName', value: `**${soldierName}**`, inline: false });
 
             if (await Helpers.confirm(message, confirmEmbed)) {
                 return resolve({
-                    soldierName: soldierName
+                    soldierName: soldierName,
                 });
+            } else {
+                return reject(console.error("VIP command interrupted!"));
             }
-            else {
-                return reject(console.error("Vip interrupted!"))
-            }
-        })
+        });
     }
 
-    buildEmbed(message, parameters, response) {
-        const embed = new Discord.MessageEmbed()
+    buildEmbed(messageOrInteraction, parameters, response) {
+        const embed = new EmbedBuilder()
             .setTimestamp()
-            .setColor(response.status === "OK" ? "00FF00" : "FF0000")
+            .setColor(response.status === "OK" ? 'Green' : 'Red')
             .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688012094972625024/fireworks.png')
-            .setFooter('Author: Bartis', 'https://cdn.discordapp.com/attachments/608427147039866888/688012094972625024/fireworks.png')
-            .setAuthor('Player Reserved Slot', message.author.avatarURL())
-            .addField('Issuer', message.author.username, true)
-            .addField('Target', `**${parameters.soldierName}**`, true)
-            .addField('Status', response.status, true)
+            .setFooter({
+                text: 'Author: Bartis',
+                iconURL: 'https://cdn.discordapp.com/attachments/608427147039866888/688012094972625024/fireworks.png',
+            })
+            .setAuthor({
+                name: 'Reserved Slot',
+                iconURL: messageOrInteraction.user.displayAvatarURL(),
+            })
+            .addFields(
+                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
+                { name: 'Target', value: `**${parameters.soldierName}**`, inline: true },
+                { name: 'Status', value: response.status, inline: true }
+            );
+
         if (response.status === "FAILED") {
-            embed.addField('Reason for failing', response.error, true)
+            embed.addFields({ name: 'Reason for Failing', value: response.error, inline: true });
         }
 
-        return embed
+        return embed;
     }
-}
+};
