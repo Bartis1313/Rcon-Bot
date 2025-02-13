@@ -8,30 +8,10 @@ module.exports = class LinkCommand {
         this.name = 'link';
         this.description = 'Links all accounts by IP';
 
-        this.dbsConfig = [];
-        this.dbNames = [];
-        if (process.env.DBS_NAME) {
-            const sHosts = process.env.DBS_HOST.split(',');
-            const sNames = process.env.DBS_NAME.split(',');
-            const sUsers = process.env.DBS_USER.split(',');
-            const sPasses = process.env.DBS_PASS.split(',');
-            const sPorts = process.env.DBS_PORT.split(',');
-            const len = sPorts.length;
+        const cfg = DBHelper.getCfg();
 
-            for (let i = 0; i < len; i++) {
-                this.dbsConfig.push({
-                    host: sHosts[i],
-                    user: sUsers[i],
-                    password: sPasses[i],
-                    database: sNames[i],
-                    port: sPorts[i],
-                });
-                this.dbNames.push(sNames[i]);
-            }
-        }
-        else {
-            throw Error("Unable to load link, fill config correctly");
-        }
+        this.dbsConfig = cfg.cfg;
+        this.dbNames = cfg.names;
 
         this.mapNames = new Map([
             [1, 'BF3'],

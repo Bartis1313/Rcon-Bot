@@ -13,29 +13,10 @@ module.exports = class Unban {
         this.name = 'unban';
         this.description = 'Unbans the player from DB';
 
-        this.dbsConfig = [];
-        this.dbNames = [];
-        if (process.env.DBS_NAME) {
-            const sHosts = process.env.DBS_HOST.split(',');
-            const sNames = process.env.DBS_NAME.split(',');
-            const sUsers = process.env.DBS_USER.split(',');
-            const sPasses = process.env.DBS_PASS.split(',');
-            const sPorts = process.env.DBS_PORT.split(',');
+        const cfg = DBHelper.getCfg();
 
-            for (let i = 0; i < sPorts.length; i++) {
-                this.dbsConfig.push({
-                    host: sHosts[i],
-                    user: sUsers[i],
-                    password: sPasses[i],
-                    database: sNames[i],
-                    port: sPorts[i],
-                });
-                this.dbNames.push(sNames[i]);
-            }
-        }
-        else {
-            throw Error("Unable to load link, fill config correctly");
-        }
+        this.dbsConfig = cfg.cfg;
+        this.dbNames = cfg.names;
 
         const dbChoices = Helpers.getChoices(this.dbNames, this.dbNames);
 
