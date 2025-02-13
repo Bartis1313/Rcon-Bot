@@ -50,6 +50,7 @@ class BattleCon extends EventEmitter {
         this.reconnectInterval = 5_000;
         // socket extra settings
         this.socketTimeout = 70_000;
+        this.timeoutInterval = null;
     }
 
     /**
@@ -93,6 +94,8 @@ class BattleCon extends EventEmitter {
             this.sock = null;
             this.loggedIn = false;
 
+            clearInterval(this.timeoutInterval);
+
             setTimeout(() => {
                 this.connect(callback);
             }, this.reconnectInterval);
@@ -107,6 +110,11 @@ class BattleCon extends EventEmitter {
             this.emit('connect');
             this.sock.on('data', this._gather.bind(this));
             if (this.login) this.login(callback);
+
+            // for socker to not freeze
+            this.timeoutInterval = setInterval(() => {
+                this.exec('version');
+            }, 10_000);
         });
     }
 
