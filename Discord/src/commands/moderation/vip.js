@@ -183,6 +183,7 @@ module.exports = class Vip {
     }
 
     buildEmbed(messageOrInteraction, parameters, response) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(response.status === "OK" ? 'Green' : 'Red')
@@ -193,10 +194,10 @@ module.exports = class Vip {
             })
             .setAuthor({
                 name: 'Reserved Slot',
-                iconURL: messageOrInteraction.user.displayAvatarURL(),
+                iconURL: user.displayAvatarURL(),
             })
             .addFields(
-                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
+                { name: 'Issuer', value: user.username, inline: true },
                 { name: 'Target', value: `**${parameters.soldierName}**`, inline: true },
                 { name: 'Status', value: response.status, inline: true }
             );

@@ -228,14 +228,15 @@ module.exports = class Kick {
     }
 
     buildEmbed(messageOrInteraction, parameters, response) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(response.status === "OK" ? 'Green' : 'Red')
             .setThumbnail('https://cdn.discordapp.com/attachments/608427147039866888/688004144165945344/cross.png')
             .setFooter({ text: 'Author: Bartis', iconURL: 'https://cdn.discordapp.com/attachments/608427147039866888/688004144165945344/cross.png' })
-            .setAuthor({ name: 'Player Kick', iconURL: messageOrInteraction.user.displayAvatarURL() })
+            .setAuthor({ name: 'Player Kick', iconURL: user.displayAvatarURL() })
             .addFields(
-                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
+                { name: 'Issuer', value: user.username, inline: true },
                 { name: 'Target', value: `**${parameters.playerName}**`, inline: true },
                 { name: 'Status', value: response.status, inline: true }
             );

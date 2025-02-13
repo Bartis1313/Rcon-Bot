@@ -155,11 +155,12 @@ module.exports = class Check {
     }
 
     async buildEmbeds(messageOrInteraction, serverDB, playerName, infosAccounts) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embeds = [];
         let currentEmbed = new EmbedBuilder()
             .setColor('Green')
             .setTimestamp()
-            .setAuthor({ name: `Check for ${playerName} - ${serverDB.database}`, iconURL: messageOrInteraction.user.displayAvatarURL() });
+            .setAuthor({ name: `Check for ${playerName} - ${serverDB.database}`, iconURL: user.displayAvatarURL() });
 
         const uniqueHistoryAccounts = new Map();
 
@@ -184,7 +185,7 @@ module.exports = class Check {
                 currentEmbed = new EmbedBuilder() // just reset it
                     .setColor('Green')
                     .setTimestamp()
-                    .setAuthor({ name: `Check for ${playerName} - ${serverDB.database} (Continued)`, iconURL: messageOrInteraction.user.displayAvatarURL() });
+                    .setAuthor({ name: `Check for ${playerName} - ${serverDB.database} (Continued)`, iconURL: user.displayAvatarURL() });
             }
 
             if (playerInfo.NicknameHistory && playerInfo.NicknameHistory.length > 0) {
@@ -223,7 +224,7 @@ module.exports = class Check {
             let currentEmbed = new EmbedBuilder()
                 .setColor('Green')
                 .setTimestamp()
-                .setAuthor({ name: `Name History for ${serverDB.database}`, iconURL: messageOrInteraction.user.displayAvatarURL() });
+                .setAuthor({ name: `Name History for ${serverDB.database}`, iconURL: user.displayAvatarURL() });
 
             for (const chunk of historyChunks) {
                 currentEmbed
@@ -234,7 +235,7 @@ module.exports = class Check {
                     currentEmbed = new EmbedBuilder()
                         .setColor('Green')
                         .setTimestamp()
-                        .setAuthor({ name: `Name History for ${serverDB.database} (Continued)`, iconURL: messageOrInteraction.user.displayAvatarURL() });
+                        .setAuthor({ name: `Name History for ${serverDB.database} (Continued)`, iconURL: user.displayAvatarURL() });
                 }
             }
 

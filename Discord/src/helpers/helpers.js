@@ -2,6 +2,7 @@ import Fetch from "./fetch";
 import Prompter from "./prompter";
 
 const { EmbedBuilder, userMention } = require('discord.js');
+const { InteractionType } = require('discord-api-types/v10');
 
 class ActionType {
     static BAN = 'BANNED';
@@ -76,10 +77,14 @@ class Helpers {
         return str;
     }
 
+    static isCommand(messageOrInteraction) {
+        return messageOrInteraction.type == InteractionType.ApplicationCommand;
+    }
+
     static checkRoles(messageOrInteraction, classObj) {
         if (!messageOrInteraction.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID)) {
             const mention = userMention(messageOrInteraction.user.id);
-            if (interaction.isCommand()) {
+            if (this.isCommand()) {
                 messageOrInteraction.reply(`${mention} You don't have permission to use this command (${classObj.name})`);
             }
             else {
@@ -252,7 +257,7 @@ class Helpers {
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(0x00FF00)
-            .setAuthor({ name: 'Select', iconURL: msg.user.displayAvatarURL() });
+            .setAuthor({ name: 'Select', iconURL: msg.author.displayAvatarURL() });
 
         let index = 0;
         arrNames.forEach(a => {
@@ -282,7 +287,7 @@ class Helpers {
         await Promise.all(reactPromises);
 
         const filter = (reaction, user) => {
-            return (choices.includes(reaction.emoji.name) || reaction.emoji.name === '❌') && user.id === msg.user.id;
+            return (choices.includes(reaction.emoji.name) || reaction.emoji.name === '❌') && user.id === msg.author.id;
         };
 
         try {

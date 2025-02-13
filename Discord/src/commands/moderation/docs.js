@@ -166,10 +166,11 @@ module.exports = class Docs {
     }
 
     buildEmbed(messageOrInteraction, parameters) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embed = new EmbedBuilder()
             .setTitle(`Command Info for ${parameters.name}`)
             .setColor('Aqua')
-            .setAuthor({ name: 'Docs', iconURL: messageOrInteraction.user.displayAvatarURL() })
+            .setAuthor({ name: 'Docs', iconURL: user.displayAvatarURL() })
             .setTimestamp();
 
         for (const [key, value] of Object.entries(parameters.command)) {

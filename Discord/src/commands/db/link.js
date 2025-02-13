@@ -135,6 +135,8 @@ module.exports = class LinkCommand {
     }
 
     async buildEmbeds(messageOrInteraction, serverDB, playerName, linkedAccounts) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
+        
         const chunkArray = (arr, size) => {
             const chunks = [];
             for (let i = 0; i < arr.length; i += size) {
@@ -149,7 +151,7 @@ module.exports = class LinkCommand {
         let currentEmbed = new EmbedBuilder()
             .setColor('Green')
             .setTitle(`Linked Accounts for ${playerName} - ${serverDB.database} DB`)
-            .setFooter({ text: `Requested by ${messageOrInteraction.user.username}` })
+            .setFooter({ text: `Requested by ${user.username}` })
             .setTimestamp();
 
         for (let i = 0; i < accountChunks.length; i++) {
@@ -160,7 +162,7 @@ module.exports = class LinkCommand {
                 embeds.push(currentEmbed);
                 currentEmbed = new EmbedBuilder()
                     .setColor('Green')
-                    .setFooter({ text: `Requested by ${messageOrInteraction.user.username}` })
+                    .setFooter({ text: `Requested by ${user.username}` })
                     .setTimestamp();
             }
 

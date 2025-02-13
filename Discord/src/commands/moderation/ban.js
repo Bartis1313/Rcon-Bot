@@ -342,14 +342,15 @@ module.exports = class BanCommand {
     }
 
     buildEmbed(messageOrInteraction, parameters, response) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(response.status === "OK" ? "00FF00" : "FF0000")
             .setThumbnail('https://img.pngio.com/ban-banhammer-censor-censorship-hammer-ip-block-moderator-icon-banhammer-png-512_512.png')
             .setFooter({ text: 'Author: Bartis', iconURL: 'https://img.pngio.com/ban-banhammer-censor-censorship-hammer-ip-block-moderator-icon-banhammer-png-512_512.png' })
-            .setAuthor({ name: 'Ban', iconURL: messageOrInteraction.user.displayAvatarURL() })
+            .setAuthor({ name: 'Ban', iconURL: user.displayAvatarURL() })
             .addFields(
-                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
+                { name: 'Issuer', value: user.username, inline: true },
                 { name: 'Target', value: `**${response?.data?.banId}**`, inline: true },
                 { name: 'Type', value: response?.data?.banType, inline: true }
             );

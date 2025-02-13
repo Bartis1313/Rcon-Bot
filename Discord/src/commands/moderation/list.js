@@ -232,7 +232,7 @@ module.exports = class List {
 
     async sendEmbedWithInterval(messageOrInteraction, server) {
         try {
-            if (messageOrInteraction.isCommand()) {
+            if (Helpers.isCommand(messageOrInteraction)) {
                 await messageOrInteraction.deferReply();
             }
 
@@ -241,7 +241,7 @@ module.exports = class List {
             }
 
             let embed = await this.createInfoEmbed(server);
-            const msg = messageOrInteraction.isCommand()
+            const msg = Helpers.isCommand(messageOrInteraction)
                 ? await messageOrInteraction.editReply({ embeds: [embed] })
                 : await message.channel.send({ embeds: [embed] });
 
@@ -293,6 +293,6 @@ module.exports = class List {
 
         await message.delete();
 
-        this.sendEmbedWithInterval(bot, message, server);
+        this.sendEmbedWithInterval(message, server);
     }
 }

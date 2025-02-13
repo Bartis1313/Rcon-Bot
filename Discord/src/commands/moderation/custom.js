@@ -213,13 +213,14 @@ module.exports = class CustomCommand {
     }
 
     buildEmbed(messageOrInteraction, parameters, response) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const str = parameters.params && parameters.params.length ? `[${parameters.params.join(' ')}]` : "";
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(response.status === "OK" ? 'Green' : 'Red')
-            .setAuthor({ name: 'Custom Command', iconURL: messageOrInteraction.user.displayAvatarURL() })
+            .setAuthor({ name: 'Custom Command', iconURL: user.displayAvatarURL() })
             .addFields(
-                { name: 'Issuer', value: messageOrInteraction.user.username, inline: true },
+                { name: 'Issuer', value: user.username, inline: true },
                 { name: 'Content', value: `**${parameters.command}** ${str}`, inline: true },
                 { name: 'Status', value: response.status, inline: true }
             );

@@ -103,13 +103,14 @@ module.exports = class Unban {
     }
 
     async buildEmbed(messageOrInteraction, serverDB, playerName, state) {
+        const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor('Green')
-            .setAuthor({ name: `Unban ${serverDB.database} DB`, iconURL: messageOrInteraction.user.displayAvatarURL() });
+            .setAuthor({ name: `Unban ${serverDB.database} DB`, iconURL: user.displayAvatarURL() });
         if (state === UnbanState.OK) {
             embed
-                .addFields({ name: 'Issuer', value: message.user.username, inline: true })
+                .addFields({ name: 'Issuer', value: user.username, inline: true })
                 .addFields({ name: 'Target', value: `**${playerName}**`, inline: true })
         }
         else if (state === UnbanState.NOT_BANNED) {
