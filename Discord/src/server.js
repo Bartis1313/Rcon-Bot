@@ -26,7 +26,7 @@ client.once(Events.ClientReady, async () => {
 
     console.log(`Logged in as ${client.user.tag}!`);
 
-    //banAnnouncer.startBanAnnouncement(60_000, 60_000);
+    banAnnouncer.startBanAnnouncement(60_000, 60_000);
     await commandHandler.registerSlashCommands();
 });
 

@@ -31,7 +31,7 @@ class BattleConClient {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
         version = msg[1];
 
-        //loadPlugins(this._connection);
+        loadPlugins(this._connection);
       });
     });
 
