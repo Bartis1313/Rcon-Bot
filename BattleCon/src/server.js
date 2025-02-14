@@ -29,19 +29,19 @@ var server = app.listen(process.env.BATTLECON_PORT || 3000, () => {
     console.log(`Server running on port ${process.env.BATTLECON_PORT || 3000}`);
 });
 
-// const checkClientVersion = () => {
-//     client.version()
-//         .catch((err) => {
-//             console.error("Error in client.version():", err);
-//             process.exit(1);
-//         });
-// };
+const checkClientVersion = () => {
+    client.version()
+        .catch((err) => {
+            console.error("Error in client.version():", err);
+            process.exit(1);
+        });
+};
 
-// setTimeout(() => {
-//     setInterval(() => {
-//         checkClientVersion();
-//     }, 10000);
-// }, 60000);
+setTimeout(() => {
+    setInterval(() => {
+        checkClientVersion();
+    }, 10000);
+}, 60000);
 
 process.on('SIGTERM', () => {
     server.close(() => {
