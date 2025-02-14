@@ -116,7 +116,12 @@ class CommandHandler {
             await cmd.runSlash(interaction);
         } catch (error) {
             console.error(`Error executing slash command '${cmd.name}':`, error);
-            await interaction.editReply({ content: 'There was an error executing this command.', flags: MessageFlags.Ephemeral });
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply({ content: 'There was an error executing this command.', flags: MessageFlags.Ephemeral });
+            }
+            else {
+                await interaction.reply({ content: 'There was an error executing this command.', flags: MessageFlags.Ephemeral });
+            }
         }
     }
 
@@ -131,7 +136,7 @@ class CommandHandler {
             await cmd.handleAutocomplete(interaction);
         } catch (error) {
             console.error(`Error handling autocomplete for command '${cmd.name}':`, error);
-            await interaction.editReply({ content: 'There was an error executing this command.', flags: MessageFlags.Ephemeral });
+            await interaction.respond([]);
         }
     }
 
