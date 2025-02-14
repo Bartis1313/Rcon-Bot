@@ -351,8 +351,8 @@ module.exports = class BanCommand {
             .setAuthor({ name: 'Ban', iconURL: user.displayAvatarURL() })
             .addFields(
                 { name: 'Issuer', value: user.username, inline: true },
-                { name: 'Target', value: `**${response?.data?.banId}**`, inline: true },
-                { name: 'Timeout', value: response.timeout, inline: true }
+                { name: 'Target', value: `**${response.data.banId}**`, inline: true },
+                { name: 'Timeout', value: response.data.timeout, inline: true }
             );
 
 
