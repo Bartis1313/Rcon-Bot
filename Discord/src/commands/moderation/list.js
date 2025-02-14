@@ -265,7 +265,7 @@ module.exports = class List {
                 } catch (error) {
                     console.error("Error updating embed:", error);
                 }
-            }, 10000); // Update every 10 seconds
+            }, 30000); // Update every 30 seconds
 
         } catch (error) {
             console.error("Error sending initial message:", error);
