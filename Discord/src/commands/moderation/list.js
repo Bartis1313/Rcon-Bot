@@ -217,8 +217,8 @@ module.exports = class List {
                 { name: 'Next Map', value: `${nextMapMode[0]} - ${nextMapMode[1]}`, inline: true },
                 { name: '\u200b', value: '\u200b', inline: true },
                 { name: 'Tickets', value: `${Math.round(currentInfo.Scores.Team1)} : ${Math.round(currentInfo.Scores.Team2)}`, inline: true },
+                { name: 'Round Time', value: `${formatDuration(currentInfo.RoundUpTime)}`, inline: true },
                 { name: '\u200b', value: '\u200b', inline: true },
-                { name: 'Round Time', value: `${formatDuration(currentInfo.RoundUpTime)}`, inline: true }
             )
             .setDescription(`**Scoreboard**\n` +
                 `**Score** | **Kills (K)** | **Deaths (D)** | **Player Names**\n` +

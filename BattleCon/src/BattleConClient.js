@@ -31,7 +31,7 @@ class BattleConClient {
         console.log("# Server is running " + msg[0] + ", version " + msg[1]);
         version = msg[1];
 
-        loadPlugins(this._connection);
+        //loadPlugins(this._connection);
       });
     });
 
@@ -47,7 +47,8 @@ class BattleConClient {
     });
 
     connection.on("error", (err) => {
-      console.log("# Error: " + err.message, err.stack);
+      const date = new Date();
+      console.log(`# Error ${date.toLocaleString()}: ${err.message}, ${err.stack}`);
     });
   }
 

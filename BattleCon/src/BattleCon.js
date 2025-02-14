@@ -122,9 +122,8 @@ class BattleCon extends EventEmitter {
      * Disconnects from the server.
      */
     disconnect() {
-        if (this.sock !== null) {
-            this.sock.end();
-        }
+        this.sock.end();
+        this.sock.destroy();
     }
 
     /**
