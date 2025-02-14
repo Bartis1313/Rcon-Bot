@@ -164,7 +164,7 @@ module.exports = class BanCommand {
             banType: banType,
             banId: banId,
             timeout: timeout,
-            banReason: banReason,
+            reason: banReason,
         };
 
         return Fetch.post(`${server}/admin/ban`, parameters)
@@ -311,7 +311,7 @@ module.exports = class BanCommand {
                     banType: banType,
                     banId: banId,
                     timeout: timeout,
-                    banReason: banReason,
+                    reason: banReason,
                 });
             } else {
                 return reject(console.error("Ban interrupted!"));
@@ -352,27 +352,13 @@ module.exports = class BanCommand {
             .addFields(
                 { name: 'Issuer', value: user.username, inline: true },
                 { name: 'Target', value: `**${response?.data?.banId}**`, inline: true },
-                { name: 'Type', value: response?.data?.banType, inline: true }
+                { name: 'Timeout', value: response.timeout, inline: true }
             );
 
-        switch (response?.data?.banTimeoutType) {
-            case "perm":
-                embed.addFields({ name: 'Duration', value: '**Permanent**', inline: true });
-                break;
-            case "rounds":
-                embed.addFields({ name: 'Duration', value: `**${response?.data?.banTimeout}** rounds`, inline: true });
-                break;
-            case "seconds":
-                embed.addFields({ name: 'Duration', value: `**${response?.data?.banTimeout}** seconds`, inline: true });
-                break;
-            default:
-                embed.addFields({ name: 'Duration', value: `unknown`, inline: true });
-                break;
-        }
 
         embed.addFields(
-            { name: 'Reason', value: response?.data?.banReason, inline: true },
-            { name: 'Server', value: response?.server, inline: false }
+            { name: 'Reason', value: response.data.reason, inline: true },
+            { name: 'Server', value: response.server, inline: false }
         );
 
         return embed;

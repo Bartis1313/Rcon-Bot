@@ -119,16 +119,16 @@ class BattleConClient {
     })
   }
 
-  banPlayer(banType, playerName, timeout, reason) {
+  banPlayer(banType, banId, timeout, reason) {
     let connection = this._connection
     return new Promise(function (resolve, reject) {
       if (!banType) reject('Ban Type is required.')
-      if (!playerName) reject('Ban ID is required.')
+      if (!banId) reject('Ban ID is required.')
       if (!timeout) reject('Timeout is required.')
-      let banTimeoutType = timeout
+      let banTimeoutType = null
       let banTimeout = null
 
-      let command = ["banList.add", banType, playerName]
+      let command = ["banList.add", banType, banId];
 
       if (timeout === "perm") command.push("perm")
       else if (timeout.startsWith("seconds") || timeout.startsWith("rounds")) {
@@ -149,9 +149,8 @@ class BattleConClient {
         connection.exec(["banList.save"], function (err, msg) {
           err ? reject(err.message) : resolve({
             banType: banType,
-            playerName: playerName,
-            banTimeoutType: banTimeoutType,
-            banTimeout: banTimeout,
+            banId: banId,
+            timeout: timeout,
             reason: reason
           })
         });
