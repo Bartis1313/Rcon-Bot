@@ -41,7 +41,8 @@ class BattleCon extends EventEmitter {
         this.pass = pass;
 
         // reconnection
-        this.reconnectInterval = 5_000;
+        this.reconnectInterval = 10_000;
+        this.timeoutInterval = null;
 
         this.initConnection();
     }
