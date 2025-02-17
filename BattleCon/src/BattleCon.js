@@ -95,6 +95,7 @@ class BattleCon extends EventEmitter {
             this.emit('close');
 
             clearInterval(this.timeoutInterval);
+            this.disconnect(true);
 
             setTimeout(() => {
                 this.connect(callback);
@@ -125,10 +126,13 @@ class BattleCon extends EventEmitter {
 
     /**
      * Disconnects from the server.
+     * @param {boolean} closed if socket is already closed
      */
-    disconnect() {
-        this.sock.end();
-        this.sock.destroy();
+    disconnect(closed = false) {
+        if (!closed) {
+            this.sock.end();
+            this.sock.destroy();
+        }
 
         this.initConnection();
     }
