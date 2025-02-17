@@ -131,7 +131,7 @@ module.exports = class BanCommand {
         const subcommand = interaction.options.getSubcommand();
         const banType = interaction.options.getString('type');
         const banId = interaction.options.getString('id');
-        const banReason = interaction.options.getString('reason') || 'No reason provided';
+        const banReason = interaction.options.getString('reason');
 
         let timeout;
 

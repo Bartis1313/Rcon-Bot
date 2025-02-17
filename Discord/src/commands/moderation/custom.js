@@ -115,95 +115,9 @@ module.exports = class CustomCommand {
             });
     }
 
-    async run(bot, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        const server = await Helpers.selectServer(message);
-        if (!server) {
-            await message.delete();
-            return;
-        }
-
-        await message.delete();
-
-        const parameters = await this.getParameters(message, server)
-            .then(parameters => parameters)
-            .catch(err => {
-                console.error(err);
-                return null;
-            });
-
-        if (!parameters) {
-            return;
-        }
-
-        return Fetch.get(`${server}/getCommands`)
-            .then(json => {
-                if (!json.data.includes(command)) {
-                    message.channel.send(`${command} does not exist as command.`);
-                    return Promise.reject("Custom command failed");
-                }
-            })
-            .then(() => {
-                return Fetch.post(`${server}/custom`, parameters)
-            })
-            .then(json => {
-                message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] });
-                return true;
-            })
-            .catch(error => {
-                console.error(error);
-                return false;
-            });
-    }
-
-    async getParameters(message, server) {
-        return new Promise(async (resolve, reject) => {
-            let custom;
-
-            askCustom: while (true) {
-                custom = await Helpers.ask(message, "Custom", "Provide custom command **SPACE = NEW ARG**");
-                if (!custom) {
-                    if (await Helpers.askTryAgain(message)) {
-                        continue askCustom;
-                    }
-                    return reject(console.error("Couldn't get the message"));
-                }
-                break;
-            }
-
-            const confirmEmbed = new EmbedBuilder()
-                .setTimestamp()
-                .setColor('Yellow')
-                .setAuthor({ name: 'Are you sure you want to execute this command?', iconURL: message.author.displayAvatarURL() })
-                .addFields({ name: 'Given content', value: `**${custom}**`, inline: false });
-
-            if (await Helpers.confirm(message, confirmEmbed)) {
-                let command = '';
-                let params = [];
-                const split = custom.split(' ');
-                if (split.length > 1) {
-                    command = split[0];
-                    params = split.slice(1);
-                } else {
-                    command = custom;
-                }
-
-                return resolve({
-                    command: command,
-                    params: params,
-                });
-            } else {
-                return reject(console.error("Custom command interrupted!"));
-            }
-        });
-    }
-
     async fetchDocs() {
         try {
-            const response = await Fetch.get(`${Helpers.selectFirstServer()}/getDocs`);
-
+            const response = await Fetch.get(`${Helpers.selectFirstServer()}/getDocs`)
             const json = response;
             return json.data;
         } catch (error) {

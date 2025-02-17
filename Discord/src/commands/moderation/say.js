@@ -1,6 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
 import { Helpers } from '../../helpers/helpers'
 import Fetch from '../../helpers/fetch';
+import Matching from '../../helpers/matching';
 
 module.exports = class Say {
     constructor() {
@@ -11,22 +12,136 @@ module.exports = class Say {
     async init() {
         const servers = await Helpers.getServerChoices();
 
-        // TODO: handle player say, team say, squad say
-        // subcommand, or static choices
+        // didn't add squad say, who uses it?
         this.slashCommand = new SlashCommandBuilder()
             .setName(this.name)
             .setDescription(this.description)
-            .addStringOption(option =>
-                option.setName('server')
-                    .setDescription('Select the server')
-                    .setRequired(true)
-                    .addChoices(...servers)
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('all')
+                    .setDescription('say to all')
+                    .addStringOption(option =>
+                        option.setName('server')
+                            .setDescription('Select the server')
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('message')
+                            .setDescription('Type what to say')
+                            .setRequired(true)
+                    )
             )
-            .addStringOption(option =>
-                option.setName('message')
-                    .setDescription('Type what to say')
-                    .setRequired(true)
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('player')
+                    .setDescription('say to all')
+                    .addStringOption(option =>
+                        option.setName('server')
+                            .setDescription('Select the server')
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('name')
+                            .setDescription('Select player name')
+                            .setRequired(true)
+                            .setAutocomplete(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('message')
+                            .setDescription('Type what to say')
+                            .setRequired(true)
+                    )
             )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('teamsay')
+                    .setDescription('say to team')
+                    .addStringOption(option =>
+                        option.setName('server')
+                            .setDescription('Select the server')
+                            .setRequired(true)
+                            .addChoices(...servers)
+                    )
+                    .addStringOption(option =>
+                        option.setName('team')
+                            .setDescription('Select team')
+                            .setRequired(true)
+                            .setAutocomplete(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('message')
+                            .setDescription('Type what to say')
+                            .setRequired(true)
+                    )
+            )
+    }
+
+    async handleAutocomplete(interaction) {
+        const focusedValue = interaction.options.getFocused(true);
+        const server = interaction.options.getString("server");
+
+        if (focusedValue.name == "name") {
+            const response = await Helpers.getPlayers(server);
+            const playerNames = response.data.players.map(player => player.name);
+
+            const focusedOption = interaction.options.getFocused();
+            const matchedPlayer = Matching.getBestMatch(focusedOption, playerNames);
+            if (!matchedPlayer) {
+                await interaction.respond([]);
+                return;
+            }
+
+            const type = matchedPlayer.type;
+            if (type === "far") {
+                await interaction.respond([]);
+                return;
+            }
+
+            let players = [];
+            if (type === "good") {
+                players = [matchedPlayer.name];
+            }
+            else if (type === "multi") {
+                players = matchedPlayer.names;
+            }
+
+            await interaction.respond(
+                players.map(name => ({ name: name, value: name }))
+            );
+        }
+        else if (focusedValue.name == "team") {
+            const version = await this.getVer(server);
+
+            const teams = [];
+            if (version == "BF3") {
+                teams.push({ id: 0, faction: "US (0)" });
+                teams.push({ id: 1, faction: "RU (1)" });
+            }
+            else if (version == "BF4") {
+                const parameters = {
+                    command: "vars.teamFactionOverride",
+                    params: null,
+                }
+                // assume we dont run sqdm...
+                Fetch.post(`${server}/custom`, parameters)
+                    .then(json => {
+                        teams.push({ id: 0, faction: `${json.data[0]} (0)` });
+                        teams.push({ id: 1, faction: `${json.data[1]} (1)` });
+                    })
+                    .catch(async error => {
+                        console.error(error);
+                        await interaction.respond([]);
+                        return;
+                    });
+            }
+
+            const filtered = teams.filter(team => team.startsWith(focusedValue.value.toLowerCase()));
+            await interaction.respond(
+                filtered.map(team => ({ name: team.faction, value: team.id })),
+            );
+        }
     }
 
     async runSlash(interaction) {
@@ -36,7 +151,26 @@ module.exports = class Say {
         await interaction.deferReply();
 
         const server = interaction.options.getString("server");
-        const content = interaction.option.getString("message");
+        const subcommand = interaction.options.getSubcommand();
+        let sub;
+        switch (subcommand) {
+            case 'all':
+                sub = "all"
+                break;
+            case 'player':
+                sub = "player " + interaction.options.getString("name");
+                break;
+            case 'teamsay':
+                sub = "team " + interaction.options.getString("team");
+                break;
+        }
+
+        if (!sub) {
+            await interaction.editReply("sub was null");
+            return;
+        }
+
+        const content = interaction.options.getString("message");
 
         const isWhitespaceString = str => !/\S/.test(str)
         if (isWhitespaceString(content)) {
@@ -45,10 +179,11 @@ module.exports = class Say {
         }
 
         const parameters = {
-            what: content
+            what: content,
+            sub: sub
         };
 
-        return Fetch.post(`${server}/admin/sayall`, parameters)
+        return Fetch.post(`${server}/admin/say`, parameters)
             .then(response => {
                 return interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, response)] });
             })
@@ -58,88 +193,16 @@ module.exports = class Say {
             })
     }
 
-    async run(bot, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        const server = await Helpers.selectServer(message)
-        if (!server) {
-            await message.delete();
-            return;
-        }
-
-        await message.delete();
-
-        const parameters = await this.getParameters(message, server)
-            .then(parameters => {
-                return parameters;
-            })
-            .catch(err => {
-                console.log(err);
-                return null;
-            })
-
-        if (!parameters) {
-            return
-        }
-
-        return Fetch.post(`${server}/admin/sayall`, parameters)
-            .then(response => {
-                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, response)] });
+    async getVer(server) {
+        return Fetch.get(`${server}/version`)
+            .then(json => {
+                return json.data[0];
             })
             .catch(error => {
-                console.log(error)
-                return;
-            })
+                console.error("Error fetching map array:", error);
+                return null;
+            });
     }
-
-    clearMessages() {
-        for (const message of this.messagesToDelete) {
-            message.delete();
-        }
-    }
-
-    getParameters(message, server) {
-        return new Promise(async (resolve, reject) => {
-
-            let what;
-
-            askMessage: while (true) {
-                what = await Helpers.ask(message, "Global say", "Type message to all players");
-                if (!what) {
-                    if (await Helpers.askTryAgain(message)) {
-                        continue askMessage;
-                    }
-                    return reject(console.error("Couldn't get the message"))
-                }
-                break;
-            }
-
-            const embed = new EmbedBuilder()
-                .setTimestamp()
-                .setColor('Yellow')
-                .setAuthor({ name: 'Given Properties', iconURL: message.author.displayAvatarURL() })
-                .addFields({ name: 'Given content', value: `**${what}**`, inline: false });
-
-            const msg = await message.channel.send({ embeds: [embed] });
-
-            const confirmEmbed = new EmbedBuilder()
-                .setTimestamp()
-                .setColor('Yellow')
-                .setAuthor({ name: 'Are you sure you want to say it to all as admin?', iconURL: message.author.displayAvatarURL() });
-
-            if (await Helpers.confirm(message, confirmEmbed)) {
-                await msg.delete().catch(err => console.error('Failed to delete message:', err));
-                return resolve({
-                    what: what,
-                });
-            } else {
-                await msg.delete().catch(err => console.error('Failed to delete message:', err));
-                return reject(console.error("say interrupted!"));
-            }
-        })
-    }
-
 
     buildEmbed(messageOrInteraction, parameters, response) {
         const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
@@ -150,7 +213,8 @@ module.exports = class Say {
             .addFields(
                 { name: 'Issuer', value: user.username, inline: true },
                 { name: 'Content', value: `**${parameters.what}**`, inline: true },
-                { name: 'Status', value: response.status, inline: true }
+                { name: 'Subset', value: parameters.sub, inline: true },
+                { name: 'Status', value: response.status, inline: false }
             );
 
         if (response.status === "FAILED") {

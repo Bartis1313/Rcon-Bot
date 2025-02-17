@@ -18,7 +18,7 @@
  * Loads the BF3 module.
  * @param {!BattleCon} bc
  */
-module.exports = function (bc) {
+module.exports = (bc) => {
 
     // Extends BF (common)
     bc.use("BF");
@@ -44,7 +44,8 @@ module.exports = function (bc) {
         ConquestAssaultSmall1: 'Assault #2',
         ConquestAssaultLarge0: 'Assault Large',
         ConquestAssaultSmall0: 'Assault Small',
-        SquadRush0: 'Squad Rush'
+        SquadRush0: 'Squad Rush',
+        CaptureTheFlag0: "CTF",
     };
 
     bc.gameModes = gameModes;

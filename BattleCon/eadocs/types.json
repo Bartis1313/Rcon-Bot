@@ -1,161 +1,170 @@
 {
-    "PlayerSubset": {
-        "description": "A subset of players on the server, used in commands like admin.listPlayers.",
-        "values": [
-            {
-                "value": "all",
-                "description": "All players on the server."
-            },
-            {
-                "value": "team <team number: Team ID>",
-                "description": "All players in the specified team."
-            },
-            {
-                "value": "squad <team number: Team ID> <squad number: Squad ID>",
-                "description": "All players in the specified team and squad."
-            },
-            {
-                "value": "player <player name: string>",
-                "description": "A specific player by name."
-            }
-        ]
-    },
-    "Timeout": {
-        "description": "A timeout duration used in commands like bans.",
-        "values": [
-            {
-                "value": "perm",
-                "description": "Permanent ban or timeout."
-            },
-            {
-                "value": "rounds <number of rounds: integer>",
-                "description": "Timeout for a specified number of rounds."
-            },
-            {
-                "value": "seconds <number of seconds: integer>",
-                "description": "Timeout for a specified number of seconds."
-            }
-        ]
-    },
-    "IdType": {
-        "description": "The type of identifier used in commands like bans.",
-        "values": [
-            {
-                "value": "name",
-                "description": "Player's soldier name."
-            },
-            {
-                "value": "ip",
-                "description": "Player's IP address."
-            },
-            {
-                "value": "guid",
-                "description": "Player's GUID (unique identifier)."
-            }
-        ]
-    },
-    "PlayerInfoBlock": {
-        "description": "A block of information about a group of players.",
-        "fields": [
-            {
-                "name": "name",
-                "type": "string",
-                "description": "Player's name."
-            },
-            {
-                "name": "guid",
-                "type": "GUID",
-                "description": "Player's GUID."
-            },
-            {
-                "name": "teamId",
-                "type": "Team ID",
-                "description": "Player's current team."
-            },
-            {
-                "name": "squadId",
-                "type": "Squad ID",
-                "description": "Player's current squad."
-            },
-            {
-                "name": "kills",
-                "type": "integer",
-                "description": "Number of kills."
-            },
-            {
-                "name": "deaths",
-                "type": "integer",
-                "description": "Number of deaths."
-            },
-            {
-                "name": "score",
-                "type": "integer",
-                "description": "Player's score."
-            },
-            {
-                "name": "rank",
-                "type": "integer",
-                "description": "Player's rank."
-            },
-            {
-                "name": "ping",
-                "type": "integer",
-                "description": "Player's ping."
-            }
-        ]
-    },
-    "TeamScores": {
-        "description": "The number of tickets or kills for each team in the current round.",
-        "fields": [
-            {
-                "name": "number of entries",
-                "type": "integer",
-                "description": "Number of team scores that follow."
-            },
-            {
-                "name": "scores",
-                "type": "integer[]",
-                "description": "Scores for all teams."
-            },
-            {
-                "name": "target score",
-                "type": "integer",
-                "description": "The score at which the match ends."
-            }
-        ]
-    },
-    "IpPortPair": {
-        "description": "A string representing an IP address and port number.",
-        "format": "<IPv4 address><port number>"
-    },
-    "MapList": {
-        "description": "A list of maps that the server rotates through.",
-        "fields": [
-            {
-                "name": "number of maps",
-                "type": "integer",
-                "description": "Number of maps in the list."
-            },
-            {
-                "name": "number of words per map",
-                "type": "integer",
-                "description": "Number of words per map (for future-proofing)."
-            },
-            {
-                "name": "map name",
-                "type": "string",
-                "description": "Name of the map."
-            },
-            {
-                "name": "gamemode name",
-                "type": "string",
-                "description": "Name of the gamemode."
-            },
-            {
-                "name": "number of rounds",
-                "type": "integer",
-                "description": "Number of rounds to play on the map before switching."
-            }
-        ]
-    }
+    "types": [
+        {
+            "name": "PlayerSubset",
+            "description": "A subset of players on the server, used in commands like admin.listPlayers.",
+            "values": [
+                {
+                    "value": "all",
+                    "description": "All players on the server."
+                },
+                {
+                    "value": "team <team number: Team ID>",
+                    "description": "All players in the specified team."
+                },
+                {
+                    "value": "squad <team number: Team ID> <squad number: Squad ID>",
+                    "description": "All players in the specified team and squad."
+                },
+                {
+                    "value": "player <player name: string>",
+                    "description": "A specific player by name."
+                }
+            ]
+        },
+        {
+            "name": "Timeout",
+            "description": "A timeout duration used in commands like bans.",
+            "values": [
+                {
+                    "value": "perm",
+                    "description": "Permanent ban or timeout."
+                },
+                {
+                    "value": "rounds <number of rounds: integer>",
+                    "description": "Timeout for a specified number of rounds."
+                },
+                {
+                    "value": "seconds <number of seconds: integer>",
+                    "description": "Timeout for a specified number of seconds."
+                }
+            ]
+        },
+        {
+            "name": "IdType",
+            "description": "The type of identifier used in commands like bans.",
+            "values": [
+                {
+                    "value": "name",
+                    "description": "Player's soldier name."
+                },
+                {
+                    "value": "ip",
+                    "description": "Player's IP address."
+                },
+                {
+                    "value": "guid",
+                    "description": "Player's GUID (unique identifier)."
+                }
+            ]
+        },
+        {
+            "name": "PlayerInfoBlock",
+            "description": "A block of information about a group of players.",
+            "fields": [
+                {
+                    "name": "name",
+                    "type": "string",
+                    "description": "Player's name."
+                },
+                {
+                    "name": "guid",
+                    "type": "GUID",
+                    "description": "Player's GUID."
+                },
+                {
+                    "name": "teamId",
+                    "type": "Team ID",
+                    "description": "Player's current team."
+                },
+                {
+                    "name": "squadId",
+                    "type": "Squad ID",
+                    "description": "Player's current squad."
+                },
+                {
+                    "name": "kills",
+                    "type": "integer",
+                    "description": "Number of kills."
+                },
+                {
+                    "name": "deaths",
+                    "type": "integer",
+                    "description": "Number of deaths."
+                },
+                {
+                    "name": "score",
+                    "type": "integer",
+                    "description": "Player's score."
+                },
+                {
+                    "name": "rank",
+                    "type": "integer",
+                    "description": "Player's rank."
+                },
+                {
+                    "name": "ping",
+                    "type": "integer",
+                    "description": "Player's ping."
+                }
+            ]
+        },
+        {
+            "name": "TeamScores",
+            "description": "The number of tickets or kills for each team in the current round.",
+            "fields": [
+                {
+                    "name": "number of entries",
+                    "type": "integer",
+                    "description": "Number of team scores that follow."
+                },
+                {
+                    "name": "scores",
+                    "type": "integer[]",
+                    "description": "Scores for all teams."
+                },
+                {
+                    "name": "target score",
+                    "type": "integer",
+                    "description": "The score at which the match ends."
+                }
+            ]
+        },
+        {
+            "name": "IpPortPair",
+            "description": "A string representing an IP address and port number.",
+            "format": "<IPv4 address><port number>"
+        },
+        {
+            "name": "MapList",
+            "description": "A list of maps that the server rotates through.",
+            "fields": [
+                {
+                    "name": "number of maps",
+                    "type": "integer",
+                    "description": "Number of maps in the list."
+                },
+                {
+                    "name": "number of words per map",
+                    "type": "integer",
+                    "description": "Number of words per map (for future-proofing)."
+                },
+                {
+                    "name": "map name",
+                    "type": "string",
+                    "description": "Name of the map."
+                },
+                {
+                    "name": "gamemode name",
+                    "type": "string",
+                    "description": "Name of the gamemode."
+                },
+                {
+                    "name": "number of rounds",
+                    "type": "integer",
+                    "description": "Number of rounds to play on the map before switching."
+                }
+            ]
+        }
+    ]
 }

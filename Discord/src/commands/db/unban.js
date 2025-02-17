@@ -83,25 +83,6 @@ module.exports = class Unban {
         await interaction.editReply({ embeds: [await this.buildEmbed(interaction, serverDB, playerName, ubState)] });
     }
 
-    async run(bot, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        const serverDB = await Helpers.selectArray(message, this.dbsConfig, this.dbNames);
-        if (!serverDB)
-            return;
-
-        const playerName = await Helpers.ask(message, "Give playername", "Playername won't be matched!");
-        if (!playerName)
-            return;
-
-        const ubState = await DBHelper.processServer(serverDB, async () => {
-            return await this.getUnbanState(connection, playerName);
-        });
-
-        await message.channel.send({ embeds: [await this.buildEmbed(message, serverDB, playerName, ubState)] });
-    }
-
     async buildEmbed(messageOrInteraction, serverDB, playerName, state) {
         const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embed = new EmbedBuilder()

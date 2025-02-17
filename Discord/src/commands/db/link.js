@@ -101,39 +101,6 @@ module.exports = class LinkCommand {
         await interaction.editReply({ embeds: await this.buildEmbeds(interaction, serverDB, playerName, linkedAccounts) });
     }
 
-    async run(bot, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        const serverDB = await Helpers.selectArray(message, this.dbsConfig, this.dbNames);
-        if (!serverDB)
-            return;
-
-        let playerName = '';
-        askPlayerName: while (true) {
-            playerName = await Helpers.askPlayerName(message);
-            if (!playerName) {
-                if (await Helpers.askTryAgain(message)) {
-                    continue askPlayerName;
-                }
-
-                return console.error("Couldn't get playername");
-            }
-            break;
-        }
-
-        const linkedAccounts = await DBHelper.processServer(serverConfig, async (connection) => {
-            return await this.findLinkedAccounts(connection, playerName);
-        });
-
-        if (linkedAccounts.length === 0) {
-            await message.reply("linkedAccounts is empty");
-            return;
-        }
-
-        await message.channel.send({ embeds: [await this.buildEmbed(message, serverDB, playerName, linkedAccounts)] });
-    }
-
     async buildEmbeds(messageOrInteraction, serverDB, playerName, linkedAccounts) {
         const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         

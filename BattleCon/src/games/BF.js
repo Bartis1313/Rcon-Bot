@@ -18,7 +18,7 @@
  * Loads the BF (common) module.
  * @param {!BattleCon} bc
  */
-module.exports = function (bc) {
+module.exports = (bc) => {
     // Extends core
     bc.use("core");
 

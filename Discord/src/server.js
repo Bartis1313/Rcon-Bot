@@ -30,6 +30,7 @@ client.once(Events.ClientReady, async () => {
     await commandHandler.registerSlashCommands();
 });
 
+// running for legacy reasons, but these are far worse, slower
 client.on(Events.MessageCreate, async (message) => {
     if (!message.guild || message.author.bot)
         return;

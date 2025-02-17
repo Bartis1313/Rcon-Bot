@@ -40,17 +40,20 @@ class BattleCon extends EventEmitter {
         this.port = port;
         this.pass = pass;
 
+        // reconnection
+        this.reconnectInterval = 5_000;
+
+        this.initConnection();
+    }
+
+    initConnection() {
         // connection state
         this.loggedIn = false;
         this.sock = null;
         this.id = 0x3fffffff;
+        this.buf = null;
         this.buf = Buffer.alloc(0);
         this.cbs = {};
-        // reconnection
-        this.reconnectInterval = 5_000;
-        // socket extra settings
-        this.socketTimeout = 70_000;
-        this.timeoutInterval = null;
     }
 
     /**
@@ -79,8 +82,6 @@ class BattleCon extends EventEmitter {
         this.sock = new net.Socket();
         let cbCalled = false;
 
-        this.sock.setTimeout(this.socketTimeout);
-
         this.sock.on('error', (err) => {
             if (!this.loggedIn && callback && !cbCalled) {
                 cbCalled = true;
@@ -91,8 +92,6 @@ class BattleCon extends EventEmitter {
 
         this.sock.on('close', () => {
             this.emit('close');
-            this.sock = null;
-            this.loggedIn = false;
 
             clearInterval(this.timeoutInterval);
 
@@ -113,7 +112,12 @@ class BattleCon extends EventEmitter {
 
             // for socker to not freeze
             this.timeoutInterval = setInterval(() => {
-                this.exec('version');
+                this.exec('version', function (err, msg) {
+                    if (err) {
+                        const d = new Date();
+                        console.log(`Error at ${d.toLocaleString()}`, err);
+                    }
+                });
             }, 10_000);
         });
     }
@@ -124,6 +128,8 @@ class BattleCon extends EventEmitter {
     disconnect() {
         this.sock.end();
         this.sock.destroy();
+
+        this.initConnection();
     }
 
     /**

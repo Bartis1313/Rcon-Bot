@@ -274,6 +274,16 @@ class BattleConClient {
     })
   }
 
+  adminSay(what, sub) {
+    let connection = this._connection
+    return new Promise(function (resolve, reject) {
+      if (!what) reject('admin say failed.')
+      connection.exec(["admin.say", what, sub], function (err, msg) {
+        err ? reject(err.message) : resolve(msg)
+      });
+    })
+  }
+
   adminYellall(what, duration) {
     let connection = this._connection
     if (duration < 0) duration = 0;

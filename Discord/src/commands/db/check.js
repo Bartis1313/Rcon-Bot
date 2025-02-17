@@ -130,30 +130,6 @@ module.exports = class Check {
         await interaction.editReply({ embeds: await this.buildEmbeds(interaction, serverDB, playerName, infoAccounts) });
     }
 
-    async run(bot, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        const serverDB = await Helpers.selectArray(message, this.dbsConfig, this.dbNames);
-        if (!serverDB)
-            return;
-
-        let playerName = await Helpers.ask(message, "Give playername", "Playername won't be matched!");
-        if (!playerName)
-            return;
-
-        const infosAccounts = await DBHelper.processServer(serverConfig, async (connection) => {
-            return await findInfoAccounts(connection, playerName);
-        });
-
-        if (infosAccounts.length === 0) {
-            await message.reply(`No information found for ${playerName}`);
-            return;
-        }
-
-        await message.channel.send({ emebds: await this.buildEmbeds(message, serverDB, playerName, infosAccounts) });
-    }
-
     async buildEmbeds(messageOrInteraction, serverDB, playerName, infosAccounts) {
         const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embeds = [];

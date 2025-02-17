@@ -1,7 +1,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 import BattleConClient from "./BattleConClient"
+
 const docsData = require("../eadocs/commands.json");
+const typesData = require("../eadocs/types.json");
 
 const client = new BattleConClient(process.env.RCON_HOST, process.env.RCON_PORT, process.env.RCON_PASS, process.env.GAME)
 client.connect()
@@ -21,27 +23,14 @@ const serverNameUpdater = (req, res, next) => {
 }
 
 const app = express();
+
 app.use(serverNameUpdater)
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-var server = app.listen(process.env.BATTLECON_PORT || 3000, () => {
+const server = app.listen(process.env.BATTLECON_PORT || 3000, () => {
     console.log(`Server running on port ${process.env.BATTLECON_PORT || 3000}`);
 });
-
-const checkClientVersion = () => {
-    client.version()
-        .catch((err) => {
-            console.error("Error in client.version():", err);
-            process.exit(1);
-        });
-};
-
-setTimeout(() => {
-    setInterval(() => {
-        checkClientVersion();
-    }, 10000);
-}, 60000);
 
 process.on('SIGTERM', () => {
     server.close(() => {
@@ -51,10 +40,10 @@ process.on('SIGTERM', () => {
 
 const path = require("path");
 
-app.all('/', (req, res) => {
-    //console.log('requested shi');
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+// app.all('/', (req, res) => {
+//     //console.log('requested shi');
+//     res.sendFile(path.join(__dirname, 'index.html'));
+// });
 
 app.get("/serverName", (req, res, next) => {
     client.version()
@@ -62,8 +51,9 @@ app.get("/serverName", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: null });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -74,8 +64,9 @@ app.get("/version", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -85,8 +76,9 @@ app.get("/serverInfo", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -99,8 +91,9 @@ app.post("/admin/kill", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -113,8 +106,9 @@ app.post("/admin/kick", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -129,8 +123,9 @@ app.post("/admin/ban", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 app.post("/reservedslots", (req, res, next) => {
@@ -141,8 +136,9 @@ app.post("/reservedslots", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -152,8 +148,9 @@ app.get("/players", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -163,8 +160,9 @@ app.get("/team", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 });
 
@@ -175,8 +173,9 @@ app.get("/serverfps", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -202,21 +201,22 @@ app.get("/listOfMaps", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: formattedResponse });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
 app.post("/setMapIndex", (req, res, next) => {
     const indexNum = req.body.indexNum;
     client.setNextMap(indexNum)
-
         .then((response) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -227,8 +227,9 @@ app.get("/printBans", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -240,8 +241,9 @@ app.post("/admin/unban", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -251,8 +253,9 @@ app.get("/getInfo", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -262,8 +265,9 @@ app.get("/getIndices", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -278,8 +282,9 @@ app.post("/switchPlayer", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -290,8 +295,23 @@ app.post("/admin/sayall", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response })
         })
         .catch(err => {
-            console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
+        })
+})
+
+app.post("/admin/say", (req, res, next) => {
+    let what = req.body.what;
+    let sub = req.body.sub;
+    client.adminSayall(what, sub)
+        .then((response) => {
+            res.json({ status: "OK", server: serverName, data: response })
+        })
+        .catch(err => {
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -303,8 +323,9 @@ app.post("/admin/psay", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response })
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -316,8 +337,9 @@ app.post("/admin/yellall", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response })
         })
         .catch(err => {
-            console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -330,8 +352,9 @@ app.post("/admin/pyell", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response })
         })
         .catch(err => {
-            console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -342,8 +365,9 @@ app.post("/admin/sayall", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response })
         })
         .catch(err => {
-            console.log(err)
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -356,8 +380,9 @@ app.post("/custom", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response })
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
@@ -367,16 +392,15 @@ app.get("/getMapIndices", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: response });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err })
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })
 
 app.get("/getMapsModesRaw", (req, res, next) => {
     const maps = client.getMapsRaw();
     const modes = client.getModesRaw();
-
-    const isPretty = req.body?.pretty;
 
     res.json({ status: "OK", server: serverName, data: { maps, modes } });
 })
@@ -392,6 +416,11 @@ app.get("/getDocs", (req, res, next) => {
     res.json({ status: "OK", server: serverName, data: docsData });
 })
 
+app.get("/getTypes", (req, res, next) => {
+
+    res.json({ status: "OK", server: serverName, data: typesData });
+})
+
 app.get("/isOkay", (req, res, next) => {
     const isBusy = client.isBusy();
     if (isBusy) {
@@ -404,7 +433,8 @@ app.get("/isOkay", (req, res, next) => {
             res.json({ status: "OK", server: serverName, data: null });
         })
         .catch(err => {
-
-            res.status(400).send({ status: "FAILED", server: serverName, error: err });
+            const date = new Date();
+            console.error(`[API] ${date.toLocaleString()}`, err);
+            res.status(400).json({ status: "FAILED", server: serverName, error: String(err) });
         })
 })

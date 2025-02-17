@@ -280,19 +280,4 @@ module.exports = class List {
 
         this.sendEmbedWithInterval(interaction, server);
     }
-
-    async run(bot, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        const server = await Helpers.selectServer(message)
-        if (!server) {
-            await message.delete();
-            return;
-        }
-
-        await message.delete();
-
-        this.sendEmbedWithInterval(message, server);
-    }
 }

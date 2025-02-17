@@ -106,41 +106,6 @@ module.exports = class map {
             })
     }
 
-    async run(bot, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        const server = await Helpers.selectServer(message)
-        if (!server) {
-            await message.delete();
-            return;
-        }
-
-        await message.delete();
-
-        const parameters = await this.getParameters(message, server)
-            .then(parameters => {
-                return parameters;
-            })
-            .catch(err => {
-                console.log(err);
-                return null;
-            })
-
-        if (!parameters) {
-            return
-        }
-
-        return Fetch.post(`${server}/setMapIndex`, { indexNum: parameters.indexNum })
-            .then(json => {
-                return message.channel.send({ embeds: [this.buildEmbed(message, parameters, json)] })
-            })
-            .catch(error => {
-                console.log(error)
-                return false
-            })
-    }
-
     async getMapArrayRaw(server) {
         return Fetch.get(`${server}/listOfMaps`, {
             pretty: false
@@ -165,77 +130,6 @@ module.exports = class map {
                 console.error("Error fetching map array:", error);
                 return [];
             })
-    }
-
-    generateDesc(mapObj) {
-        let readyString = `\`\`\`c\n`;
-
-        mapObj.forEach((mapData, index) => {
-            const map = mapData[0];    // Map name
-            const mode = mapData[1];   // Mode
-            const rounds = mapData[2]; // Rounds
-
-            readyString += `[${index}] "${map}" | "${mode}" (${rounds})\n`;
-        });
-
-        readyString += `\`\`\``;
-
-        return readyString;
-    }
-
-    getParameters(message, server) {
-        return new Promise(async (resolve, reject) => {
-            let indexNum;
-            const version = await this.getVer(server);
-            const mapObj = await this.getMapArray(server);
-            const mapObjRaw = await this.getMapArrayRaw(server);
-            const desc = this.generateDesc(mapObj);
-
-            const embed = new EmbedBuilder()
-                .setTimestamp()
-                .setColor('Green')
-                .setDescription(desc);
-
-            const msg = await message.channel.send({ embeds: [embed] });
-
-            askIndex: while (true) {
-                indexNum = await Helpers.ask(message, "Give index", "Type index number of the map");
-                if (!indexNum || isNaN(indexNum)) {
-                    if (await Helpers.askTryAgain(message)) {
-                        continue askIndex;
-                    }
-                    return reject(console.error("Couldn't get the index number"));
-                }
-                break;
-            }
-
-            indexNum = Number(indexNum);
-
-            msg.delete().catch(err => console.log('Message already deleted or does not exist.'));
-
-            const confirmEmbed = new EmbedBuilder()
-                .setTimestamp()
-                .setColor('Yellow')
-                .setAuthor({
-                    name: 'Are you sure to set this map as next?',
-                    iconURL: message.author.displayAvatarURL(),
-                })
-                .addFields(
-                    { name: 'Given index', value: `**${indexNum}**`, inline: false },
-                    { name: 'Which is', value: `**${String(mapObj[indexNum])}**`, inline: false } // Ensure value is a string
-                );
-
-            if (await Helpers.confirm(message, confirmEmbed)) {
-                return resolve({
-                    indexNum: indexNum,
-                    selected: mapObj[indexNum],
-                    selectedRaw: mapObjRaw[indexNum],
-                    version: version
-                });
-            } else {
-                return reject(console.error("Map selection interrupted!"));
-            }
-        });
     }
 
     async getVer(server) {

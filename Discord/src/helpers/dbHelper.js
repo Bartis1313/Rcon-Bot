@@ -63,7 +63,7 @@ class DBHelper {
             return { cfg: dbsConfig, names: dbNames };
         }
         else {
-            throw Error("Unable to load check, fill config correctly");
+            throw new Error("Unable to load check, fill config correctly");
         }
     }
 }

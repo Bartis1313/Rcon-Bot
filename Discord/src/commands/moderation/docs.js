@@ -11,12 +11,28 @@ module.exports = class Docs {
         this.slashCommand = new SlashCommandBuilder()
             .setName(this.name)
             .setDescription(this.description)
-            .addStringOption(option =>
-                option.setName('command')
-                    .setDescription('Command name to get documentation for')
-                    .setRequired(true)
-                    .setAutocomplete(true)
-            );
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName("commands")
+                    .setDescription("Get information about commands")
+                    .addStringOption(option =>
+                        option.setName('command')
+                            .setDescription('Command name to get documentation for')
+                            .setRequired(true)
+                            .setAutocomplete(true)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName("types")
+                    .setDescription("Get information about commands")
+                    .addStringOption(option =>
+                        option.setName('type')
+                            .setDescription('Type info from documentation')
+                            .setRequired(true)
+                            .setAutocomplete(true)
+                    )
+            )
     }
 
     async init() {
@@ -24,19 +40,24 @@ module.exports = class Docs {
         this.docs = docs;
         const commandNames = docs.commands.map(command => command.name);
         this.commandNames = commandNames;
+
+        const types = await this.fetchTypes();
+        this.types = types;
+        const typeNames = types.types.map(t => t.name);
+        this.typeNames = typeNames;
     }
 
     async handleAutocomplete(interaction) {
-        const focusedValue = interaction.options.getFocused();
-        const commandNames = this.commandNames;
+        const focusedValue = interaction.options.getFocused(true);
+        const options = focusedValue.value === "command" ? this.commandNames : this.typeNames;
 
-        const matchedCommand = Matching.getBestMatch(focusedValue, commandNames, DiscordLimits.maxChoices);
-        if (!matchedCommand) {
+        const matched = Matching.getBestMatch(focusedValue.value, options, DiscordLimits.maxChoices);
+        if (!matched) {
             await interaction.respond([]);
             return;
         }
 
-        const type = matchedCommand.type;
+        const type = matched.type;
         if (type === "far") {
             await interaction.respond([]);
             return;
@@ -44,10 +65,10 @@ module.exports = class Docs {
 
         let filteredCommands = [];
         if (type === "good") {
-            filteredCommands = [matchedCommand.name];
+            filteredCommands = [matched.name];
         }
         else if (type === "multi") {
-            filteredCommands = matchedCommand.names;
+            filteredCommands = matched.names;
         }
 
         await interaction.respond(
@@ -61,37 +82,19 @@ module.exports = class Docs {
 
         await interaction.deferReply();
 
-        const commandName = interaction.options.getString('command');
-        const command = this.docs.commands.find(c => c.name === commandName);
+        const subcommand = interaction.options.getSubcommand();
+        const interactionSub = subcommand === "commands"
+            ? interaction.options.getString("command")
+            : interaction.options.getString("type");
+        const options = subcommand === "commands" ? this.docs.commands : this.types.types;
+        const command = options.find(c => c.name === interactionSub);
 
         if (!command) {
             await interaction.editReply("Could not find the specified command.");
             return;
         }
 
-        await interaction.editReply({ embeds: [this.buildEmbed(interaction, { name: commandName, command: command })] });
-    }
-
-    async run(client, message, args) {
-        if (!Helpers.checkRoles(message, this))
-            return;
-
-        await message.delete();
-
-        const docs = await this.fetchDocs();
-
-        if (!docs) {
-            await message.channel.send("Internal error, docs were empty");
-            return;
-        }
-
-        const parameters = await this.getParameters(message, docs);
-
-        if (!parameters) {
-            return;
-        }
-
-        await message.channel.send({ embeds: [this.buildEmbed(message, parameters)] });
+        await interaction.editReply({ embeds: [this.buildEmbed(interaction, { name: interactionSub, command: command })] });
     }
 
     async fetchDocs() {
@@ -105,85 +108,55 @@ module.exports = class Docs {
         }
     }
 
-    async getParameters(messageOrInteraction, docs) {
-        return new Promise(async (resolve, reject) => {
-            let command;
-            const commandNames = docs.commands.map(command => command.name);
-
-            while (true) {
-                const userInput = await Helpers.ask(messageOrInteraction, "Command", "Type part of command name to get information");
-                if (!userInput) {
-                    if (await Helpers.askTryAgain(messageOrInteraction)) continue;
-                    return reject(new Error("Couldn't get command."));
-                }
-
-                const matchedCommand = Matching.getBestMatch(userInput, commandNames);
-                if (!matchedCommand) {
-                    if (await Helpers.askTryAgain(messageOrInteraction, "No matches")) continue;
-                    return reject(new Error("Couldn't match any command"));
-                }
-
-                switch (matchedCommand.type) {
-                    case "good":
-                        command = docs.commands.find(c => c.name === matchedCommand.name);
-                        break;
-                    case "far":
-                        const confirmEmbed = new EmbedBuilder()
-                            .setTimestamp()
-                            .setColor('Yellow')
-                            .setAuthor({ name: 'Confirm', iconURL: messageOrInteraction.author.displayAvatarURL() })
-                            .setDescription(`Did you mean ${matchedCommand.name}?`);
-
-                        if (await Helpers.confirm(messageOrInteraction, confirmEmbed)) {
-                            command = docs.commands.find(c => c.name === matchedCommand.name);
-                            break;
-                        }
-                        if (await Helpers.askTryAgain(messageOrInteraction)) continue;
-                        break;
-                    case "multi":
-                        const selectedCommand = await Helpers.selectFromEmoteList(messageOrInteraction, matchedCommand.names);
-
-                        if (selectedCommand) {
-                            command = docs.commands.find(c => c.name === selectedCommand);
-                            break;
-                        }
-                        if (await Helpers.askTryAgain(messageOrInteraction, "Didn't match")) continue;
-                        break;
-                }
-
-                break;
-            }
-
-            if (!command) {
-                return reject(new Error("docs command empty"));
-            }
-
-            return resolve({
-                name: command.name,
-                command: command
-            });
-        });
+    async fetchTypes() {
+        try {
+            const response = await Fetch.get(`${Helpers.selectFirstServer()}/getTypes`)
+            const json = response;
+            return json.data;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
     }
 
     buildEmbed(messageOrInteraction, parameters) {
         const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
         const embed = new EmbedBuilder()
-            .setTitle(`Command Info for ${parameters.name}`)
+            .setTitle(`Info for ${parameters.name}`)
             .setColor('Aqua')
             .setAuthor({ name: 'Docs', iconURL: user.displayAvatarURL() })
             .setTimestamp();
 
         for (const [key, value] of Object.entries(parameters.command)) {
             if (Array.isArray(value)) {
-                embed.addFields(
-                    { name: key.charAt(0).toUpperCase() + key.slice(1), value: value.join('\n'), inline: false }
-                );
+                if (typeof value[0] === 'object') {
+                    embed.addFields({
+                        name: key.charAt(0).toUpperCase() + key.slice(1),
+                        value: value.map(v => `**${v.value}**: ${v.description}`).join('\n'),
+                        inline: false
+                    });
+                } else {
+                    embed.addFields({
+                        name: key.charAt(0).toUpperCase() + key.slice(1),
+                        value: value.join('\n'),
+                        inline: false
+                    });
+                }
+            } else if (typeof value === 'object') {
+                embed.addFields({
+                    name: key.charAt(0).toUpperCase() + key.slice(1),
+                    value: Object.entries(value).map(([k, v]) => `**${k}**: ${v}`).join('\n'),
+                    inline: false
+                });
             } else {
-                embed.addFields(
-                    { name: key.charAt(0).toUpperCase() + key.slice(1), value: value, inline: false }
-                );
+                embed.addFields({
+                    name: key.charAt(0).toUpperCase() + key.slice(1),
+                    value: value.toString(),
+                    inline: false
+                });
             }
         }
+
 
         return embed;
     }

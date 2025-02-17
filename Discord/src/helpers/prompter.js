@@ -4,6 +4,7 @@ const _safeDelete = async (msg, write = false) => {
     msg.delete().catch(error => { if (write) console.error("Error deleting message: ", error); });
 };
 
+// this is for legacy commands, leave as ignored
 export default class Prompter {
 
     static async message(channel, { question, userId, max = 1, timeout = 60000 }) {
