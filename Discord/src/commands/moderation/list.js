@@ -1,6 +1,21 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 import { Helpers, DiscordLimits } from '../../helpers/helpers'
 import Fetch from '../../helpers/fetch.js';
+import fs from 'fs'
+import path from 'path'
+
+const configPath = path.join("../../../", 'config.json');
+
+async function loadConfig() {
+    if (!fs.existsSync(configPath)) {
+        fs.writeFileSync(configPath, JSON.stringify({ servers: {} }, null, 2));
+    }
+    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+
+async function saveConfig(config) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+}
 
 const formatDuration = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -232,6 +247,8 @@ module.exports = class List {
 
     async sendEmbedWithInterval(messageOrInteraction, server) {
         try {
+            const config = await loadConfig();
+
             if (Helpers.isCommand(messageOrInteraction)) {
                 await messageOrInteraction.deferReply();
             }
@@ -247,6 +264,13 @@ module.exports = class List {
 
             this.scoreboardMessage[server] = msg.id;
             this.scoreboardChannelId[server] = messageOrInteraction.channel.id;
+
+            config.servers[server] = {
+                messageId: msg.id,
+                channelId: messageOrInteraction.channel.id
+            };
+
+            await saveConfig(config);
 
             const channel = messageOrInteraction.channel;
 
@@ -268,7 +292,44 @@ module.exports = class List {
             }, 30000); // Update every 30 seconds
 
         } catch (error) {
-            console.error("Error sending initial message:", error);
+            console.error(`Error resuming interval for server ${server}:`, error);
+        }
+    }
+
+    async onReady(client) {
+        const config = loadConfig();
+
+        for (const [server, data] of Object.entries(config.servers)) {
+            try {
+                const channel = await client.channels.fetch(data.channelId);
+                if (channel) {
+                    const message = await channel.messages.fetch(data.messageId);
+                    if (message) {
+                        this.scoreboardMessage[server] = message.id;
+                        this.scoreboardChannelId[server] = channel.id;
+
+                        this.intervalIds[server] = setInterval(async () => {
+                            try {
+                                const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
+                                if (!fetchedMsg) {
+                                    console.log("Message not found, stopping interval.");
+                                    clearInterval(this.intervalIds[server]);
+                                    return;
+                                }
+
+                                const embed = await this.createInfoEmbed(server);
+                                await fetchedMsg.edit({ embeds: [embed] });
+                            } catch (error) {
+                                console.error("Error updating embed:", error);
+                            }
+                        }, 30000); // Update every 30 seconds
+
+                        console.log(`${server} updating chached interval started...`);
+                    }
+                }
+            } catch (error) {
+                console.error(`Error resuming interval for server ${server}:`, error);
+            }
         }
     }
 

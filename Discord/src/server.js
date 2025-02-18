@@ -27,7 +27,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
     banAnnouncer.startBanAnnouncement(60_000, 60_000);
-    await commandHandler.registerSlashCommands();
+    await commandHandler.handleOnReady(client);
 });
 
 // running for legacy reasons, but these are far worse, slower

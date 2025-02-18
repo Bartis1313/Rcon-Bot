@@ -72,7 +72,7 @@ class CommandHandler {
     }
 
     // register slash commands with Discord
-    async registerSlashCommands() {
+    async _registerSlashCommands() {
         const commands = Array.from(this.slashCommands.values()).map(cmd => {
             const slashCommandJSON = cmd.slashCommand.toJSON();
             return {
@@ -151,6 +151,17 @@ class CommandHandler {
         } catch (error) {
             console.error(`Error executing command '${cmd.name}':`, error);
             await message.reply('There was an error executing this command.');
+        }
+    }
+
+    // like init(), but do it when everything is loaded...
+    async handleOnReady(client) {
+        await _registerSlashCommands();
+
+        for (const cmd of this.commands) {
+            if (typeof cmd.onReady === "function") {
+                await cmd.onReady(client);
+            }
         }
     }
 
