@@ -92,7 +92,7 @@ module.exports = class CustomCommand {
         // trick params, since it's hard to validate all commands for params
         const parameters = {
             command: args && args.length ? command + ' ' + args : command,
-            params: null,
+            params: [],
         }
 
         return Fetch.get(`${server}/getCommands`)

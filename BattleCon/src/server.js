@@ -25,20 +25,6 @@ const handleError = (err, res) => {
     res.status(400).json({ status: "FAILED", server: req.serverName, error: String(err) });
 }
 
-const clientChecker = (req, res, next) => {
-    client.isBusy()
-        .then(isBusy => {
-            if (isBusy) {
-                handleError("client is busy", res);
-                return;
-            }
-            next();
-        })
-        .catch(err => {
-            handleError(err, res);
-        });
-};
-
 // use if you expose for public api use
 const validateParams = (params) => {
     return (req, res, next) => {
@@ -55,7 +41,6 @@ const validateParams = (params) => {
 const app = express();
 
 app.use(serverNameUpdater);
-app.use(clientChecker);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 

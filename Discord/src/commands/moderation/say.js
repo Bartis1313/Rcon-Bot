@@ -122,13 +122,46 @@ module.exports = class Say {
             else if (version == "BF4") {
                 const parameters = {
                     command: "vars.teamFactionOverride",
-                    params: null,
+                    params: [],
                 }
                 // assume we dont run sqdm...
-                Fetch.post(`${server}/custom`, parameters)
-                    .then(json => {
-                        teams.push({ id: 0, faction: `${json.data[0]} (0)` });
-                        teams.push({ id: 1, faction: `${json.data[1]} (1)` });
+                await Fetch.post(`${server}/custom`, parameters)
+                    .then(async json => {
+                        const response = await Helpers.getPlayers(server);
+                        const players = response.data.players;
+
+                        const scores = {};
+                        players.forEach(player => {
+                            if (!scores[player.teamId]) {
+                                scores[player.teamId] = [];
+                            }
+                            scores[player.teamId].push(player);
+                        });
+
+                        const topScorers = Object.fromEntries(
+                            Object.keys(scores).map(teamId => [
+                                teamId,
+                                scores[teamId]
+                                    .sort((a, b) => b.score - a.score)
+                                    .slice(0, Math.min(3, scores[teamId].length))
+                                    .map(player => player.name)
+                            ])
+                        );
+
+                        const factions =
+                            version === 'BF4' ?
+                                new Map([
+                                    ['0', 'US'],
+                                    ['1', 'RU'],
+                                    ['2', 'CH']
+                                ])
+                                : new Map([
+                                    ['0', 'US'],
+                                    ['1', 'RU'],
+                                ]);
+
+                        teams.push({ id: '0', faction: `[${factions.get(json.data[0])}] Top3 (${topScorers[0].join(', ')}...)` });
+                        teams.push({ id: '1', faction: `[${factions.get(json.data[1])}] Top3 (${topScorers[1].join(', ')}...)` });
                     })
                     .catch(async error => {
                         console.error(error);
@@ -137,9 +170,10 @@ module.exports = class Say {
                     });
             }
 
-            const filtered = teams.filter(team => team.startsWith(focusedValue.value.toLowerCase()));
+            const filtered = teams.filter(team => team.faction.toLowerCase().startsWith(focusedValue.value.toLowerCase()));
+
             await interaction.respond(
-                filtered.map(team => ({ name: team.faction, value: team.id })),
+                filtered.map(team => ({ name: team.faction, value: team.id }))
             );
         }
     }

@@ -156,12 +156,17 @@ class CommandHandler {
 
     // like init(), but do it when everything is loaded...
     async handleOnReady(client) {
-        await _registerSlashCommands();
+        try {
+            await this._registerSlashCommands();
 
-        for (const cmd of this.commands) {
-            if (typeof cmd.onReady === "function") {
-                await cmd.onReady(client);
+            for (const [name, cmd] of this.commands) {
+                if (typeof cmd.onReady === "function") {
+                    await cmd.onReady(client);
+                }
             }
+
+        } catch (error) {
+            console.error(`Error in ready:`, error);
         }
     }
 

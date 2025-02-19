@@ -5,3 +5,4 @@ node_modules/
 config/test.json
 docker-compose.yml
 .vscode
+config.json

@@ -4,13 +4,27 @@ import Fetch from '../../helpers/fetch.js';
 import fs from 'fs'
 import path from 'path'
 
-const configPath = path.join("../../../", 'config.json');
+const configPath = path.join(__dirname, "../../configList", 'config.json');
 
 async function loadConfig() {
     if (!fs.existsSync(configPath)) {
         fs.writeFileSync(configPath, JSON.stringify({ servers: {} }, null, 2));
     }
-    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+    try {
+        const rawData = fs.readFileSync(configPath, 'utf8');
+        const parsedData = JSON.parse(rawData);
+
+        if (!parsedData || typeof parsedData !== 'object') {
+            console.error("Error: Parsed config is not an object!", parsedData);
+            return { servers: {} };
+        }
+        
+        return parsedData;
+    } catch (error) {
+        console.error("Error loading config.json:", error);
+        return { servers: {} };
+    }
 }
 
 async function saveConfig(config) {
@@ -297,7 +311,11 @@ module.exports = class List {
     }
 
     async onReady(client) {
-        const config = loadConfig();
+        const config = await loadConfig();
+        if (!config.servers || typeof config.servers !== 'object') {
+            console.warn("skipping config list, as it's pobably not set");
+            return;
+        }
 
         for (const [server, data] of Object.entries(config.servers)) {
             try {

@@ -59,29 +59,34 @@ class BattleConClient {
     return this._connection.gameModes[mode] || "Mode not found";
   }
 
-  connect() {
+  async connect() {
     this._connection.connect();
   }
 
-  version() {
+  async version() {
     return this.executeCommand("version");
   }
 
-  serverInfo() {
+  async serverInfo() {
     return this.executeCommand("serverInfo");
   }
 
-  killPlayer(playerName) {
+  async killPlayer(playerName) {
     if (!playerName) throw new Error('Player name is required.');
-    return this.executeCommand("admin.killPlayer", [playerName]);
+    return this.executeCommand("admin.killPlayer", [playerName]).then(() =>
+      ({ playerName }));
   }
 
-  kickPlayer(playerName, reason = "Kicked by administrator") {
+  async kickPlayer(playerName, reason = null) {
+    if (!reason) reason = "Kicked by administrator";
     if (!playerName) throw new Error('Player name is required.');
-    return this.executeCommand("admin.kickPlayer", [playerName, reason]);
+    return this.executeCommand("admin.kickPlayer", [playerName, reason]).then(() =>
+      ({ playerName, reason }));
   }
 
-  banPlayer(banType, banId, timeout, reason = "Banned by admin") {
+  async banPlayer(banType, banId, timeout, reason = null) {
+    if (!reason) reason = "Banned by admin";
+
     if (!banType || !banId || !timeout) throw new Error('Ban Type, Ban ID, and Timeout are required.');
 
     let command = ["banList.add", banType, banId];
@@ -95,100 +100,108 @@ class BattleConClient {
     command.push(reason);
     return this.executeCommand(...command).then(() =>
       this.executeCommand("banList.save")
-    ).then(() => ({
-      banType, banId, timeout, reason
-    }));
+    ).then(() =>
+      ({ banType, banId, timeout, reason }));
   }
 
-  vipPlayer(soldierName) {
+  async vipPlayer(soldierName) {
     if (!soldierName) throw new Error('Player name is required.');
     return this.executeCommand("reservedSlotsList.add", [soldierName]).then(() =>
       this.executeCommand("reservedSlotsList.save")
-    ).then(() => ({ soldierName }));
+    ).then(() =>
+      ({ soldierName }));
   }
 
-  listPlayers() {
-    return this.executeCommand("listPlayers").then(players => ({ players }));
+  async listPlayers() {
+    const connection = this._connection;
+    return new Promise((resolve, reject) => {
+      connection.listPlayers((err, players) => {
+        err ? reject(err.message) : resolve({ players });
+      });
+    });
   }
 
-  team(number) {
+  async team(number) {
     return this.executeCommand("listPlayers", ["team", number.toString()]).then(players =>
-      ({ players: BattleCon.tabulate(players) })
-    );
+      ({ players: BattleCon.tabulate(players) }));
   }
 
-  serverFPS() {
+  async serverFPS() {
     return this.executeCommand("vars.serverTickTime");
   }
 
-  listOfMaps() {
+  async listOfMaps() {
     return this.executeCommand("mapList.list");
   }
 
-  setNextMap(indexNum) {
+  async setNextMap(indexNum) {
     if (indexNum == null) throw new Error("Index is required.");
     return this.executeCommand("mapList.setNextMapIndex", [indexNum.toString()]).then(() =>
-      ({ indexNum })
-    );
+      ({ indexNum }));
   }
 
-  printBanList() {
+  async printBanList() {
     return this.executeCommand("banList.list");
   }
 
-  unban(banType, banId) {
+  async unban(banType, banId) {
     if (!banType || !banId) throw new Error('type of unban is required.');
     return this.executeCommand("banList.remove", [banType, banId]).then(() =>
-      ({ banType, banId })
-    );
+      ({ banType, banId }));
   }
 
-  getAllInfo() {
+  async getAllInfo() {
     return this.executeCommand("serverInfo");
   }
 
-  getMapIndices() {
+  async getMapIndices() {
     return this.executeCommand("mapList.getMapIndices");
   }
 
-  switchPlayer(playerName, teamId, squadId, force) {
+  async switchPlayer(playerName, teamId, squadId, force) {
     if (!playerName || !teamId || !squadId || !force) throw new Error("Not enough arguments");
-    return this.executeCommand("admin.movePlayer", [playerName, teamId, squadId, force]);
+    return this.executeCommand("admin.movePlayer", [playerName, teamId, squadId, force]).then(() =>
+      ({ playerName, teamId, squadId, force }));
   }
 
-  adminSayall(what) {
+  async adminSayall(what) {
     if (!what) throw new Error('admin say failed.');
-    return this.executeCommand("admin.say", [what, "all"]);
+    return this.executeCommand("admin.say", [what, "all"]).then(() =>
+      ({ what }));
   }
 
-  adminSay(what, sub) {
+  async adminSay(what, sub) {
     if (!what) throw new Error('admin say failed.');
-    return this.executeCommand("admin.say", [what, sub]);
+    return this.executeCommand("admin.say", [what, sub]).then(() =>
+      ({ what, sub }));
   }
 
-  adminYellall(what, duration) {
+  async adminYellall(what, duration) {
     if (!what || duration < 0) throw new Error('admin yell failed.');
-    return this.executeCommand("admin.yell", [what, (duration >>> 0).toString(), "all"]);
+    return this.executeCommand("admin.yell", [what, (duration >>> 0).toString(), "all"]).then(() =>
+      ({ what, duration }));
   }
 
-  adminSayPlayer(what, playerName) {
+  async adminSayPlayer(what, playerName) {
     if (!what || !playerName) throw new Error('admin say failed.');
-    return this.executeCommand("admin.say", [what, "player", playerName]);
+    return this.executeCommand("admin.say", [what, "player", playerName]).then(() =>
+      ({ what, playerName }));
   }
 
-  adminYellPlayer(what, duration, playerName) {
+  async adminYellPlayer(what, duration, playerName) {
     if (!what || !playerName || duration < 0) throw new Error('admin yell failed.');
-    return this.executeCommand("admin.yell", [what, (Number(duration) >>> 0).toString(), "player", playerName]);
+    return this.executeCommand("admin.yell", [what, (Number(duration) >>> 0).toString(), "player", playerName]).then(() =>
+      ({ what, duration, playerName }));
   }
 
-  customCommand(command, params = []) {
+  async customCommand(command, params = []) {
     if (!command) throw new Error('command name is required.');
     return this.executeCommand(command, params);
   }
 
-  getCommands() {
+  async getCommands() {
     return this._connection.commands;
   }
 }
 
-export default BattleConClient
+export default BattleConClient;
