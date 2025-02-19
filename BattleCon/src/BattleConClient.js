@@ -12,43 +12,28 @@ class BattleConClient {
   }
 
   initialize() {
-    const connection = this._connection
-    let version = '';
-
-    connection.on("connect", () => {
-      console.log("# Connected to " + connection.host + ":" + connection.port);
-    });
-
+    const connection = this._connection;
+    connection.on("connect", () => console.log(`# Connected to ${connection.host}:${connection.port}`));
     connection.on("login", () => {
-      console.log("# Login successful");
-
       this.isBusyState = false;
+      console.log("# Login successful");
     });
-
     connection.on("ready", () => {
-      // Execute raw commands:
-      connection.exec("version", (err, msg) => {
-        console.log("# Server is running " + msg[0] + ", version " + msg[1]);
-        version = msg[1];
-
+      this.executeCommand("version").then(msg => {
+        console.log(`# Server is running ${msg[0]}, version ${msg[1]}`);
         loadPlugins(this._connection);
-      });
+      }).catch(err => console.error(err));
     });
-
     connection.on("close", () => {
-      const date = new Date();
-      console.log(`Disconnect at: ${date.toLocaleString()}`);
-
       this.isBusyState = true;
+      console.log(`# Disconnect at: ${new Date().toLocaleString()}`);
     });
+    connection.on("error", err => console.error(`# Error: ${err.message}`, err.stack));
+  }
 
-    connection.on("event", function (msg) {
-      //console.log("# " + msg.data.join(' '));
-    });
-
-    connection.on("error", (err) => {
-      const date = new Date();
-      console.log(`# Error ${date.toLocaleString()}: ${err.message}, ${err.stack}`);
+  executeCommand(command, params = []) {
+    return new Promise((resolve, reject) => {
+      this._connection.exec([command, ...params], (err, msg) => err ? reject(err.message) : resolve(msg));
     });
   }
 
@@ -75,279 +60,135 @@ class BattleConClient {
   }
 
   connect() {
-    this._connection.connect(); // Connects and logs in
+    this._connection.connect();
   }
 
   version() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.exec("version", function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    return this.executeCommand("version");
   }
 
   serverInfo() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.exec("serverInfo", function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    return this.executeCommand("serverInfo");
   }
 
   killPlayer(playerName) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!playerName) reject('Player name is required.')
-
-      connection.exec(["admin.killPlayer", playerName], function (err, msg) {
-        err ? reject(err.message) : resolve({ playerName: playerName })
-      });
-    })
+    if (!playerName) throw new Error('Player name is required.');
+    return this.executeCommand("admin.killPlayer", [playerName]);
   }
 
-  kickPlayer(playerName, reason) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!playerName) reject('Player name is required.')
-      reason = reason ? reason : "Kicked by administrator";
-
-      connection.exec(["admin.kickPlayer", playerName, reason], function (err, msg) {
-        err ? reject(err.message) : resolve({ playerName: playerName, reason: reason })
-      });
-    })
+  kickPlayer(playerName, reason = "Kicked by administrator") {
+    if (!playerName) throw new Error('Player name is required.');
+    return this.executeCommand("admin.kickPlayer", [playerName, reason]);
   }
 
-  banPlayer(banType, banId, timeout, reason) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!banType) reject('Ban Type is required.')
-      if (!banId) reject('Ban ID is required.')
-      if (!timeout) reject('Timeout is required.')
-      let banTimeoutType = null
-      let banTimeout = null
+  banPlayer(banType, banId, timeout, reason = "Banned by admin") {
+    if (!banType || !banId || !timeout) throw new Error('Ban Type, Ban ID, and Timeout are required.');
 
-      let command = ["banList.add", banType, banId];
+    let command = ["banList.add", banType, banId];
+    if (timeout === "perm") {
+      command.push("perm");
+    } else if (timeout.startsWith("seconds") || timeout.startsWith("rounds")) {
+      let [type, value] = timeout.split(' ');
+      command.push(type, value);
+    }
 
-      if (timeout === "perm") command.push("perm")
-      else if (timeout.startsWith("seconds") || timeout.startsWith("rounds")) {
-        let parts = timeout.split(' ')
-        banTimeoutType = parts[0]
-        banTimeout = parts[1]
-
-        command.push(parts[0])
-        command.push(parts[1])
-      }
-
-      reason = reason ? reason : "Banned by admin"
-      command.push(reason)
-
-      connection.exec(command, function (err, msg) {
-        if (err) reject(err.message)
-
-        connection.exec(["banList.save"], function (err, msg) {
-          err ? reject(err.message) : resolve({
-            banType: banType,
-            banId: banId,
-            timeout: timeout,
-            reason: reason
-          })
-        });
-      });
-    })
+    command.push(reason);
+    return this.executeCommand(...command).then(() =>
+      this.executeCommand("banList.save")
+    ).then(() => ({
+      banType, banId, timeout, reason
+    }));
   }
+
   vipPlayer(soldierName) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!soldierName) reject('Player name is required.')
-
-      connection.exec(["reservedSlotsList.add", soldierName], function (err, msg) {
-        err ? reject(err.message) : resolve({ soldierName: soldierName })
-      });
-      connection.exec(["reservedSlotsList.save"], function (err, msg) {
-        err ? reject(err.message) : resolve({ soldierName: soldierName })
-      });
-    })
+    if (!soldierName) throw new Error('Player name is required.');
+    return this.executeCommand("reservedSlotsList.add", [soldierName]).then(() =>
+      this.executeCommand("reservedSlotsList.save")
+    ).then(() => ({ soldierName }));
   }
 
   listPlayers() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.listPlayers(function (err, players) {
-        err ? reject(err.message) : resolve({ players: players })
-      });
-    })
+    return this.executeCommand("listPlayers").then(players => ({ players }));
   }
 
   team(number) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-
-      connection.exec(["listPlayers", "team", number.toString()], function (err, players) {
-        err ? reject(err.message) : resolve({ players: connection.tabulate(players) })
-      });
-    })
+    return this.executeCommand("listPlayers", ["team", number.toString()]).then(players =>
+      ({ players: BattleCon.tabulate(players) })
+    );
   }
 
   serverFPS() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.exec("vars.serverTickTime", function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    return this.executeCommand("vars.serverTickTime");
   }
-  listOfMaps() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.exec("mapList.list", function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
-  }
-  setNextMap(indexNum) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (indexNum === null || indexNum === undefined) {
-        reject("Index is required.");
-      }
-      connection.exec(["mapList.setNextMapIndex", indexNum.toString()], function (err, msg) {
-        err ? reject(err.message) : resolve({ indexNum: indexNum })
-      });
-    })
-  }
-  // use offset for more bans
-  printBanList() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.exec("banList.list", function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
-  }
-  unban(banType, banId) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!banType || !banId) reject('type of unban is required.')
 
-      connection.exec(["banlist.remove", banType, banId], function (err, msg) {
-        err ? reject(err.message) : resolve({ banType: banType, banId: banId })
-      });
-    })
+  listOfMaps() {
+    return this.executeCommand("mapList.list");
   }
+
+  setNextMap(indexNum) {
+    if (indexNum == null) throw new Error("Index is required.");
+    return this.executeCommand("mapList.setNextMapIndex", [indexNum.toString()]).then(() =>
+      ({ indexNum })
+    );
+  }
+
+  printBanList() {
+    return this.executeCommand("banList.list");
+  }
+
+  unban(banType, banId) {
+    if (!banType || !banId) throw new Error('type of unban is required.');
+    return this.executeCommand("banList.remove", [banType, banId]).then(() =>
+      ({ banType, banId })
+    );
+  }
+
   getAllInfo() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.exec("serverInfo", function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    return this.executeCommand("serverInfo");
   }
+
   getMapIndices() {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      connection.exec("mapList.getMapIndices", function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    return this.executeCommand("mapList.getMapIndices");
   }
+
   switchPlayer(playerName, teamId, squadId, force) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!playerName || !teamId ||
-        !squadId || !force) {
-        reject("Not enough arguments")
-      }
-      connection.exec(["admin.movePlayer", playerName, teamId, squadId, force], function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      })
-    })
+    if (!playerName || !teamId || !squadId || !force) throw new Error("Not enough arguments");
+    return this.executeCommand("admin.movePlayer", [playerName, teamId, squadId, force]);
   }
+
   adminSayall(what) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!what) reject('admin say failed.')
-      connection.exec(["admin.say", what, "all"], function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    if (!what) throw new Error('admin say failed.');
+    return this.executeCommand("admin.say", [what, "all"]);
   }
 
   adminSay(what, sub) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!what) reject('admin say failed.')
-      connection.exec(["admin.say", what, sub], function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    if (!what) throw new Error('admin say failed.');
+    return this.executeCommand("admin.say", [what, sub]);
   }
 
   adminYellall(what, duration) {
-    let connection = this._connection
-    if (duration < 0) duration = 0;
-    let d = duration >>> 0;
-    return new Promise(function (resolve, reject) {
-      if (!what || !duration) reject('admin yell failed.')
-      connection.exec(["admin.yell", what, d.toString(), "all"], function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    if (!what || duration < 0) throw new Error('admin yell failed.');
+    return this.executeCommand("admin.yell", [what, (duration >>> 0).toString(), "all"]);
   }
 
   adminSayPlayer(what, playerName) {
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!what || !playerName) reject('admin say failed.')
-      let player = "player";
-      connection.exec(["admin.say", what, player, playerName], function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    if (!what || !playerName) throw new Error('admin say failed.');
+    return this.executeCommand("admin.say", [what, "player", playerName]);
   }
 
   adminYellPlayer(what, duration, playerName) {
-    let du = Number(duration);
-    if (du < 0) du = 0;
-    let d = du >>> 0;
-    let connection = this._connection
-    return new Promise(function (resolve, reject) {
-      if (!what || !playerName) reject('admin yell failed.')
-      let player = "player";
-      connection.exec(["admin.yell", what, d.toString(), player, playerName], function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    })
+    if (!what || !playerName || duration < 0) throw new Error('admin yell failed.');
+    return this.executeCommand("admin.yell", [what, (Number(duration) >>> 0).toString(), "player", playerName]);
   }
 
-  customCommand(command, params) {
-    let connection = this._connection;
-    return new Promise(function (resolve, reject) {
-      if (!command) reject('command name is required.');
-
-      let arr = [];
-      arr.push(command);
-
-      if (params && params.length) {
-        for (const el of params) {
-          arr.push(el); // and arguments if any
-        }
-      }
-
-      connection.exec(arr, function (err, msg) {
-        err ? reject(err.message) : resolve(msg)
-      });
-    });
+  customCommand(command, params = []) {
+    if (!command) throw new Error('command name is required.');
+    return this.executeCommand(command, params);
   }
 
   getCommands() {
-    let connection = this._connection;
-
-    return connection.commands;
+    return this._connection.commands;
   }
-
 }
-
 
 export default BattleConClient
