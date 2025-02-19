@@ -21,7 +21,7 @@ const serverNameUpdater = (req, res, next) => {
 
 const handleError = (err, res) => {
     const date = new Date();
-    console.error(`[API] ${date.toLocaleString()}`, err);
+    console.error(`[API] ${date.toLocaleString()} in ${new Error().stack}`, err);
     res.status(400).json({ status: "FAILED", server: req.serverName, error: String(err) });
 }
 
