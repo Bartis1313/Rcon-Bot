@@ -39,6 +39,19 @@ const clientChecker = (req, res, next) => {
         });
 };
 
+// use if you expose for public api use
+const validateParams = (params) => {
+    return (req, res, next) => {
+        const missingParams = params.filter(param => !req.body[param] || req.body[param].trim() === "");
+
+        if (missingParams.length > 0) {
+            return handleError(`missing or invalid parameters: ${missingParams.join(", ")}`, res);
+        }
+
+        next();
+    };
+}
+
 const app = express();
 
 app.use(serverNameUpdater);
