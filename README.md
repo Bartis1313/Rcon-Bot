@@ -1,15 +1,26 @@
 # Rcon-Bot
 Easy way to communicate with battlefield servers.
 
-Discord part is for v14, as well as old legacy message.content handling
-So in practise, any version should work with small edits
+## Instalation
+1. Install [nodejs](https://nodejs.org/en/download) preferably 21+ version for in-build fetch reasons
+2. Install dependencies in Battlecon & Discord
+```
+cd Discord npm i
+cd BattleCon npm i
+```
+3. Run the project using ``docker-compose up``
 
-The Battlecon part was edited to handle disconnects, and exposed apis
-The Module of BattleConClient handles creating plugins as well. Without perfect handling of errors.
-Probably focused over this part too much, you can see KickLogger as example how to write own plugin.
+## Why?
+The side project of mine to do something with high level languages.
+And all rcon clients tend to such, have much of bloat etc...
 
-Some of discord commands rely heavily on famous database plugin for bf servers, use them or just see as example.
-Deleting the folder will simply solve it, though you will have to implement unban yourself. Should be easy, with so many command examples.
+- create simple routes for commands
+- embed it anywhere you want
+- handle creating plugins dynamically (very easy to add to routes as well)
+- very easy to listen custom modded server apis, simply listen to the socket, or if you are advanced make own rcon command command callback (internal part of server)
+- light, a single rcon client takes ~50MB
+- no bloat
+- ready commands as good example
 
 # Docker Example for 2 servers
 ```
@@ -24,8 +35,6 @@ services:
     deploy:
       restart_policy:
         condition: any
-        delay: 5s
-        window: 120s
   restart: always
 
   server2:
@@ -38,8 +47,6 @@ services:
     deploy:
       restart_policy:
         condition: any
-        delay: 5s
-        window: 120s
   restart: always
 
   discord:
@@ -53,8 +60,9 @@ services:
       - BATTLECON_API_URLS=http://server1:3000,http://server2:3001
 ```
 
-And then use the command `docker-compose up`
-
 ## Credits 
 - [xFileFIN](https://github.com/Razer2015) -> Making helper with matching and rcon connection with apis
 - [dcodeIO](https://github.com/dcodeIO) -> The author of BattleCon
+
+## Licence
+idgaf...
