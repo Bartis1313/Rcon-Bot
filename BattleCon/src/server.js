@@ -375,23 +375,19 @@ app.get("/getTypes", (req, res, next) => {
 })
 
 app.get("/isOkay", (req, res, next) => {
-    client.isBusy()
-        .then(isBusy => {
-            if (isBusy) {
-                handleError("Server is in reconnecting state", res);
-                return;
-            }
+    const isBusy = client.isBusy();
+    if (isBusy) {
+        handleError("Server is in reconnecting state", res);
+        return;
+    }
 
-            // now check if somehow socket is stuck
-            client.version()
-                .then(response => {
-                    res.json({ status: "OK", server: req.serverName, data: null });
-                })
-                .catch(err => {
-                    handleError(err, res);
-                });
+    // now check if somehow socket is stuck
+    client.version()
+        .then(response => {
+            res.json({ status: "OK", server: req.serverName, data: null });
         })
         .catch(err => {
             handleError(err, res);
         });
+
 });
