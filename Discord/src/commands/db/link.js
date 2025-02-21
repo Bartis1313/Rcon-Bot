@@ -98,8 +98,9 @@ module.exports = class LinkCommand {
 
                     const uniqueNames = new Set();
                     const filteredLinkedAccounts = linkedAccounts.filter(el => {
-                        if (!uniqueNames.has(el.linked_soldierName)) {
-                            uniqueNames.add(el.linked_soldierName);
+                        const key = el.linked_soldierName + el.GameID;
+                        if (!uniqueNames.has(key)) {
+                            uniqueNames.add(key);
                             return true;
                         }
                         return false;
