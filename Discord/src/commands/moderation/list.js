@@ -4,22 +4,41 @@ import Fetch from '../../helpers/fetch.js';
 import fs from 'fs'
 import path from 'path'
 
-const configPath = path.join(__dirname, "../../configList", 'config.json');
+const fsPromises = fs.promises;
 
-async function loadConfig() {
+const configDir = path.join(__dirname, "../../configList");
+const configPath = path.join(configDir, 'config.json');
+
+const ensureConfigDirectory = async () => {
+    try {
+        await fsPromises.mkdir(configDir, { recursive: true });
+    } catch (error) {
+        console.error("Error creating config directory:", error);
+    }
+}
+
+const loadConfig = async () => {
+    await ensureConfigDirectory();
+
     if (!fs.existsSync(configPath)) {
-        fs.writeFileSync(configPath, JSON.stringify({ servers: {} }, null, 2));
+        const defaultConfig = { servers: {} };
+        try {
+            await fsPromises.writeFile(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
+        } catch (error) {
+            console.error("Error creating initial config file:", error);
+            return { servers: {} };
+        }
     }
 
     try {
-        const rawData = fs.readFileSync(configPath, 'utf8');
+        const rawData = await fsPromises.readFile(configPath, 'utf8');
         const parsedData = JSON.parse(rawData);
 
         if (!parsedData || typeof parsedData !== 'object') {
             console.error("Error: Parsed config is not an object!", parsedData);
             return { servers: {} };
         }
-        
+
         return parsedData;
     } catch (error) {
         console.error("Error loading config.json:", error);
@@ -27,10 +46,14 @@ async function loadConfig() {
     }
 }
 
-async function saveConfig(config) {
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+const saveConfig = async (config) => {
+    await ensureConfigDirectory();
+    try {
+        await fsPromises.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
+    } catch (error) {
+        console.error("Error saving config:", error);
+    }
 }
-
 const formatDuration = (seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -312,39 +335,47 @@ module.exports = class List {
 
     async onReady(client) {
         const config = await loadConfig();
+
         if (!config.servers || typeof config.servers !== 'object') {
             console.warn("skipping config list, as it's pobably not set");
+            await saveConfig({ servers: {} });
             return;
         }
 
         for (const [server, data] of Object.entries(config.servers)) {
             try {
                 const channel = await client.channels.fetch(data.channelId);
-                if (channel) {
-                    const message = await channel.messages.fetch(data.messageId);
-                    if (message) {
-                        this.scoreboardMessage[server] = message.id;
-                        this.scoreboardChannelId[server] = channel.id;
-
-                        this.intervalIds[server] = setInterval(async () => {
-                            try {
-                                const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
-                                if (!fetchedMsg) {
-                                    console.log("Message not found, stopping interval.");
-                                    clearInterval(this.intervalIds[server]);
-                                    return;
-                                }
-
-                                const embed = await this.createInfoEmbed(server);
-                                await fetchedMsg.edit({ embeds: [embed] });
-                            } catch (error) {
-                                console.error("Error updating embed:", error);
-                            }
-                        }, 30000); // Update every 30 seconds
-
-                        console.log(`${server} updating chached interval started...`);
-                    }
+                if (!channel) {
+                    console.warn(`Channel ${data.channelId} not found for server ${server}`);
+                    continue;
                 }
+
+                const message = await channel.messages.fetch(data.messageId);
+                if (!message) {
+                    console.warn(`Message ${data.messageId} not found for server ${server}`);
+                    continue;
+                }
+
+                this.scoreboardMessage[server] = message.id;
+                this.scoreboardChannelId[server] = channel.id;
+
+                this.intervalIds[server] = setInterval(async () => {
+                    try {
+                        const fetchedMsg = await channel.messages.fetch(this.scoreboardMessage[server]);
+                        if (!fetchedMsg) {
+                            console.log("Message not found, stopping interval.");
+                            clearInterval(this.intervalIds[server]);
+                            return;
+                        }
+
+                        const embed = await this.createInfoEmbed(server);
+                        await fetchedMsg.edit({ embeds: [embed] });
+                    } catch (error) {
+                        console.error("Error updating embed:", error);
+                    }
+                }, 30000);
+
+                console.log(`${server} updating cached interval started...`);
             } catch (error) {
                 console.error(`Error resuming interval for server ${server}:`, error);
             }
