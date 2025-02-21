@@ -12,7 +12,7 @@ cd BattleCon npm i
 
 ## Why?
 The side project of mine to do something with high level languages.
-And all rcon clients tend to such, have much of bloat etc...
+And all rcon clients tend to suck, have much of bloat etc...
 
 - create simple routes for commands
 - embed it anywhere you want
