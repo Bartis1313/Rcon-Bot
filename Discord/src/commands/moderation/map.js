@@ -145,7 +145,7 @@ module.exports = class map {
 
     buildEmbed(messageOrInteraction, parameters, response) {
         const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
-        const urlPrefix = version === 'BF4'
+        const urlPrefix = parameters.version === 'BF4'
             ? 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf4/map_images/195x79/'
             : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/';
 
