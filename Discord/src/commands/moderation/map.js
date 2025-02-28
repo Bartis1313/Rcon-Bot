@@ -124,7 +124,7 @@ module.exports = class map {
             pretty: true
         })
             .then(json => {
-                return json.data.maps.map(map => map.slice(0, 2));
+                return json.data.maps;
             })
             .catch(error => {
                 console.error("Error fetching map array:", error);
