@@ -49,7 +49,8 @@ module.exports = class Docs {
 
     async handleAutocomplete(interaction) {
         const focusedValue = interaction.options.getFocused(true);
-        const options = focusedValue.value === "commands" ? this.commandNames : this.typeNames;
+        const subcommand = interaction.options.getSubcommand();
+        const options = subcommand === "commands" ? this.commandNames : this.typeNames;        
 
         const matched = Matching.getBestMatch(focusedValue.value, options, DiscordLimits.maxChoices);
         if (!matched) {
