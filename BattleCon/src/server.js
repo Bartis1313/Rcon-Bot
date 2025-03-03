@@ -19,7 +19,7 @@ const serverNameUpdater = (req, res, next) => {
         .finally(() => next());
 }
 
-const handleError = (err, res) => {
+const handleError = (err, req, res) => {
     const date = new Date();
     console.error(`[API] ${date.toLocaleString()} in ${new Error().stack}`, err);
     res.status(400).json({ status: "FAILED", server: req.serverName, error: String(err) });
@@ -31,7 +31,7 @@ const validateParams = (params) => {
         const missingParams = params.filter(param => !req.body[param] || req.body[param].trim() === "");
 
         if (missingParams.length > 0) {
-            return handleError(`missing or invalid parameters: ${missingParams.join(", ")}`, res);
+            return handleError(`missing or invalid parameters: ${missingParams.join(", ")}`, req, res);
         }
 
         next();
@@ -54,7 +54,7 @@ app.get("/serverName", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: null });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -65,7 +65,7 @@ app.get("/version", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -75,7 +75,7 @@ app.get("/serverInfo", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -88,7 +88,7 @@ app.post("/admin/kill", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -101,7 +101,7 @@ app.post("/admin/kick", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -116,7 +116,7 @@ app.post("/admin/ban", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 app.post("/reservedslots", (req, res, next) => {
@@ -127,7 +127,7 @@ app.post("/reservedslots", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -137,7 +137,7 @@ app.get("/players", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -147,7 +147,7 @@ app.get("/team", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 });
 
@@ -158,7 +158,7 @@ app.get("/serverfps", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -184,7 +184,7 @@ app.get("/listOfMaps", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: formattedResponse });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -195,7 +195,7 @@ app.post("/setMapIndex", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -206,7 +206,7 @@ app.get("/printBans", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -218,7 +218,7 @@ app.post("/admin/unban", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -228,7 +228,7 @@ app.get("/getInfo", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -238,7 +238,7 @@ app.get("/getIndices", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -253,7 +253,7 @@ app.post("/switchPlayer", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -264,7 +264,7 @@ app.post("/admin/sayall", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response })
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -276,7 +276,7 @@ app.post("/admin/say", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response })
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -288,7 +288,7 @@ app.post("/admin/psay", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response })
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -300,7 +300,7 @@ app.post("/admin/yellall", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response })
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -313,7 +313,7 @@ app.post("/admin/pyell", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response })
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -324,7 +324,7 @@ app.post("/admin/sayall", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response })
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -337,7 +337,7 @@ app.post("/custom", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response })
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -347,7 +347,7 @@ app.get("/getMapIndices", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: response });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         })
 })
 
@@ -377,7 +377,7 @@ app.get("/getTypes", (req, res, next) => {
 app.get("/isOkay", (req, res, next) => {
     const isBusy = client.isBusy();
     if (isBusy) {
-        handleError("Server is in reconnecting state", res);
+        handleError("Server is in reconnecting state", req, res);
         return;
     }
 
@@ -387,7 +387,7 @@ app.get("/isOkay", (req, res, next) => {
             res.json({ status: "OK", server: req.serverName, data: null });
         })
         .catch(err => {
-            handleError(err, res);
+            handleError(err, req, res);
         });
 
 });
