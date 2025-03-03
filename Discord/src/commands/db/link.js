@@ -181,7 +181,7 @@ module.exports = class LinkCommand {
 
         embeds.push(ipEmbed);
 
-        const accountChunks = chunkArray(linkedAccounts, DiscordLimits.maxChoices);
+        const accountChunks = chunkArray(linkedAccounts, DiscordLimits.maxChoices - 5);
 
         for (let i = 0; i < accountChunks.length; i++) {
             const chunk = accountChunks[i];
