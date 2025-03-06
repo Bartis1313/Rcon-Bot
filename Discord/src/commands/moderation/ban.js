@@ -209,15 +209,19 @@ module.exports = class BanCommand {
             .setAuthor({ name: 'Ban', iconURL: user.displayAvatarURL() })
             .addFields(
                 { name: 'Issuer', value: user.username, inline: true },
-                { name: 'Target', value: `**${response.data.banId}**`, inline: true },
-                { name: 'Timeout', value: response.data.timeout, inline: true }
+                { name: 'Target', value: `**${parameters.banId}**`, inline: true },
+                { name: 'Timeout', value: parameters.timeout, inline: true }
             );
 
+        if (response?.data?.reason) {
+            embed.addFields({ name: 'Reason', value: response.data.reason, inline: true });
+        }
 
-        embed.addFields(
-            { name: 'Reason', value: response.data.reason, inline: true },
-            { name: 'Server', value: response.server, inline: false }
-        );
+        if (response.status === "FAILED") {
+            embed.addFields({ name: 'Reason for failing', value: response.error, inline: true });
+        }
+
+        embed.addFields({ name: 'Server', value: response.server, inline: false });
 
         return embed;
     }

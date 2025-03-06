@@ -132,6 +132,9 @@ module.exports = class Say {
 
                         const scores = {};
                         players.forEach(player => {
+                            if (player.teamId === '0')
+                                return;
+
                             if (!scores[player.teamId]) {
                                 scores[player.teamId] = [];
                             }
@@ -142,7 +145,7 @@ module.exports = class Say {
                             Object.keys(scores).map(teamId => [
                                 teamId,
                                 scores[teamId]
-                                    .sort((a, b) => b.score - a.score)
+                                    .sort((a, b) => Number(b.score) - Number(a.score))
                                     .slice(0, Math.min(3, scores[teamId].length))
                                     .map(player => player.name)
                             ])
@@ -160,8 +163,14 @@ module.exports = class Say {
                                     ['1', 'RU'],
                                 ]);
 
-                        teams.push({ id: '0', faction: `[${factions.get(json.data[0])}] Top3 (${topScorers[0].join(', ')}...)` });
-                        teams.push({ id: '1', faction: `[${factions.get(json.data[1])}] Top3 (${topScorers[1].join(', ')}...)` });
+                        teams.push({
+                            id: '1',
+                            faction: `[${factions.get(json.data[0])}] Top3 (${(topScorers["1"]?.join(', ') || 'No players')}...)`
+                        });
+                        teams.push({
+                            id: '2',
+                            faction: `[${factions.get(json.data[1])}] Top3 (${(topScorers["2"]?.join(', ') || 'No players')}...)`
+                        });
                     })
                     .catch(async error => {
                         console.error(error);
