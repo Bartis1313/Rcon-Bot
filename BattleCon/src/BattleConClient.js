@@ -89,7 +89,7 @@ class BattleConClient {
 
     if (!banType || !banId || !timeout) throw new Error('Ban Type, Ban ID, and Timeout are required.');
 
-    let command = ["banList.add", banType, banId];
+    let command = [banType, banId];
     if (timeout === "perm") {
       command.push("perm");
     } else if (timeout.startsWith("seconds") || timeout.startsWith("rounds")) {
@@ -98,7 +98,7 @@ class BattleConClient {
     }
 
     command.push(reason);
-    return this.executeCommand(...command).then(() =>
+    return this.executeCommand("banList.add", command).then(() =>
       this.executeCommand("banList.save")
     ).then(() =>
       ({ banType, banId, timeout, reason }));
