@@ -62,7 +62,7 @@ module.exports = class LinkCommand {
                     const currentIP = playerData.find(row => row.IP_Address)?.IP_Address || 'Unknown';
 
                     const ipHistory = await DBHelper.query(connection, `
-                        SELECT DISTINCT IP_Address FROM ip_history WHERE PlayerID IN (?);
+                        SELECT DISTINCT IP_Address, RecStamp FROM ip_history WHERE PlayerID IN (?);
                     `, [playerIDs]);
 
                     let linkedAccounts = [];
@@ -81,7 +81,7 @@ module.exports = class LinkCommand {
                         `, [playerIDs]);
                     } else {
                         // complex - based on ip history
-                        const ipList = ipHistory.map(row => row.IP_Address);
+                        //const ipList = ipHistory.map(row => row.IP_Address);
                         linkedAccounts = await DBHelper.query(connection, `
                             SELECT DISTINCT 
                                 pd.SoldierName AS original_soldierName,
@@ -108,7 +108,7 @@ module.exports = class LinkCommand {
 
                     return {
                         linkedAccounts: Array.from(filteredLinkedAccounts),
-                        ipHistory: ipHistory.map(row => row.IP_Address),
+                        ipData: ipHistory.map(row => ({ IP: row.IP_Address, Date: row.RecStamp })),
                         currentIP
                     };
                 });
@@ -138,21 +138,24 @@ module.exports = class LinkCommand {
             return;
         }
 
-        const embeds = await this.buildEmbeds(interaction, serverDB, playerName, linkedAccounts);
-        await interaction.editReply({ embeds: embeds.slice(0, 10) });
+        const { ips, embeds } = await this.buildEmbeds(interaction, serverDB, playerName, linkedAccounts);
+        const sendInChunks = async (arr) => {
+            if (arr.length === 0)
+                return;
 
-        if (embeds.length > 10) {
-            const remainingEmbeds = embeds.slice(10);
-            for (let i = 0; i < remainingEmbeds.length; i += 10) {
-                const chunk = remainingEmbeds.slice(i, i + 10);
-                await interaction.followUp({ embeds: chunk });
+            for (let i = 0; i < arr.length; i += 10) {
+                await interaction.followUp({ embeds: arr.slice(i, i + 10) });
             }
         }
+
+        await interaction.editReply({ embeds: embeds.slice(0, 10) });
+        await sendInChunks(embeds.slice(10));
+        await sendInChunks(ips);
     }
 
     async buildEmbeds(messageOrInteraction, serverDB, playerName, linkedData) {
         const user = Helpers.isCommand(messageOrInteraction) ? messageOrInteraction.user : messageOrInteraction.author;
-        const { linkedAccounts, ipHistory, currentIP } = linkedData;
+        const { linkedAccounts, ipData, currentIP } = linkedData;
 
         const embeds = [];
         const chunkArray = (arr, size) => {
@@ -163,24 +166,43 @@ module.exports = class LinkCommand {
             return chunks;
         };
 
-        const ipEmbed = new EmbedBuilder()
-            .setColor('Blue')
-            .setTitle(`${playerName} - ${serverDB.database} DB (${currentIP})`)
-            .setFooter({ text: `Requested by ${user.username}` })
-            .setTimestamp();
+        const descIps = [];
+        const ips = [];
+        let descIp = '';
+        ipData.forEach((ip, index) => {
+            const pad = (n) => {
+                return n.toString().padStart(2, '0');
+            }
 
-        let descIp = "🔹 Previous ips\n\n";
+            const formatDate = (date) => {
+                return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+            }
+            descIp += `${ip.IP} ${formatDate(new Date(ip.Date))}\n`;
 
-        const splitedIps = chunkArray(ipHistory, 4);
+            if (index !== 0 && index % 25 === 0) { // to make sure it's fine
+                descIps.push(descIp);
+                descIp = '';
+            }
+        })
 
-        splitedIps.forEach(ip => {
-            descIp += `[ ${ip.join(', ')} ]\n`;
-        });
+        if (descIp.length) {
+            descIps.push(descIp);
+        }
 
-        ipEmbed.setDescription(Helpers.truncateString(descIp, DiscordLimits.maxDescriptionLength));
+        descIps.forEach((desc, index) => {
+            const ipEmbed = new EmbedBuilder()
+                .setColor('Blue');
+            if (index === 0) {
+                ipEmbed
+                    .setTitle(`${playerName} - ${serverDB.database} DB (${currentIP})`)
+                    .setFooter({ text: `Requested by ${user.username}` })
+                    .setTimestamp()
+            }
+            ipEmbed
+                .setDescription(`${index === 0 ? '🔹 Previous ips\n\n' : ''}${desc}`);
 
-        embeds.push(ipEmbed);
-
+            ips.push(ipEmbed);
+        })
         const accountChunks = chunkArray(linkedAccounts, 15);
 
         for (let i = 0; i < accountChunks.length; i++) {
@@ -200,6 +222,6 @@ module.exports = class LinkCommand {
             embeds.push(embed);
         }
 
-        return embeds;
+        return { embeds, ips };
     }
 };
