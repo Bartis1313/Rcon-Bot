@@ -359,9 +359,10 @@ app.get("/getMapsModesRaw", (req, res, next) => {
 })
 
 app.get("/getCommands", (req, res, next) => {
-    const commands = client.getCommands()
-
-    res.json({ status: "OK", server: req.serverName, data: commands });
+    client.getCommands()
+        .then((response) => {
+            res.json({ status: "OK", server: req.serverName, data: response });
+        })
 })
 
 app.get("/getDocs", (req, res, next) => {
