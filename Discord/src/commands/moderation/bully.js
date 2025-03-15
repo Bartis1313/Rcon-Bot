@@ -136,7 +136,7 @@ module.exports = class Bully {
         }
 
         if (countbully) {
-            embed.addFields({ name: `Bully count ${left ? '(Left the server)' : ''}`, value: countbully, inline: true });
+            embed.addFields({ name: `Bully count ${left ? '(Left the server)' : ''}`, value: countbully.toString(), inline: true });
         }
 
         embed.addFields({ name: 'Server', value: response.server, inline: false });
