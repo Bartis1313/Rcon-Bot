@@ -81,7 +81,6 @@ module.exports = class Ffss {
                 folderContent = folderData.contents
                     .filter(a => a.name.endsWith('.jpg'))
                     .sort((a, b) => b.name.localeCompare(a.name))
-                    .slice(0, 10)
                     .map(img => img.path);
             }
         } catch (err) {
@@ -95,7 +94,7 @@ module.exports = class Ffss {
             return;
         }
 
-        const files = folderContent.map(filePath => ({ attachment: filePath }));
+        const files = folderContent.map(filePath => ({ attachment: filePath })).slice(0, 10);
 
         await interaction.editReply({
             content: `Found ${folderContent.length} images for ${playerName} ${this.secret}/images/${playerName}`,
