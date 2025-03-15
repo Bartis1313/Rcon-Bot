@@ -93,8 +93,8 @@ module.exports = class Bully {
                     Fetch.post(`${server}/admin/kill`, parameters)
                         .then(response => {
                             if (response?.status === "OK") {
-                                countmap.set(playerName, ++curr);
-                                const curr = countmap.get(playerName);
+                                let curr = countmap.get(playerName);
+                                countmap.set(playerName, ++curr);                                
 
                                 msg.edit({ embeds: [this.buildEmbed(interaction, parameters, response, curr)] }).catch(err => { });
                             }
