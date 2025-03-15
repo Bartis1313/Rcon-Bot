@@ -45,13 +45,11 @@ class Helpers {
                 })
                 .catch(error => {
                     console.error(`Error fetching server name from ${apiUrl}:`, error);
-                    return [];
                 });
         }));
 
         return serverChoices;
     }
-
 
     static getChoices(arr, arrNames) {
         return arr.map((value, index) => ({
