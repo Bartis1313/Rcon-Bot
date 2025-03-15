@@ -100,7 +100,7 @@ module.exports = class Bully {
                             }
                         })
 
-                    if (!playerNames.includes()) {
+                    if (!playerNames.includes(playerName)) {
                         clearInterval(interval);
 
                         const curr = countmap.get(playerName);
