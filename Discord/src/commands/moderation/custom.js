@@ -143,7 +143,10 @@ module.exports = class CustomCommand {
             embed.addFields({ name: 'Reason for Failing', value: response.error, inline: true });
         }
         if (response.data) {
-            embed.addFields({ name: 'Message', value: Array.isArray(response.data) ? response.data.join(", ") : response.data, inline: false });
+            const fieldValue = Array.isArray(response.data) ? response.data.join(", ") : response.data;
+            if (fieldValue && fieldValue.length > 0) {
+                embed.addFields({ name: 'Message', value: fieldValue, inline: false });
+            }
         }
         embed.addFields({ name: 'Server', value: response.server, inline: false });
 
