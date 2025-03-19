@@ -179,7 +179,7 @@ module.exports = class LinkCommand {
             }
             descIp += `${ip.IP} ${formatDate(new Date(ip.Date))}\n`;
 
-            if (index !== 0 && index % 25 === 0) { // to make sure it's fine
+            if (index !== 0 && index % 20 === 0) { // to make sure it's fine
                 descIps.push(descIp);
                 descIp = '';
             }
