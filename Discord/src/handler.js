@@ -13,6 +13,7 @@ class CommandHandler {
 
         this.commands = new Map(); // all commands
         this.slashCommands = new Map(); // just slash commands
+        this.slashCommandsGuild = new Map(); // just slash commands
         this.globalSlashCommands = new Map(); // slash registered globally
 
         this.clientId = data.clientId; // needed
@@ -64,9 +65,11 @@ class CommandHandler {
                 if (typeof cmd.runSlash === "function" && cmd.slashCommand) {
                     if (cmd.globalCommand) {
                         this.globalSlashCommands.set(cmd.name, cmd);
-                    } else {
-                        this.slashCommands.set(cmd.name, cmd);
                     }
+                    else {
+                        this.slashCommandsGuild.set(cmd.name, cmd);
+                    }
+                    this.slashCommands.set(cmd.name, cmd);
                 }
 
             } catch (error) {
@@ -78,7 +81,7 @@ class CommandHandler {
 
     // register slash commands with Discord
     async _registerSlashCommands() {
-        const guildCommands = Array.from(this.slashCommands.values()).map(cmd => cmd.slashCommand.toJSON());
+        const guildCommands = Array.from(this.slashCommandsGuild.values()).map(cmd => cmd.slashCommand.toJSON());
         const globalCommands = Array.from(this.globalSlashCommands.values()).map(cmd => cmd.slashCommand.toJSON());
 
         const rest = new REST({ version: '10' }).setToken(this.token);
