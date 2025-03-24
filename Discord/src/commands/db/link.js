@@ -139,18 +139,9 @@ module.exports = class LinkCommand {
         }
 
         const { ips, embeds } = await this.buildEmbeds(interaction, serverDB, playerName, linkedAccounts);
-        const sendInChunks = async (arr) => {
-            if (arr.length === 0)
-                return;
 
-            for (let i = 0; i < arr.length; i += 10) {
-                await interaction.followUp({ embeds: arr.slice(i, i + 10) });
-            }
-        }
-
-        await interaction.editReply({ embeds: embeds.slice(0, 10) });
-        await sendInChunks(embeds.slice(10));
-        await sendInChunks(ips);
+        await Helpers.sendInChunks(interaction, embeds);
+        await Helpers.sendInChunks(interaction, ips, true);
     }
 
     async buildEmbeds(messageOrInteraction, serverDB, playerName, linkedData) {

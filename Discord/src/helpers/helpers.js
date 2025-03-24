@@ -76,6 +76,68 @@ class Helpers {
         }
         return true;
     }
+
+    static checkUsers(interaction) {
+        const userids = process.env.DISCORD_IDS.split(", ");
+        return interaction.channel.isDMBased() && userids.includes(interaction.user.id);
+    }
+
+    static check
+
+    static async sendInChunks(interaction, embeds, ignoreFirst = false) {
+        if (embeds.length === 0) return;
+
+        // discord limits
+        const MAX_TOTAL_CHARACTERS = 6000;
+        const MAX_EMBEDS_PER_MESSAGE = 10;
+        const RATE_LIMIT_DELAY = 1000;
+
+        const chunks = [];
+        let currentChunk = [];
+        let currentChunkLength = 0;
+
+        for (const embed of embeds) {
+            if (currentChunk.length >= MAX_EMBEDS_PER_MESSAGE ||
+                currentChunkLength + embed.length > MAX_TOTAL_CHARACTERS) {
+                chunks.push(currentChunk);
+                currentChunk = [embed];
+                currentChunkLength = embed.length;
+            } else {
+                currentChunk.push(embed);
+                currentChunkLength += embed.length;
+            }
+        }
+
+        if (currentChunk.length > 0) {
+            chunks.push(currentChunk);
+        }
+
+        for (let i = 0; i < chunks.length; i++) {
+            try {
+                if (i === 0 && !ignoreFirst) {
+                    await interaction.editReply({ embeds: chunks[i] });
+                } else {
+                    await interaction.followUp({ embeds: chunks[i] });
+                }
+
+                if (i < chunks.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
+                }
+            } catch (error) {
+                console.error(`Error sending chunk ${i}:`, error);
+                if (i > 0) {
+                    try {
+                        await interaction.followUp({
+                            content: `Error: Could not display all results. Some data may be missing.`
+                        });
+                    } catch (e) {
+                        console.error('Failed to send error notification:', e);
+                    }
+                }
+                break;
+            }
+        }
+    }
 };
 
 export { Helpers, ActionType, DiscordLimits };

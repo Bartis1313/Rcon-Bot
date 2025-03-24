@@ -8,6 +8,7 @@ module.exports = class Ffss {
         this.name = 'ffss';
         this.description = 'Get fairfight images for player';
         this.secret = process.env.FF_SERVER;
+        this.globalCommand = true;
     }
 
     async init() {
@@ -29,7 +30,7 @@ module.exports = class Ffss {
                 allFolders = json.folders;
             })
             .catch(async (err) => {
-                console.err(err);
+                console.error(err);
                 await interaction.respond([]);
                 return;
             })
@@ -61,8 +62,6 @@ module.exports = class Ffss {
     }
 
     async runSlash(interaction) {
-        if (!Helpers.checkRoles(interaction, this)) return;
-
         await interaction.deferReply();
 
         const playerName = interaction.options.getString('name');

@@ -13,6 +13,7 @@ class CommandHandler {
 
         this.commands = new Map(); // all commands
         this.slashCommands = new Map(); // just slash commands
+        this.globalSlashCommands = new Map(); // slash registered globally
 
         this.clientId = data.clientId; // needed
         this.guildId = data.guildId; // optional
@@ -61,7 +62,11 @@ class CommandHandler {
 
                 // slash commands better be loaded seperately to not reuse same code
                 if (typeof cmd.runSlash === "function" && cmd.slashCommand) {
-                    this.slashCommands.set(cmd.name, cmd);
+                    if (cmd.globalCommand) {
+                        this.globalSlashCommands.set(cmd.name, cmd);
+                    } else {
+                        this.slashCommands.set(cmd.name, cmd);
+                    }
                 }
 
             } catch (error) {
@@ -73,33 +78,22 @@ class CommandHandler {
 
     // register slash commands with Discord
     async _registerSlashCommands() {
-        const commands = Array.from(this.slashCommands.values()).map(cmd => {
-            const slashCommandJSON = cmd.slashCommand.toJSON();
-            return {
-                name: slashCommandJSON.name,
-                description: slashCommandJSON.description || 'No description provided',
-                options: slashCommandJSON.options || []
-            };
-        });
-
-        if (commands.length === 0)
-            return;
-
-        //console.log('Commands being registered:', JSON.stringify(commands, null, 2));
-        console.log(`Loading ${commands.length} slash commands`);
+        const guildCommands = Array.from(this.slashCommands.values()).map(cmd => cmd.slashCommand.toJSON());
+        const globalCommands = Array.from(this.globalSlashCommands.values()).map(cmd => cmd.slashCommand.toJSON());
 
         const rest = new REST({ version: '10' }).setToken(this.token);
         try {
-            console.log(`⏳ Registering slash commands... (${this.guildId ? 'using guild method' : 'using global method'})`);
-            await rest.put(
-                this.guildId
-                    ? Routes.applicationGuildCommands(this.clientId, this.guildId)
-                    : Routes.applicationCommands(this.clientId)
-                ,
-                { body: commands }
-            );
-            console.log('✅ Successfully registered slash commands!');
+            if (guildCommands.length > 0) {
+                console.log(`⏳ Registering ${guildCommands.length} guild-specific slash commands...`);
+                await rest.put(Routes.applicationGuildCommands(this.clientId, this.guildId), { body: guildCommands });
+                console.log('✅ Successfully registered guild slash commands!');
+            }
 
+            if (globalCommands.length > 0) {
+                console.log(`⏳ Registering ${globalCommands.length} global slash commands...`);
+                await rest.put(Routes.applicationCommands(this.clientId), { body: globalCommands });
+                console.log('✅ Successfully registered global slash commands!');
+            }
         } catch (error) {
             console.error('❌ Error registering slash commands:', error);
         }
