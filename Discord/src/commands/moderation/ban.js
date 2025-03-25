@@ -120,10 +120,7 @@ module.exports = class BanCommand {
     }
 
     async runSlash(interaction) {
-        if (!interaction.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID)) {
-            await interaction.reply({ content: "You don't have permission to use this command.", flags: MessageFlags.Ephemeral });
-            return;
-        }
+        if (!await Helpers.checkRoles(interaction, this)) return;
 
         await interaction.deferReply();
 

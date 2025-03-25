@@ -383,7 +383,7 @@ module.exports = class List {
     }
 
     async runSlash(interaction) {
-        if (!Helpers.checkRoles(interaction, this))
+        if (!await Helpers.checkRoles(interaction, this))
             return;
 
         const server = interaction.options.getString("server");

@@ -26,7 +26,7 @@
   "dependencies": {
     "core-js": "^3.31.1",
     "discord.js": "^14.17.3",
-    "fast-levenshtein": "^3.0.0",
+    "fuse.js": "^7.1.0",
     "mysql2": "^3.12.0",
     "geoip-lite": "1.4.10"
   }

@@ -75,7 +75,7 @@ module.exports = class map {
     }
 
     async runSlash(interaction) {
-        if (!Helpers.checkRoles(interaction, this))
+        if (!await Helpers.checkRoles(interaction, this))
             return;
 
         await interaction.deferReply();

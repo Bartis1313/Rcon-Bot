@@ -66,23 +66,33 @@ class Helpers {
         return messageOrInteraction.type === InteractionType.ApplicationCommand;
     }
 
-    static checkRoles(messageOrInteraction, classObj) {
-        const hasRole = messageOrInteraction.member?.roles.cache.has(process.env.DISCORD_RCON_ROLEID);
-        if (!hasRole) {
-            const mention = userMention(messageOrInteraction.user.id);
-            const replyMessage = `${mention} You don't have permission to use this command (${classObj.name})`;
-            messageOrInteraction.reply(replyMessage);
-            return false;
+    static async checkRoles(messageOrInteraction, classObj) {
+        const user = messageOrInteraction.user ?? messageOrInteraction.author;
+        let pass = false;
+
+        let channel = messageOrInteraction.channel;
+        if (!channel && messageOrInteraction.channelId) {
+            channel = await messageOrInteraction.client.channels.fetch(messageOrInteraction.channelId).catch(() => null);
         }
-        return true;
-    }
 
-    static checkUsers(interaction) {
-        const userids = process.env.DISCORD_IDS.split(", ");
-        return interaction.channel.isDMBased() && userids.includes(interaction.user.id);
-    }
+        if (classObj.globalCommand && channel?.isDMBased()) {
+            const userids = process.env.DISCORD_IDS.split(",");
+            pass = userids.includes(user.id);
+        }
 
-    static check
+        if (messageOrInteraction.member) {
+            pass |= messageOrInteraction.member.roles.cache.has(process.env.DISCORD_RCON_ROLEID);
+        }
+
+        if (pass == false) {
+            const mention = userMention(user.id);
+            const replyMessage = `${mention} You don't have permission to use this command (${classObj.name})`;
+            
+            messageOrInteraction.reply(replyMessage);
+        }
+
+        return pass;
+    }
 
     static async sendInChunks(interaction, embeds, ignoreFirst = false) {
         if (embeds.length === 0) return;

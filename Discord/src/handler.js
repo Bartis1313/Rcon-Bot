@@ -141,6 +141,7 @@ class CommandHandler {
     async handleMessageCommand(client, message) {
         const cmd = this.getCommand(message.content);
         if (!cmd) return;
+        if (!cmd.run) return;
 
         try {
             const args = message.content.split(' ').slice(1);

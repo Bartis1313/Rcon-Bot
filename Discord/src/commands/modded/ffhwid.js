@@ -67,7 +67,7 @@ module.exports = class LinkHwid {
     }
 
     async runSlash(interaction) {
-        if (!Helpers.checkRoles(interaction, this) && !Helpers.checkUsers(interaction)) return;
+        if (!await Helpers.checkRoles(interaction, this)) return;
 
         await interaction.deferReply();
         

@@ -69,7 +69,7 @@ module.exports = class BanHwid {
     }
 
     async runSlash(interaction) {
-        if (!Helpers.checkRoles(interaction, this)) return;
+        if (!await Helpers.checkRoles(interaction, this)) return;
 
         await interaction.deferReply();
         const nickname = interaction.options.getString('nickname');

@@ -1,85 +1,76 @@
-import Levenshtein from 'fast-levenshtein';
+import Fuse from 'fuse.js';
 
 class Matching {
     static getBestMatch(matchName, arrNames, numLimit = 10) {
-        // no sense to match...
-        if (arrNames.length === 0)
-            return null;
+        // Early return if array is empty
+        if (arrNames.length === 0) return null;
 
-        const matches = [];
-        const filteredNames = arrNames.filter(n => n.toLowerCase().includes(matchName.toLowerCase()));
-        const namesBeginning = arrNames.filter(n => n.toLowerCase().startsWith(matchName.toLowerCase()));
-
-        if (namesBeginning.length > 0) {
-            for (const name of namesBeginning) {
-                matches.push({ distance: Levenshtein.get(matchName, name), name: name });
-            }
-        } else {
-            for (const name of filteredNames) {
-                matches.push({ distance: Levenshtein.get(matchName, name), name: name });
-            }
-        }
-
-        matches.sort((n1, n2) => n1.distance - n2.distance); // sort by dist
-
-        if (matches.length <= 0) return null; // nothing to match
-
-        if (namesBeginning.length > 0) { // if the beginning matched
-            if (matches.length === 1) { // and there's only one match
-                return {
-                    type: "good",
-                    name: matches[0].name
-                };
-            }
-
-            const matchedNames = matches
-                .slice(0, numLimit)
-                .map((match) => match.name);
-            return {
-                type: "multi",
-                names: matchedNames
-            }; // multiple matches
-        }
-
-        if (matches.length === 1) {
+        // First check for exact matches - fastest path
+        const exactMatch = arrNames.find(name => name.toLowerCase() === matchName.toLowerCase());
+        if (exactMatch) {
             return {
                 type: "good",
-                name: matches[0].name
+                name: exactMatch
             };
         }
 
-        if (matches[0].distance <= 3) {
-            if (matches[1].distance - matches[0].distance <= 2) {
-                const matchedNames = matches
-                    .slice(0, numLimit)
-                    .map((match) => match.name);
+        const options = {
+            includeScore: true,
+            threshold: 0.35,        // Lower = more strict matching
+            location: 0,           // Where to start searching in the string
+            distance: 100,         // How far to search through the string
+            //minMatchCharLength: Math.max(2, matchName.length - 1), // Account for small misspellings
+            ignoreLocation: true,  // Search anywhere in the string
+            keys: ["name"]
+        };
+
+        const nameObjects = arrNames.map(name => ({ name }));
+        const fuse = new Fuse(nameObjects, options);
+        const results = fuse.search(matchName);
+
+        if (results.length === 0) {
+            return {
+                type: "far",
+                name: arrNames[0]
+            };
+        }
+        
+        const fuseMatches = results.map(result => ({
+            distance: Math.round(result.score * 10),
+            name: result.item.name
+        }));
+        
+        if (fuseMatches.length === 1) {
+            return {
+                type: "good",
+                name: fuseMatches[0].name
+            };
+        }
+        
+        if (fuseMatches[0].distance <= 3) {
+            if (fuseMatches[1].distance - fuseMatches[0].distance <= 2) {
                 return {
                     type: "multi",
-                    names: matchedNames
-                }; // multiple matches
+                    names: fuseMatches.slice(0, numLimit).map(m => m.name)
+                };
             }
-
-            // it's pretty close match, return as correct then
             return {
                 type: "good",
-                name: matches[0].name
+                name: fuseMatches[0].name
             };
         }
-
-        if (matches[1].distance - matches[0].distance <= 2) {
-            const matchedNames = matches
-                .slice(0, numLimit)
-                .map((match) => match.name);
+        
+        if (fuseMatches[1].distance - fuseMatches[0].distance <= 2) {
             return {
                 type: "multi",
-                names: matchedNames
-            }; // multiple matches
+                names: fuseMatches.slice(0, numLimit).map(m => m.name)
+            };
         }
-
+        
         return {
             type: "far",
-            name: matches[0].name
-        }; // far match, better redo this match...
+            name: fuseMatches[0].name
+        };
     }
 }
 

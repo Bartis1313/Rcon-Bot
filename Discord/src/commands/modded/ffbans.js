@@ -17,7 +17,7 @@ module.exports = class GetBans {
     }
 
     async runSlash(interaction) {
-        if (!Helpers.checkRoles(interaction, this)) return;
+        if (!await Helpers.checkRoles(interaction, this)) return;
 
         await interaction.deferReply();
         const user = interaction.user;

@@ -109,7 +109,7 @@ module.exports = class Check {
     }
 
     async runSlash(interaction) {
-        if (!Helpers.checkRoles(interaction, this))
+        if (!await Helpers.checkRoles(interaction, this))
             return;
 
         await interaction.deferReply();
