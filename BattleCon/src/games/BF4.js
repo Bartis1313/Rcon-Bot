@@ -42,6 +42,7 @@ module.exports = (bc) => {
         Scavenger0: 'Scavenger',
         TeamDeathMatchC0: 'Team Deathmatch (Close Quarters)',
         ConquestAssaultSmall1: 'Assault #2',
+        CarrierAssaultLarge0: "CAL",
         ConquestAssaultLarge0: 'Assault Large',
         ConquestAssaultSmall0: 'Assault Small',
         SquadRush0: 'Squad Rush',
