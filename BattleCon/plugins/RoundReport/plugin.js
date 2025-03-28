@@ -71,18 +71,37 @@ module.exports = class RoundReport extends BasePlugin {
             this.playerData[name] = this._createPlayerDataObject();
         }
 
-        if (!this.playerData[name].joinTime) {
-            this.playerData[name].joinTime = Date.now();
+        const player = this.playerData[name];
+        const now = Date.now();
+
+        if (!player.joinTime) {
+            player.joinTime = now;
         }
 
-        this.playerData[name].team = team;
+        if (player.leave) {
+            player.leave = false;
+            player.currentSessionStart = now;
+        }
+        else if (!player.currentSessionStart) {
+            player.currentSessionStart = now;
+        }
+
+        player.team = team;
     }
 
     async onLeaveHandler([name, info]) {
         if (!name || !this.playerData[name]) return;
 
-        this.playerData[name].leave = true;
-        this.playerData[name].leaveTime = Date.now();
+        const player = this.playerData[name];
+        const now = Date.now();
+
+        if (player.currentSessionStart) {
+            player.totalTimePlayed += (now - player.currentSessionStart);
+            player.currentSessionStart = null;
+        }
+
+        player.leave = true;
+        player.leaveTime = now;
     }
 
     async onRoundOverTeamScoresHandler([n, ...data]) {
@@ -98,6 +117,7 @@ module.exports = class RoundReport extends BasePlugin {
             this.statInterval = null;
 
             await this._updatePlayerStats();
+            this._finalizePlayerTimes();
 
             const { embed, fullReport } = await this.generateRoundReport();
             await this.sendDiscordReport(embed, fullReport);
@@ -126,6 +146,7 @@ module.exports = class RoundReport extends BasePlugin {
     async generateRoundReport() {
         const teams = {};
         const allPlayers = [];
+        const now = Date.now();
 
         for (const [name, data] of Object.entries(this.playerData)) {
             if (data.team === undefined || data.team === 0) continue;
@@ -134,12 +155,14 @@ module.exports = class RoundReport extends BasePlugin {
             const serverDeaths = parseInt(data.stats?.deaths) || 0;
             const score = parseInt(data.stats?.score) || 0;
 
-            let endTime = this.roundEndTime;
-            if (data.leave && data.leaveTime) {
-                endTime = data.leaveTime;
+            let totalTimePlayedMs = data.totalTimePlayed;
+
+            if (!data.leave && data.currentSessionStart) {
+                totalTimePlayedMs += (now - data.currentSessionStart);
             }
 
-            const timePlayed = ((endTime - (data.joinTime || this.roundStartTime)) / 60000);
+            const timePlayed = totalTimePlayedMs / 60000;
+
             let kpm = '0.00';
             if (timePlayed > 0) {
                 kpm = (serverKills / timePlayed).toFixed(2);
@@ -149,7 +172,6 @@ module.exports = class RoundReport extends BasePlugin {
                 ? (serverKills / serverDeaths).toFixed(2)
                 : serverKills.toFixed(2);
 
-            // using kills not from listplayers, because of assists counted as kills
             const hsPercent = data.kills > 0
                 ? `${((data.headshots / data.kills) * 100).toFixed(1)}%`
                 : '0.0%';
@@ -360,15 +382,16 @@ module.exports = class RoundReport extends BasePlugin {
 
     _createPlayerDataObject() {
         return {
-            weapons: {}, // object of weapons vehicles etc..
-            joinTime: null, // triggered on first spawn
-            kills: 0, // tracked in listPlayers stats
-            // deaths: 0, // tracked in listPlayers stats
-            headshots: 0, // general hs
-            team: undefined, // team ID
-            leave: false, // has player left?
-            leaveTime: null, // if left, at what time?
-            stats: null // store all kills, death here. Since revive can break deaths, kills by assist too
+            weapons: {},                // object of weapons vehicles etc..
+            joinTime: null,             // first join time
+            currentSessionStart: null,  // tracks the start of the current session
+            totalTimePlayed: 0,         // accumulates total time played across sessions
+            kills: 0,                   // tracked in listPlayers stats
+            headshots: 0,               // general hs
+            team: undefined,            // team ID
+            leave: false,               // has player left?
+            leaveTime: null,            // if left, at what time?
+            stats: null                 // store all kills, death here
         };
     }
 
@@ -440,5 +463,16 @@ module.exports = class RoundReport extends BasePlugin {
             factionMap.get(factions[2]),
             factionMap.get(factions[3]),
         ];
+    }
+
+    _finalizePlayerTimes() {
+        const now = Date.now();
+
+        for (const [name, data] of Object.entries(this.playerData)) {
+            if (!data.leave && data.currentSessionStart) {
+                data.totalTimePlayed += (now - data.currentSessionStart);
+                data.currentSessionStart = null;
+            }
+        }
     }
 }
