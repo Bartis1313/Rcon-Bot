@@ -14,24 +14,16 @@ module.exports = class RoundReport extends BasePlugin {
         this.onKillHandler = this.onKillHandler.bind(this);
         this.onSpawnHandler = this.onSpawnHandler.bind(this);
         this.onLeaveHandler = this.onLeaveHandler.bind(this);
-        this.onRoundStartHandler = this.onRoundStartHandler.bind(this);
+        //this.onRoundStartHandler = this.onRoundStartHandler.bind(this);
         this.onRoundOverTeamScoresHandler = this.onRoundOverTeamScoresHandler.bind(this);
 
         this.onEvent("player.onKill", this.onKillHandler);
         this.onEvent("player.onSpawn", this.onSpawnHandler);
         this.onEvent("player.onLeave", this.onLeaveHandler);
-        this.onEvent("server.onLevelLoaded", this.onRoundStartHandler);
+        //this.onEvent("server.onLevelLoaded", this.onRoundStartHandler);
         this.onEvent("server.onRoundOverTeamScores", this.onRoundOverTeamScoresHandler);
 
         // ininitally...
-        if (!this.statInterval) {
-            this.statInterval = setInterval(async () => { await this._updatePlayerStats(); }, 5000);
-        }
-    }
-
-    async onRoundStartHandler() {
-        this.roundStartTime = Date.now();
-
         if (!this.statInterval) {
             this.statInterval = setInterval(async () => { await this._updatePlayerStats(); }, 5000);
         }
@@ -66,6 +58,14 @@ module.exports = class RoundReport extends BasePlugin {
 
     async onSpawnHandler([name, team]) {
         if (!name) return;
+
+        if (!this.roundStartTime) {
+            this.roundStartTime = Date.now();
+        }
+
+        if (!this.statInterval) {
+            this.statInterval = setInterval(async () => { await this._updatePlayerStats(); }, 5000);
+        }
 
         if (!this.playerData[name]) {
             this.playerData[name] = this._createPlayerDataObject();
