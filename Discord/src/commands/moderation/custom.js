@@ -94,7 +94,7 @@ module.exports = class CustomCommand {
             params: args ? [args] : [],
         }
 
-        return Fetch.get(`${server}/getCommands`)
+        /*return Fetch.get(`${server}/getCommands`)
             .then(json => {
                 if (!json.data.includes(command)) {
                     interaction.editReply(`${command} does not exist as command.`);
@@ -102,8 +102,9 @@ module.exports = class CustomCommand {
                 }
             })
             .then(() => {
+                */
                 return Fetch.post(`${server}/custom`, parameters)
-            })
+            //})
             .then(json => {
                 interaction.editReply({ embeds: [this.buildEmbed(interaction, parameters, json)] });
                 return true;
