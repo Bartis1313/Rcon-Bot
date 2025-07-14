@@ -55,7 +55,7 @@ module.exports = class LinkHwid {
 
     mergeNicknames(ffNicknames, zloNicknames) {
         const nicknameMap = new Map();
-
+        
         ffNicknames.forEach(entry => {
             const key = entry.name.toLowerCase();
             if (!nicknameMap.has(key)) {
@@ -98,78 +98,122 @@ module.exports = class LinkHwid {
 
     async handleAutocomplete(interaction) {
         try {
-            const apiClient = await Fetch.withApiKey(this.apiKey);
-            const db = interaction.options.getString("db");
-
-            let allNames = [];
-
-            if (db === "BOTH") {
-                const [responseFF, responseZLO] = await Promise.all([
-                    apiClient.get(`${this.apiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] })),
-                    apiClient.get(`${this.zloApiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] }))
-                ]);
-
-                if (!responseFF.success && !responseZLO.success) {
-                    await interaction.respond([]);
-                    return;
-                }
-
-                const ffNicknames = responseFF.success ? this.processNicknames(responseFF.nicknames, 'FF') : [];
-                const zloNicknames = responseZLO.success ? this.processNicknames(responseZLO.nicknames, 'ZLO') : [];
-
-                const mergedNicknames = this.mergeNicknames(ffNicknames, zloNicknames);
-                allNames = mergedNicknames.map(entry => entry.name);
-
-            } else if (db === "ZLO") {
-                const responseZLO = await apiClient.get(`${this.zloApiUrl}/api/nicknames`).catch(() => ({ success: false }));
-
-                if (!responseZLO.success) {
-                    await interaction.respond([]);
-                    return;
-                }
-
-                const processedNicknames = this.processNicknames(responseZLO.nicknames, 'ZLO');
-                allNames = processedNicknames.map(entry => entry.name);
-
-            } else if (db === "FF") {
-                const responseFF = await apiClient.get(`${this.apiUrl}/api/nicknames`).catch(() => ({ success: false }));
-
-                if (!responseFF.success) {
-                    await interaction.respond([]);
-                    return;
-                }
-
-                const processedNicknames = this.processNicknames(responseFF.nicknames, 'FF');
-                allNames = processedNicknames.map(entry => entry.name);
-            }
-
-            const focusedValue = interaction.options.getFocused().toLowerCase();
-
-            const matchedPlayer = Matching.getBestMatch(focusedValue, allNames, 25);
-            if (!matchedPlayer) {
-                await interaction.respond([]);
+            if (!interaction.isAutocomplete()) {
                 return;
             }
 
-            const type = matchedPlayer.type;
-            if (type === "far") {
-                await interaction.respond([]);
+            const apiClient = await Fetch.withApiKey(this.apiKey);
+            const db = interaction.options.getString("db");
+            const focusedValue = interaction.options.getFocused().toLowerCase();
+
+            // Early return if no focused value
+            if (!focusedValue) {
+                await this.safeRespond(interaction, []);
+                return;
+            }
+
+            let allNames = [];
+
+            const timeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 2000)
+            );
+
+            if (db === "BOTH") {
+                try {
+                    const [responseFF, responseZLO] = await Promise.race([
+                        Promise.all([
+                            apiClient.get(`${this.apiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] })),
+                            apiClient.get(`${this.zloApiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] }))
+                        ]),
+                        timeout
+                    ]);
+
+                    if (!responseFF.success && !responseZLO.success) {
+                        await this.safeRespond(interaction, []);
+                        return;
+                    }
+
+                    const ffNicknames = responseFF.success ? this.processNicknames(responseFF.nicknames, 'FF') : [];
+                    const zloNicknames = responseZLO.success ? this.processNicknames(responseZLO.nicknames, 'ZLO') : [];
+                    
+                    const mergedNicknames = this.mergeNicknames(ffNicknames, zloNicknames);
+                    allNames = mergedNicknames.map(entry => entry.name);
+                } catch (error) {
+                    console.warn('Timeout or error in BOTH API calls:', error.message);
+                    await this.safeRespond(interaction, []);
+                    return;
+                }
+
+            } else if (db === "ZLO") {
+                try {
+                    const responseZLO = await Promise.race([
+                        apiClient.get(`${this.zloApiUrl}/api/nicknames`),
+                        timeout
+                    ]);
+                    
+                    if (!responseZLO.success) {
+                        await this.safeRespond(interaction, []);
+                        return;
+                    }
+
+                    const processedNicknames = this.processNicknames(responseZLO.nicknames, 'ZLO');
+                    allNames = processedNicknames.map(entry => entry.name);
+                } catch (error) {
+                    console.warn('Timeout or error in ZLO API call:', error.message);
+                    await this.safeRespond(interaction, []);
+                    return;
+                }
+
+            } else if (db === "FF") {
+                try {
+                    const responseFF = await Promise.race([
+                        apiClient.get(`${this.apiUrl}/api/nicknames`),
+                        timeout
+                    ]);
+                    
+                    if (!responseFF.success) {
+                        await this.safeRespond(interaction, []);
+                        return;
+                    }
+
+                    const processedNicknames = this.processNicknames(responseFF.nicknames, 'FF');
+                    allNames = processedNicknames.map(entry => entry.name);
+                } catch (error) {
+                    console.warn('Timeout or error in FF API call:', error.message);
+                    await this.safeRespond(interaction, []);
+                    return;
+                }
+            }
+
+            const matchedPlayer = Matching.getBestMatch(focusedValue, allNames, 25);
+            if (!matchedPlayer || matchedPlayer.type === "far") {
+                await this.safeRespond(interaction, []);
                 return;
             }
 
             let players = [];
-            if (type === "good") {
+            if (matchedPlayer.type === "good") {
                 players = [matchedPlayer.name];
-            } else if (type === "multi") {
+            } else if (matchedPlayer.type === "multi") {
                 players = matchedPlayer.names;
             }
 
-            await interaction.respond(
+            await this.safeRespond(interaction, 
                 players.map(name => ({ name: name, value: name }))
             );
         } catch (error) {
             console.error('Error in autocomplete:', error);
-            await interaction.respond([]);
+            await this.safeRespond(interaction, []);
+        }
+    }
+
+    async safeRespond(interaction, choices) {
+        try {
+            if (!interaction.responded && !interaction.deferred) {
+                await interaction.respond(choices);
+            }
+        } catch (error) {
+            console.warn('Failed to respond to autocomplete interaction:', error.message);
         }
     }
 
@@ -180,7 +224,7 @@ module.exports = class LinkHwid {
 
         const nickname = interaction.options.getString('nickname');
         const db = interaction.options.getString('db');
-
+        
         if (!nickname) {
             await interaction.editReply("Nickname cannot be empty");
             return;
@@ -198,12 +242,12 @@ module.exports = class LinkHwid {
                     if (linkResult.success) {
                         const linkedAccounts = linkResult.linkedAccounts || [];
                         const playerHwids = linkResult.hwids || [];
-
+                        
                         linkedAccounts.forEach(account => {
                             account.source = 'FF';
                             account.sharedHwids.forEach(hwid => allHwids.add(hwid));
                         });
-
+                        
                         playerHwids.forEach(hwid => allHwids.add(hwid));
                         allLinkedAccounts = allLinkedAccounts.concat(linkedAccounts);
                     }
@@ -218,12 +262,12 @@ module.exports = class LinkHwid {
                     if (linkResult.success) {
                         const linkedAccounts = linkResult.linkedAccounts || [];
                         const playerHwids = linkResult.hwids || [];
-
+                        
                         linkedAccounts.forEach(account => {
                             account.source = 'ZLO';
                             account.sharedHwids.forEach(hwid => allHwids.add(hwid));
                         });
-
+                        
                         playerHwids.forEach(hwid => allHwids.add(hwid));
                         allLinkedAccounts = allLinkedAccounts.concat(linkedAccounts);
                     }
@@ -238,14 +282,14 @@ module.exports = class LinkHwid {
             }
 
             const allUniqueHwids = Array.from(allHwids);
-
+            
             const embedHwid = new EmbedBuilder()
                 .setColor('Blue')
                 .setTimestamp()
                 .setAuthor({ name: `HWIDs for ${nickname}`, iconURL: interaction.user.displayAvatarURL() })
                 .setDescription(Helpers.truncateString(allUniqueHwids.join('\n'), DiscordLimits.maxDescriptionLength))
                 .setFooter({ text: `Total HWIDs: ${allUniqueHwids.length}` });
-
+            
             embeds.push(embedHwid);
 
             const accountsBySource = {
