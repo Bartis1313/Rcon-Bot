@@ -9,6 +9,7 @@ module.exports = class LinkHwid {
         this.description = 'Find accounts linked to a player by shared HWIDs';
         this.apiUrl = process.env.HWID_API_URL;
         this.apiKey = process.env.HWID_API_KEY;
+        this.zloApiUrl = process.env.ZLO_HWID_API_URL;
         this.globalCommand = true;
     }
 
@@ -17,6 +18,16 @@ module.exports = class LinkHwid {
             .setName(this.name)
             .setDescription(this.description)
             .addStringOption(option =>
+                option.setName('db')
+                    .setDescription('Select database')
+                    .setRequired(true)
+                    .addChoices(
+                        { name: "BOTH", value: "BOTH" },
+                        { name: "FF", value: "FF" },
+                        { name: "ZLO", value: "ZLO" }
+                    )
+            )
+            .addStringOption(option =>
                 option.setName('nickname')
                     .setDescription('Player nickname to check')
                     .setRequired(true)
@@ -24,20 +35,117 @@ module.exports = class LinkHwid {
             );
     }
 
+    processNicknames(nicknames, dbType) {
+        if (dbType === 'ZLO') {
+            return nicknames.map(entry => ({
+                name: entry.name,
+                source: 'ZLO',
+                identifier: entry.userid,
+                lastUsed: entry.lastUsed
+            }));
+        } else {
+            return nicknames.map(entry => ({
+                name: entry.name,
+                source: 'FF',
+                identifier: entry.hwid_hash,
+                lastUsed: entry.lastUsed
+            }));
+        }
+    }
+
+    mergeNicknames(ffNicknames, zloNicknames) {
+        const nicknameMap = new Map();
+
+        ffNicknames.forEach(entry => {
+            const key = entry.name.toLowerCase();
+            if (!nicknameMap.has(key)) {
+                nicknameMap.set(key, {
+                    name: entry.name,
+                    sources: []
+                });
+            }
+            nicknameMap.get(key).sources.push({
+                source: 'FF',
+                identifier: entry.identifier,
+                lastUsed: entry.lastUsed
+            });
+        });
+
+        zloNicknames.forEach(entry => {
+            const key = entry.name.toLowerCase();
+            if (!nicknameMap.has(key)) {
+                nicknameMap.set(key, {
+                    name: entry.name,
+                    sources: []
+                });
+            }
+            nicknameMap.get(key).sources.push({
+                source: 'ZLO',
+                identifier: entry.identifier,
+                lastUsed: entry.lastUsed
+            });
+        });
+
+        return Array.from(nicknameMap.values()).map(entry => {
+            entry.sources.sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed));
+            return {
+                name: entry.name,
+                primarySource: entry.sources[0].source,
+                allSources: entry.sources
+            };
+        });
+    }
+
     async handleAutocomplete(interaction) {
         try {
             const apiClient = await Fetch.withApiKey(this.apiKey);
-            const response = await apiClient.get(`${this.apiUrl}/api/nicknames`);
+            const db = interaction.options.getString("db");
 
-            if (!response.success || !response.nicknames) {
-                await interaction.respond([]);
-                return;
+            let allNames = [];
+
+            if (db === "BOTH") {
+                const [responseFF, responseZLO] = await Promise.all([
+                    apiClient.get(`${this.apiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] })),
+                    apiClient.get(`${this.zloApiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] }))
+                ]);
+
+                if (!responseFF.success && !responseZLO.success) {
+                    await interaction.respond([]);
+                    return;
+                }
+
+                const ffNicknames = responseFF.success ? this.processNicknames(responseFF.nicknames, 'FF') : [];
+                const zloNicknames = responseZLO.success ? this.processNicknames(responseZLO.nicknames, 'ZLO') : [];
+
+                const mergedNicknames = this.mergeNicknames(ffNicknames, zloNicknames);
+                allNames = mergedNicknames.map(entry => entry.name);
+
+            } else if (db === "ZLO") {
+                const responseZLO = await apiClient.get(`${this.zloApiUrl}/api/nicknames`).catch(() => ({ success: false }));
+
+                if (!responseZLO.success) {
+                    await interaction.respond([]);
+                    return;
+                }
+
+                const processedNicknames = this.processNicknames(responseZLO.nicknames, 'ZLO');
+                allNames = processedNicknames.map(entry => entry.name);
+
+            } else if (db === "FF") {
+                const responseFF = await apiClient.get(`${this.apiUrl}/api/nicknames`).catch(() => ({ success: false }));
+
+                if (!responseFF.success) {
+                    await interaction.respond([]);
+                    return;
+                }
+
+                const processedNicknames = this.processNicknames(responseFF.nicknames, 'FF');
+                allNames = processedNicknames.map(entry => entry.name);
             }
 
-            const allNicknames = response.nicknames;
             const focusedValue = interaction.options.getFocused().toLowerCase();
 
-            const matchedPlayer = Matching.getBestMatch(focusedValue, allNicknames, 25);
+            const matchedPlayer = Matching.getBestMatch(focusedValue, allNames, 25);
             if (!matchedPlayer) {
                 await interaction.respond([]);
                 return;
@@ -52,8 +160,7 @@ module.exports = class LinkHwid {
             let players = [];
             if (type === "good") {
                 players = [matchedPlayer.name];
-            }
-            else if (type === "multi") {
+            } else if (type === "multi") {
                 players = matchedPlayer.names;
             }
 
@@ -70,63 +177,112 @@ module.exports = class LinkHwid {
         if (!await Helpers.checkRoles(interaction, this)) return;
 
         await interaction.deferReply();
-        
+
         const nickname = interaction.options.getString('nickname');
+        const db = interaction.options.getString('db');
+
         if (!nickname) {
             await interaction.editReply("Nickname cannot be empty");
             return;
         }
+
         try {
             const apiClient = await Fetch.withApiKey(this.apiKey);
-            const linkResult = await apiClient.get(`${this.apiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
-            if (!linkResult.success) {
-                await interaction.editReply(`Error: ${linkResult.message || 'Failed to find linked accounts'}`);
+            const embeds = [];
+            let allLinkedAccounts = [];
+            let allHwids = new Set();
+
+            if (db === "BOTH" || db === "FF") {
+                try {
+                    const linkResult = await apiClient.get(`${this.apiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
+                    if (linkResult.success) {
+                        const linkedAccounts = linkResult.linkedAccounts || [];
+                        const playerHwids = linkResult.hwids || [];
+
+                        linkedAccounts.forEach(account => {
+                            account.source = 'FF';
+                            account.sharedHwids.forEach(hwid => allHwids.add(hwid));
+                        });
+
+                        playerHwids.forEach(hwid => allHwids.add(hwid));
+                        allLinkedAccounts = allLinkedAccounts.concat(linkedAccounts);
+                    }
+                } catch (error) {
+                    console.error('Error fetching FF data:', error);
+                }
+            }
+
+            if (db === "BOTH" || db === "ZLO") {
+                try {
+                    const linkResult = await apiClient.get(`${this.zloApiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
+                    if (linkResult.success) {
+                        const linkedAccounts = linkResult.linkedAccounts || [];
+                        const playerHwids = linkResult.hwids || [];
+
+                        linkedAccounts.forEach(account => {
+                            account.source = 'ZLO';
+                            account.sharedHwids.forEach(hwid => allHwids.add(hwid));
+                        });
+
+                        playerHwids.forEach(hwid => allHwids.add(hwid));
+                        allLinkedAccounts = allLinkedAccounts.concat(linkedAccounts);
+                    }
+                } catch (error) {
+                    console.error('Error fetching ZLO data:', error);
+                }
+            }
+
+            if (allLinkedAccounts.length === 0) {
+                await interaction.editReply(`No linked accounts found for ${nickname}`);
                 return;
             }
-            const embeds = [];
-            const linkedAccounts = linkResult.linkedAccounts || [];
-            const playerHwids = linkResult.hwids || [];
-            const uniqueHwids = new Set();
-            playerHwids.forEach(hwid => uniqueHwids.add(hwid));
-            linkedAccounts.forEach(account => {
-                account.sharedHwids.forEach(hwid => uniqueHwids.add(hwid));
-            });
-            const allUniqueHwids = Array.from(uniqueHwids);
+
+            const allUniqueHwids = Array.from(allHwids);
+
             const embedHwid = new EmbedBuilder()
                 .setColor('Blue')
                 .setTimestamp()
-                .setAuthor({ name: `Linked accounts for ${nickname}`, iconURL: interaction.user.displayAvatarURL() })
+                .setAuthor({ name: `HWIDs for ${nickname}`, iconURL: interaction.user.displayAvatarURL() })
                 .setDescription(Helpers.truncateString(allUniqueHwids.join('\n'), DiscordLimits.maxDescriptionLength))
+                .setFooter({ text: `Total HWIDs: ${allUniqueHwids.length}` });
+
             embeds.push(embedHwid);
-            
-            // Create multiple embeds for linked accounts, each with no more than 25 fields
-            const FIELDS_PER_EMBED = 25; // Discord's limit
-            for (let i = 0; i < linkedAccounts.length; i += FIELDS_PER_EMBED) {
-                const accountsChunk = linkedAccounts.slice(i, i + FIELDS_PER_EMBED);
-                const embedChunk = new EmbedBuilder()
-                    .setColor('Green')
-                    .setTimestamp()
-                    .setAuthor({ 
-                        name: i === 0 
-                            ? `Linked accounts for ${nickname}` 
-                            : `Linked accounts for ${nickname} (Continued ${Math.ceil((i+1)/FIELDS_PER_EMBED)})`, 
-                        iconURL: interaction.user.displayAvatarURL() 
-                    });
-                
-                for (const acc of accountsChunk) {
-                    embedChunk.addFields({ 
-                        name: acc.name, 
-                        value: `${acc.sharedHwids.length.toString()} hwid`, 
-                        inline: true 
-                    });
+
+            const accountsBySource = {
+                FF: allLinkedAccounts.filter(acc => acc.source === 'FF'),
+                ZLO: allLinkedAccounts.filter(acc => acc.source === 'ZLO')
+            };
+
+            Object.entries(accountsBySource).forEach(([source, accounts]) => {
+                if (accounts.length === 0) return;
+
+                const FIELDS_PER_EMBED = 25;
+                for (let i = 0; i < accounts.length; i += FIELDS_PER_EMBED) {
+                    const accountsChunk = accounts.slice(i, i + FIELDS_PER_EMBED);
+                    const embedChunk = new EmbedBuilder()
+                        .setColor(source === 'FF' ? 'Green' : 'Orange')
+                        .setTimestamp()
+                        .setAuthor({
+                            name: i === 0
+                                ? `${source} Linked accounts for ${nickname}`
+                                : `${source} Linked accounts for ${nickname} (Continued ${Math.ceil((i + 1) / FIELDS_PER_EMBED)})`,
+                            iconURL: interaction.user.displayAvatarURL()
+                        });
+
+                    for (const acc of accountsChunk) {
+                        embedChunk.addFields({
+                            name: acc.name,
+                            value: `${acc.sharedHwids.length} shared HWID${acc.sharedHwids.length !== 1 ? 's' : ''}`,
+                            inline: true
+                        });
+                    }
+
+                    embeds.push(embedChunk);
                 }
-                
-                embeds.push(embedChunk);
-            }
-            
+            });
+
             await Helpers.sendInChunks(interaction, embeds);
-        }
-        catch (err) {
+        } catch (err) {
             console.error('Error finding linked accounts:', err);
             await interaction.editReply(`Error finding linked accounts: ${err.message}`);
         }
