@@ -11,6 +11,11 @@ module.exports = class LinkHwid {
         this.apiKey = process.env.HWID_API_KEY;
         this.zloApiUrl = process.env.ZLO_HWID_API_URL;
         this.globalCommand = true;
+        
+        // or optimize api db...
+        this.nicknameCache = new Map();
+        this.cacheExpiry = 2 * 60 * 1000; // 2 minutes
+        this.cacheUpdatePromises = new Map();
     }
 
     async init() {
@@ -35,6 +40,8 @@ module.exports = class LinkHwid {
             );
     }
 
+    // ff - I forgot about that nicknames can be copied, ol to new new to old
+    // zlo - fixed, uses nativeData in OnlineId ServerPlayer::OnlineId
     processNicknames(nicknames, dbType) {
         if (dbType === 'ZLO') {
             return nicknames.map(entry => ({
@@ -96,17 +103,73 @@ module.exports = class LinkHwid {
         });
     }
 
+    async getCachedNicknames(source) {
+        const cacheKey = `${source}_nicknames`;
+        const cached = this.nicknameCache.get(cacheKey);
+        
+        if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
+            return cached.data;
+        }
+        
+        return null;
+    }
+    
+    setCachedNicknames(source, data) {
+        const cacheKey = `${source}_nicknames`;
+        this.nicknameCache.set(cacheKey, {
+            data: data,
+            timestamp: Date.now()
+        });
+    }
+    
+    async fetchNicknamesWithCache(source, url) {
+        const cached = await this.getCachedNicknames(source);
+        if (cached) {
+            return cached;
+        }
+        
+        const cacheKey = `${source}_nicknames`;
+        if (this.cacheUpdatePromises.has(cacheKey)) {
+            return await this.cacheUpdatePromises.get(cacheKey);
+        }
+        
+        const fetchPromise = this.fetchAndCacheNicknames(source, url);
+        this.cacheUpdatePromises.set(cacheKey, fetchPromise);
+        
+        try {
+            const result = await fetchPromise;
+            return result;
+        } finally {
+            this.cacheUpdatePromises.delete(cacheKey);
+        }
+    }
+    
+    async fetchAndCacheNicknames(source, url) {
+        try {
+            const apiClient = await Fetch.withApiKey(this.apiKey);
+            const response = await apiClient.get(url);
+            
+            if (response.success) {
+                this.setCachedNicknames(source, response);
+                return response;
+            } else {
+                return { success: false, nicknames: [] };
+            }
+        } catch (error) {
+            console.warn(`Error fetching ${source} nicknames:`, error.message);
+            return { success: false, nicknames: [] };
+        }
+    }
+
     async handleAutocomplete(interaction) {
         try {
             if (!interaction.isAutocomplete()) {
                 return;
             }
 
-            const apiClient = await Fetch.withApiKey(this.apiKey);
             const db = interaction.options.getString("db");
             const focusedValue = interaction.options.getFocused().toLowerCase();
 
-            // Early return if no focused value
             if (!focusedValue) {
                 await this.safeRespond(interaction, []);
                 return;
@@ -114,6 +177,7 @@ module.exports = class LinkHwid {
 
             let allNames = [];
 
+            // cuz it's heavy, let manual handle instead of dc error
             const timeout = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Timeout')), 2000)
             );
@@ -122,8 +186,8 @@ module.exports = class LinkHwid {
                 try {
                     const [responseFF, responseZLO] = await Promise.race([
                         Promise.all([
-                            apiClient.get(`${this.apiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] })),
-                            apiClient.get(`${this.zloApiUrl}/api/nicknames`).catch(() => ({ success: false, nicknames: [] }))
+                            this.fetchNicknamesWithCache('FF', `${this.apiUrl}/api/nicknames`),
+                            this.fetchNicknamesWithCache('ZLO', `${this.zloApiUrl}/api/nicknames`)
                         ]),
                         timeout
                     ]);
@@ -147,7 +211,7 @@ module.exports = class LinkHwid {
             } else if (db === "ZLO") {
                 try {
                     const responseZLO = await Promise.race([
-                        apiClient.get(`${this.zloApiUrl}/api/nicknames`),
+                        this.fetchNicknamesWithCache('ZLO', `${this.zloApiUrl}/api/nicknames`),
                         timeout
                     ]);
                     
@@ -167,7 +231,7 @@ module.exports = class LinkHwid {
             } else if (db === "FF") {
                 try {
                     const responseFF = await Promise.race([
-                        apiClient.get(`${this.apiUrl}/api/nicknames`),
+                        this.fetchNicknamesWithCache('FF', `${this.apiUrl}/api/nicknames`),
                         timeout
                     ]);
                     
@@ -259,17 +323,24 @@ module.exports = class LinkHwid {
             if (db === "BOTH" || db === "ZLO") {
                 try {
                     const linkResult = await apiClient.get(`${this.zloApiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
-                    if (linkResult.success) {
-                        const linkedAccounts = linkResult.linkedAccounts || [];
-                        const playerHwids = linkResult.hwids || [];
+                    if (linkResult.success && linkResult.data) {
+                        const linkedPlayers = linkResult.data.linkedPlayers || [];
                         
-                        linkedAccounts.forEach(account => {
-                            account.source = 'ZLO';
+                        const convertedAccounts = linkedPlayers.map(player => ({
+                            name: player.nicknames.join(', '),
+                            source: 'ZLO',
+                            userid: player.userid,
+                            sharedHwids: player.hwids,
+                            firstSeen: player.firstSeen,
+                            lastSeen: player.lastSeen,
+                            sessionCount: player.sessionCount
+                        }));
+                        
+                        convertedAccounts.forEach(account => {
                             account.sharedHwids.forEach(hwid => allHwids.add(hwid));
                         });
                         
-                        playerHwids.forEach(hwid => allHwids.add(hwid));
-                        allLinkedAccounts = allLinkedAccounts.concat(linkedAccounts);
+                        allLinkedAccounts = allLinkedAccounts.concat(convertedAccounts);
                     }
                 } catch (error) {
                     console.error('Error fetching ZLO data:', error);
@@ -314,9 +385,15 @@ module.exports = class LinkHwid {
                         });
 
                     for (const acc of accountsChunk) {
+                        const displayName = acc.source === 'ZLO' && acc.userid 
+                            ? `${acc.name} (ID: ${acc.userid})` 
+                            : acc.name;
+                            
                         embedChunk.addFields({
-                            name: acc.name,
-                            value: `${acc.sharedHwids.length} shared HWID${acc.sharedHwids.length !== 1 ? 's' : ''}`,
+                            name: displayName,
+                            value: `${acc.sharedHwids.length} shared HWID${acc.sharedHwids.length !== 1 ? 's' : ''}${
+                                acc.sessionCount ? ` • ${acc.sessionCount} session${acc.sessionCount !== 1 ? 's' : ''}` : ''
+                            }`,
                             inline: true
                         });
                     }
