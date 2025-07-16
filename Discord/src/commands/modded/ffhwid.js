@@ -11,7 +11,7 @@ module.exports = class LinkHwid {
         this.apiKey = process.env.HWID_API_KEY;
         this.zloApiUrl = process.env.ZLO_HWID_API_URL;
         this.globalCommand = true;
-        
+
         // or optimize api db...
         this.nicknameCache = new Map();
         this.cacheExpiry = 2 * 60 * 1000; // 2 minutes
@@ -62,7 +62,7 @@ module.exports = class LinkHwid {
 
     mergeNicknames(ffNicknames, zloNicknames) {
         const nicknameMap = new Map();
-        
+
         ffNicknames.forEach(entry => {
             const key = entry.name.toLowerCase();
             if (!nicknameMap.has(key)) {
@@ -106,14 +106,14 @@ module.exports = class LinkHwid {
     async getCachedNicknames(source) {
         const cacheKey = `${source}_nicknames`;
         const cached = this.nicknameCache.get(cacheKey);
-        
+
         if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
             return cached.data;
         }
-        
+
         return null;
     }
-    
+
     setCachedNicknames(source, data) {
         const cacheKey = `${source}_nicknames`;
         this.nicknameCache.set(cacheKey, {
@@ -121,21 +121,21 @@ module.exports = class LinkHwid {
             timestamp: Date.now()
         });
     }
-    
+
     async fetchNicknamesWithCache(source, url) {
         const cached = await this.getCachedNicknames(source);
         if (cached) {
             return cached;
         }
-        
+
         const cacheKey = `${source}_nicknames`;
         if (this.cacheUpdatePromises.has(cacheKey)) {
             return await this.cacheUpdatePromises.get(cacheKey);
         }
-        
+
         const fetchPromise = this.fetchAndCacheNicknames(source, url);
         this.cacheUpdatePromises.set(cacheKey, fetchPromise);
-        
+
         try {
             const result = await fetchPromise;
             return result;
@@ -143,12 +143,12 @@ module.exports = class LinkHwid {
             this.cacheUpdatePromises.delete(cacheKey);
         }
     }
-    
+
     async fetchAndCacheNicknames(source, url) {
         try {
             const apiClient = await Fetch.withApiKey(this.apiKey);
             const response = await apiClient.get(url);
-            
+
             if (response.success) {
                 this.setCachedNicknames(source, response);
                 return response;
@@ -178,7 +178,7 @@ module.exports = class LinkHwid {
             let allNames = [];
 
             // cuz it's heavy, let manual handle instead of dc error
-            const timeout = new Promise((_, reject) => 
+            const timeout = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Timeout')), 2000)
             );
 
@@ -199,7 +199,7 @@ module.exports = class LinkHwid {
 
                     const ffNicknames = responseFF.success ? this.processNicknames(responseFF.nicknames, 'FF') : [];
                     const zloNicknames = responseZLO.success ? this.processNicknames(responseZLO.nicknames, 'ZLO') : [];
-                    
+
                     const mergedNicknames = this.mergeNicknames(ffNicknames, zloNicknames);
                     allNames = mergedNicknames.map(entry => entry.name);
                 } catch (error) {
@@ -214,7 +214,7 @@ module.exports = class LinkHwid {
                         this.fetchNicknamesWithCache('ZLO', `${this.zloApiUrl}/api/nicknames`),
                         timeout
                     ]);
-                    
+
                     if (!responseZLO.success) {
                         await this.safeRespond(interaction, []);
                         return;
@@ -234,7 +234,7 @@ module.exports = class LinkHwid {
                         this.fetchNicknamesWithCache('FF', `${this.apiUrl}/api/nicknames`),
                         timeout
                     ]);
-                    
+
                     if (!responseFF.success) {
                         await this.safeRespond(interaction, []);
                         return;
@@ -262,7 +262,7 @@ module.exports = class LinkHwid {
                 players = matchedPlayer.names;
             }
 
-            await this.safeRespond(interaction, 
+            await this.safeRespond(interaction,
                 players.map(name => ({ name: name, value: name }))
             );
         } catch (error) {
@@ -288,7 +288,7 @@ module.exports = class LinkHwid {
 
         const nickname = interaction.options.getString('nickname');
         const db = interaction.options.getString('db');
-        
+
         if (!nickname) {
             await interaction.editReply("Nickname cannot be empty");
             return;
@@ -306,12 +306,12 @@ module.exports = class LinkHwid {
                     if (linkResult.success) {
                         const linkedAccounts = linkResult.linkedAccounts || [];
                         const playerHwids = linkResult.hwids || [];
-                        
+
                         linkedAccounts.forEach(account => {
                             account.source = 'FF';
                             account.sharedHwids.forEach(hwid => allHwids.add(hwid));
                         });
-                        
+
                         playerHwids.forEach(hwid => allHwids.add(hwid));
                         allLinkedAccounts = allLinkedAccounts.concat(linkedAccounts);
                     }
@@ -325,7 +325,7 @@ module.exports = class LinkHwid {
                     const linkResult = await apiClient.get(`${this.zloApiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
                     if (linkResult.success && linkResult.data) {
                         const linkedPlayers = linkResult.data.linkedPlayers || [];
-                        
+
                         const convertedAccounts = linkedPlayers.map(player => ({
                             name: player.nicknames.join(', '),
                             source: 'ZLO',
@@ -335,11 +335,11 @@ module.exports = class LinkHwid {
                             lastSeen: player.lastSeen,
                             sessionCount: player.sessionCount
                         }));
-                        
+
                         convertedAccounts.forEach(account => {
                             account.sharedHwids.forEach(hwid => allHwids.add(hwid));
                         });
-                        
+
                         allLinkedAccounts = allLinkedAccounts.concat(convertedAccounts);
                     }
                 } catch (error) {
@@ -353,14 +353,14 @@ module.exports = class LinkHwid {
             }
 
             const allUniqueHwids = Array.from(allHwids);
-            
+
             const embedHwid = new EmbedBuilder()
                 .setColor('Blue')
                 .setTimestamp()
                 .setAuthor({ name: `HWIDs for ${nickname}`, iconURL: interaction.user.displayAvatarURL() })
                 .setDescription(Helpers.truncateString(allUniqueHwids.join('\n'), DiscordLimits.maxDescriptionLength))
                 .setFooter({ text: `Total HWIDs: ${allUniqueHwids.length}` });
-            
+
             embeds.push(embedHwid);
 
             const accountsBySource = {
@@ -384,18 +384,30 @@ module.exports = class LinkHwid {
                             iconURL: interaction.user.displayAvatarURL()
                         });
 
+                    let zloHwidLines = [];
+
                     for (const acc of accountsChunk) {
-                        const displayName = acc.source === 'ZLO' && acc.userid 
-                            ? `${acc.name} (ID: ${acc.userid})` 
+                        const displayName = acc.source === 'ZLO' && acc.userid
+                            ? `${acc.name} (ID: ${acc.userid})`
                             : acc.name;
-                            
+
+                        const value = `${acc.sharedHwids.length} shared HWID${acc.sharedHwids.length !== 1 ? 's' : ''}${acc.sessionCount ? ` • ${acc.sessionCount} session${acc.sessionCount !== 1 ? 's' : ''}` : ''
+                            }`;
+
                         embedChunk.addFields({
                             name: displayName,
-                            value: `${acc.sharedHwids.length} shared HWID${acc.sharedHwids.length !== 1 ? 's' : ''}${
-                                acc.sessionCount ? ` • ${acc.sessionCount} session${acc.sessionCount !== 1 ? 's' : ''}` : ''
-                            }`,
+                            value,
                             inline: true
                         });
+
+                        if (acc.source === 'ZLO') {
+                            zloHwidLines.push(`**${displayName}**\n${acc.sharedHwids.join('\n')}`);
+                        }
+                    }
+
+                    if (source === 'ZLO' && zloHwidLines.length > 0) {
+                        const hwidText = Helpers.truncateString(zloHwidLines.join('\n\n'), DiscordLimits.maxDescriptionLength);
+                        embedChunk.setDescription(`**HWIDs:**\n\`\`\`\n${hwidText}\n\`\`\``);
                     }
 
                     embeds.push(embedChunk);
