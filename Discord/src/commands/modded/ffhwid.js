@@ -140,7 +140,7 @@ module.exports = class LinkHwid {
                 if (response.success) {
                     const processed = this.processNicknames(response.nicknames, source);
                     this.setCachedNicknamesData(source, processed);
-                    console.log(`Successfully refreshed ${source} nickname cache.`);
+                    //console.log(`Successfully refreshed ${source} nickname cache.`);
                     return { success: true, nicknames: processed };
                 } else {
                     console.warn(`Background fetch for ${source} failed:`, response.message);
