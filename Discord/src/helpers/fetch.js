@@ -3,7 +3,7 @@
 class Fetch {
     static async post(url, parameters, rawReturn = false, customHeaders = {}) {
         const controller = new AbortController();
-        const timeout = 5_000;
+        const timeout = 20_000;
         const timeoutId = setTimeout(() => controller.abort(), timeout);
         
         const headers = {
@@ -37,7 +37,7 @@ class Fetch {
         const queryString = new URLSearchParams(parameters).toString();
         const fullUrl = queryString ? `${url}?${queryString}` : url;
         const controller = new AbortController();
-        const timeout = 5_000;
+        const timeout = 20_000;
         const timeoutId = setTimeout(() => controller.abort(), timeout);
         
         const headers = {
