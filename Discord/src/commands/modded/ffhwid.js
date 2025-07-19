@@ -40,8 +40,8 @@ module.exports = class LinkHwid {
             );
 
         setInterval(async () => {
-            await this.fetchNicknamesWithCache('FF', `${this.apiUrl}/api/nicknames`);
-            await this.fetchNicknamesWithCache('ZLO', `${this.zloApiUrl}/api/nicknames`);
+            await this.queueBackgroundNicknameFetch('FF', `${this.apiUrl}/api/nicknames`);
+            await this.queueBackgroundNicknameFetch('ZLO', `${this.zloApiUrl}/api/nicknames`);
         }, 60_000);
     }
 
@@ -108,62 +108,59 @@ module.exports = class LinkHwid {
         });
     }
 
-    async getCachedNicknames(source) {
+    getCachedNicknamesData(source) {
         const cacheKey = `${source}_nicknames`;
         const cached = this.nicknameCache.get(cacheKey);
 
-        if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
-            return cached.data;
+        if (cached && cached.data.success && Date.now() - cached.timestamp < this.cacheExpiry) {
+            return cached.data.nicknames;
         }
-
         return null;
     }
 
-    setCachedNicknames(source, data) {
+    setCachedNicknamesData(source, data) {
         const cacheKey = `${source}_nicknames`;
         this.nicknameCache.set(cacheKey, {
-            data: data,
+            data: { success: true, nicknames: data },
             timestamp: Date.now()
         });
     }
 
-    async fetchNicknamesWithCache(source, url) {
-        const cached = await this.getCachedNicknames(source);
-        if (cached) {
-            return cached;
-        }
-
+    async fetchAndCacheNicknamesBackground(source, url) {
         const cacheKey = `${source}_nicknames`;
         if (this.cacheUpdatePromises.has(cacheKey)) {
-            return await this.cacheUpdatePromises.get(cacheKey);
+            return this.cacheUpdatePromises.get(cacheKey);
         }
 
-        const fetchPromise = this.fetchAndCacheNicknames(source, url);
+        const fetchPromise = (async () => {
+            try {
+                const apiClient = await Fetch.withApiKey(this.apiKey);
+                const response = await apiClient.get(url);
+
+                if (response.success) {
+                    const processed = this.processNicknames(response.nicknames, source);
+                    this.setCachedNicknamesData(source, processed);
+                    console.log(`Successfully refreshed ${source} nickname cache.`);
+                    return { success: true, nicknames: processed };
+                } else {
+                    console.warn(`Background fetch for ${source} failed:`, response.message);
+                    return { success: false, nicknames: [] };
+                }
+            } catch (error) {
+                console.warn(`Error during background fetch for ${source} nicknames:`, error.message);
+                return { success: false, nicknames: [] };
+            } finally {
+                this.cacheUpdatePromises.delete(cacheKey);
+            }
+        })();
+
         this.cacheUpdatePromises.set(cacheKey, fetchPromise);
-
-        try {
-            const result = await fetchPromise;
-            return result;
-        } finally {
-            this.cacheUpdatePromises.delete(cacheKey);
-        }
+        return fetchPromise;
     }
 
-    async fetchAndCacheNicknames(source, url) {
-        try {
-            const apiClient = await Fetch.withApiKey(this.apiKey);
-            const response = await apiClient.get(url);
-
-            if (response.success) {
-                this.setCachedNicknames(source, response);
-                return response;
-            } else {
-                return { success: false, nicknames: [] };
-            }
-        } catch (error) {
-            console.warn(`Error fetching ${source} nicknames:`, error.message);
-            return { success: false, nicknames: [] };
-        }
+    async queueBackgroundNicknameFetch(source) {
+        const url = source === 'FF' ? `${this.apiUrl}/api/nicknames` : `${this.zloApiUrl}/api/nicknames`;
+        await this.fetchAndCacheNicknamesBackground(source, url);
     }
 
     async handleAutocomplete(interaction) {
@@ -181,77 +178,30 @@ module.exports = class LinkHwid {
             }
 
             let allNames = [];
+            let ffNicknames = [];
+            let zloNicknames = [];
 
-            // cuz it's heavy, let manual handle instead of dc error
-            const timeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), 2000)
-            );
+            if (db === "BOTH" || db === "FF") {
+                ffNicknames = this.getCachedNicknamesData('FF') || [];
+            }
+
+            if (db === "BOTH" || db === "ZLO") {
+                zloNicknames = this.getCachedNicknamesData('ZLO') || [];
+            }
 
             if (db === "BOTH") {
-                try {
-                    const [responseFF, responseZLO] = await Promise.race([
-                        Promise.all([
-                            this.fetchNicknamesWithCache('FF', `${this.apiUrl}/api/nicknames`),
-                            this.fetchNicknamesWithCache('ZLO', `${this.zloApiUrl}/api/nicknames`)
-                        ]),
-                        timeout
-                    ]);
-
-                    if (!responseFF.success && !responseZLO.success) {
-                        await this.safeRespond(interaction, []);
-                        return;
-                    }
-
-                    const ffNicknames = responseFF.success ? this.processNicknames(responseFF.nicknames, 'FF') : [];
-                    const zloNicknames = responseZLO.success ? this.processNicknames(responseZLO.nicknames, 'ZLO') : [];
-
-                    const mergedNicknames = this.mergeNicknames(ffNicknames, zloNicknames);
-                    allNames = mergedNicknames.map(entry => entry.name);
-                } catch (error) {
-                    console.warn('Timeout or error in BOTH API calls:', error.message);
-                    await this.safeRespond(interaction, []);
-                    return;
-                }
-
-            } else if (db === "ZLO") {
-                try {
-                    const responseZLO = await Promise.race([
-                        this.fetchNicknamesWithCache('ZLO', `${this.zloApiUrl}/api/nicknames`),
-                        timeout
-                    ]);
-
-                    if (!responseZLO.success) {
-                        await this.safeRespond(interaction, []);
-                        return;
-                    }
-
-                    const processedNicknames = this.processNicknames(responseZLO.nicknames, 'ZLO');
-                    allNames = processedNicknames.map(entry => entry.name);
-                } catch (error) {
-                    console.warn('Timeout or error in ZLO API call:', error.message);
-                    await this.safeRespond(interaction, []);
-                    return;
-                }
-
+                const mergedNicknames = this.mergeNicknames(ffNicknames, zloNicknames);
+                allNames = mergedNicknames.map(entry => entry.name);
             } else if (db === "FF") {
-                try {
-                    const responseFF = await Promise.race([
-                        this.fetchNicknamesWithCache('FF', `${this.apiUrl}/api/nicknames`),
-                        timeout
-                    ]);
+                allNames = ffNicknames.map(entry => entry.name);
+            } else if (db === "ZLO") {
+                allNames = zloNicknames.map(entry => entry.name);
+            }
 
-                    if (!responseFF.success) {
-                        await this.safeRespond(interaction, []);
-                        return;
-                    }
-
-                    const processedNicknames = this.processNicknames(responseFF.nicknames, 'FF');
-                    allNames = processedNicknames.map(entry => entry.name);
-                } catch (error) {
-                    console.warn('Timeout or error in FF API call:', error.message);
-                    await this.safeRespond(interaction, []);
-                    return;
-                }
+            if (allNames.length === 0) {
+                // If cache is empty or stale, return no suggestions.
+                await this.safeRespond(interaction, []);
+                return;
             }
 
             const matchedPlayer = Matching.getBestMatch(focusedValue, allNames, 25);
@@ -321,7 +271,7 @@ module.exports = class LinkHwid {
                         allLinkedAccounts = allLinkedAccounts.concat(linkedAccounts);
                     }
                 } catch (error) {
-                    console.error('Error fetching FF data:', error);
+                    console.error('Error fetching FF data for /ffhw command:', error);
                 }
             }
 
@@ -348,7 +298,7 @@ module.exports = class LinkHwid {
                         allLinkedAccounts = allLinkedAccounts.concat(convertedAccounts);
                     }
                 } catch (error) {
-                    console.error('Error fetching ZLO data:', error);
+                    console.error('Error fetching ZLO data for /ffhw command:', error);
                 }
             }
 
