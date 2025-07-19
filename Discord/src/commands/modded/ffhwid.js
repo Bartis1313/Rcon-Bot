@@ -38,6 +38,11 @@ module.exports = class LinkHwid {
                     .setRequired(true)
                     .setAutocomplete(true)
             );
+
+        setInterval(async () => {
+            await this.fetchNicknamesWithCache('FF', `${this.apiUrl}/api/nicknames`);
+            await this.fetchNicknamesWithCache('ZLO', `${this.zloApiUrl}/api/nicknames`);
+        }, 60_000);
     }
 
     // ff - I forgot about that nicknames can be copied, ol to new new to old
