@@ -245,7 +245,7 @@ module.exports = class LinkHwid {
         const db = interaction.options.getString('db');
 
         if (!nickname) {
-            await interaction.editReply("Nickname cannot be empty");
+            await interaction.editReply("Nickname cannot be empty.");
             return;
         }
 
@@ -254,7 +254,6 @@ module.exports = class LinkHwid {
             const embeds = [];
             let allLinkedAccounts = [];
             let allHwids = new Set();
-
             if (db === "BOTH" || db === "FF") {
                 try {
                     const linkResult = await apiClient.get(`${this.apiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
@@ -279,9 +278,10 @@ module.exports = class LinkHwid {
                 try {
                     const linkResult = await apiClient.get(`${this.zloApiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
                     if (linkResult.success && linkResult.data) {
-                        const linkedPlayers = linkResult.data.linkedPlayers || [];
+                        const linkedAccountsFromZLO = linkResult.data.linkedAccounts || [];
+                        const playerHwidsFromZLO = linkResult.data.hwids || [];
 
-                        const convertedAccounts = linkedPlayers.map(player => ({
+                        const convertedAccounts = linkedAccountsFromZLO.map(player => ({
                             name: player.nicknames.join(', '),
                             source: 'ZLO',
                             userid: player.userid,
@@ -295,6 +295,7 @@ module.exports = class LinkHwid {
                             account.sharedHwids.forEach(hwid => allHwids.add(hwid));
                         });
 
+                        playerHwidsFromZLO.forEach(hwid => allHwids.add(hwid));
                         allLinkedAccounts = allLinkedAccounts.concat(convertedAccounts);
                     }
                 } catch (error) {
@@ -302,29 +303,29 @@ module.exports = class LinkHwid {
                 }
             }
 
-            if (allLinkedAccounts.length === 0) {
-                await interaction.editReply(`No linked accounts found for ${nickname}`);
+            if (allLinkedAccounts.length === 0 && allHwids.size === 0) {
+                await interaction.editReply(`No linked accounts or HWIDs found for **${nickname}**.`);
                 return;
             }
 
             const allUniqueHwids = Array.from(allHwids);
-
-            const embedHwid = new EmbedBuilder()
-                .setColor('Blue')
-                .setTimestamp()
-                .setAuthor({ name: `HWIDs for ${nickname}`, iconURL: interaction.user.displayAvatarURL() })
-                .setDescription(Helpers.truncateString(allUniqueHwids.join('\n'), DiscordLimits.maxDescriptionLength))
-                .setFooter({ text: `Total HWIDs: ${allUniqueHwids.length}` });
-
-            embeds.push(embedHwid);
+            if (allUniqueHwids.length > 0) {
+                const embedHwid = new EmbedBuilder()
+                    .setColor('Blue')
+                    .setTimestamp()
+                    .setAuthor({ name: `HWIDs for ${nickname}`, iconURL: interaction.user.displayAvatarURL() })
+                    .setDescription(`\`\`\`\n${Helpers.truncateString(allUniqueHwids.join('\n'), DiscordLimits.maxDescriptionLength)}\n\`\`\``)
+                    .setFooter({ text: `Total HWIDs: ${allUniqueHwids.length}` });
+                embeds.push(embedHwid);
+            }
 
             const accountsBySource = {
                 FF: allLinkedAccounts.filter(acc => acc.source === 'FF'),
                 ZLO: allLinkedAccounts.filter(acc => acc.source === 'ZLO')
             };
 
-            Object.entries(accountsBySource).forEach(([source, accounts]) => {
-                if (accounts.length === 0) return;
+            for (const [source, accounts] of Object.entries(accountsBySource)) {
+                if (accounts.length === 0) continue;
 
                 const FIELDS_PER_EMBED = 25;
                 for (let i = 0; i < accounts.length; i += FIELDS_PER_EMBED) {
@@ -334,8 +335,8 @@ module.exports = class LinkHwid {
                         .setTimestamp()
                         .setAuthor({
                             name: i === 0
-                                ? `${source} Linked accounts for ${nickname}`
-                                : `${source} Linked accounts for ${nickname} (Continued ${Math.ceil((i + 1) / FIELDS_PER_EMBED)})`,
+                                ? `${source} Linked Accounts for ${nickname}`
+                                : `${source} Linked Accounts for ${nickname} (Continued ${Math.ceil((i + 1) / FIELDS_PER_EMBED)})`,
                             iconURL: interaction.user.displayAvatarURL()
                         });
 
@@ -346,8 +347,7 @@ module.exports = class LinkHwid {
                             ? `${acc.name} (ID: ${acc.userid})`
                             : acc.name;
 
-                        const value = `${acc.sharedHwids.length} shared HWID${acc.sharedHwids.length !== 1 ? 's' : ''}${acc.sessionCount ? ` • ${acc.sessionCount} session${acc.sessionCount !== 1 ? 's' : ''}` : ''
-                            }`;
+                        const value = `${acc.sharedHwids.length} shared HWID${acc.sharedHwids.length !== 1 ? 's' : ''}${acc.sessionCount ? ` • ${acc.sessionCount} session${acc.sessionCount !== 1 ? 's' : ''}` : ''}`;
 
                         embedChunk.addFields({
                             name: displayName,
@@ -355,24 +355,25 @@ module.exports = class LinkHwid {
                             inline: true
                         });
 
-                        if (acc.source === 'ZLO') {
+                        if (acc.source === 'ZLO' && acc.sharedHwids.length > 0) {
                             zloHwidLines.push(`**${displayName}**\n${acc.sharedHwids.join('\n')}`);
                         }
                     }
 
                     if (source === 'ZLO' && zloHwidLines.length > 0) {
                         const hwidText = Helpers.truncateString(zloHwidLines.join('\n\n'), DiscordLimits.maxDescriptionLength);
-                        embedChunk.setDescription(`**HWIDs:**\n\`\`\`\n${hwidText}\n\`\`\``);
+                        embedChunk.setDescription(`**Associated HWIDs:**\n\`\`\`\n${hwidText}\n\`\`\``);
                     }
 
                     embeds.push(embedChunk);
                 }
-            });
+            }
 
             await Helpers.sendInChunks(interaction, embeds);
+
         } catch (err) {
-            console.error('Error finding linked accounts:', err);
-            await interaction.editReply(`Error finding linked accounts: ${err.message}`);
+            console.error('Error in /ffhw command:', err);
+            await interaction.editReply(`An unexpected error occurred: ${err.message}`);
         }
     }
 };
