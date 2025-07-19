@@ -278,10 +278,9 @@ module.exports = class LinkHwid {
                 try {
                     const linkResult = await apiClient.get(`${this.zloApiUrl}/api/linked-players/${encodeURIComponent(nickname)}`);
                     if (linkResult.success && linkResult.data) {
-                        const linkedAccountsFromZLO = linkResult.data.linkedAccounts || [];
-                        const playerHwidsFromZLO = linkResult.data.hwids || [];
+                        const linkedPlayers = linkResult.data.linkedPlayers || [];
 
-                        const convertedAccounts = linkedAccountsFromZLO.map(player => ({
+                        const convertedAccounts = linkedPlayers.map(player => ({
                             name: player.nicknames.join(', '),
                             source: 'ZLO',
                             userid: player.userid,
@@ -295,7 +294,6 @@ module.exports = class LinkHwid {
                             account.sharedHwids.forEach(hwid => allHwids.add(hwid));
                         });
 
-                        playerHwidsFromZLO.forEach(hwid => allHwids.add(hwid));
                         allLinkedAccounts = allLinkedAccounts.concat(convertedAccounts);
                     }
                 } catch (error) {
@@ -355,7 +353,7 @@ module.exports = class LinkHwid {
                             inline: true
                         });
 
-                        if (acc.source === 'ZLO' && acc.sharedHwids.length > 0) {
+                        if (acc.source === 'ZLO') {
                             zloHwidLines.push(`**${displayName}**\n${acc.sharedHwids.join('\n')}`);
                         }
                     }
