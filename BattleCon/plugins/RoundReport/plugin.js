@@ -135,12 +135,12 @@ module.exports = class RoundReport extends BasePlugin {
 
         if (sortedWeapons.length === 0) return "N/A";
 
-        const best = `🔫 sortedWeapons[0]`;
+        const best = sortedWeapons[0];
         if (best.name === "Vehicle" && sortedWeapons.length > 1) {
             return `🚁 Vehicle(${best.kills})/${sortedWeapons[1].name}(${sortedWeapons[1].kills})`;
         }
 
-        return `${best.name} (${best.kills})`;
+        return `🔫 ${best.name} (${best.kills})`;
     }
 
     async generateRoundReport() {
