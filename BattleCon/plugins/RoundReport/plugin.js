@@ -135,9 +135,9 @@ module.exports = class RoundReport extends BasePlugin {
 
         if (sortedWeapons.length === 0) return "N/A";
 
-        const best = sortedWeapons[0];
+        const best = `🔫 sortedWeapons[0]`;
         if (best.name === "Vehicle" && sortedWeapons.length > 1) {
-            return `Vehicle(${best.kills})/${sortedWeapons[1].name}(${sortedWeapons[1].kills})`;
+            return `🚁 Vehicle(${best.kills})/${sortedWeapons[1].name}(${sortedWeapons[1].kills})`;
         }
 
         return `${best.name} (${best.kills})`;
@@ -203,25 +203,25 @@ module.exports = class RoundReport extends BasePlugin {
 
         const embedFields = [];
         embedFields.push({
-            name: "Round Duration",
+            name: "⏱️ Round Duration",
             value: this.formatTime(this.getRoundDuration()),
             inline: true
         });
 
         embedFields.push({
-            name: dataInfo.name,
+            name: `📍 ${dataInfo.name}`,
             value: `${dataInfo.MapName} | ${dataInfo.ModeName}`,
             inline: true
         });
 
         embedFields.push({
-            name: `Tickets`,
+            name: `🎯 Tickets`,
             value: `${this.scores.join(':')}`,
             inline: true
         });
 
         embedFields.push({
-            name: "Total Players",
+            name: "👥 Total Players (whole round)",
             value: `${allPlayers.length}`,
             inline: true
         });
@@ -230,10 +230,12 @@ module.exports = class RoundReport extends BasePlugin {
             sum + (parseInt(player.stats?.kills, 10) || 0), 0
         );
         embedFields.push({
-            name: "Total Kills",
+            name: "☠️ Total Kills",
             value: `${totalKills}`,
             inline: true
         });
+
+        const emotesTop10 = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
         const factions = await this._getFactions();
         for (const [team, players] of Object.entries(teams)) {
@@ -247,7 +249,7 @@ module.exports = class RoundReport extends BasePlugin {
             });
 
             topPlayers.forEach((player, index) => {
-                const fieldTitle = `#${index + 1}: ${player.name}${player.left ? ' †' : ''}`;
+                const fieldTitle = `${emotesTop10[index + 1]} ${index + 1}: ${player.name}${player.left ? ' †' : ''}`;
                 const fieldValue = [
                     `Score: **${player.score}**`,
                     `K/D: **${player.kd}** (${player.serverKills} / ${player.serverDeaths})`,
@@ -317,12 +319,20 @@ module.exports = class RoundReport extends BasePlugin {
             inline: false
         });
 
+        const version = this.getVersion();
+        const urlImage = version === 'BF4'
+            ? 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf4/map_images/195x79/'
+            : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/';
+
         const embed = {
             title: "Round Report Summary",
             color: 0x0099ff,
             fields: embedFields,
             footer: {
                 text: "See attached file for complete statistics"
+            },
+            image: {
+                url: urlImage
             },
             timestamp: new Date()
         };
@@ -473,6 +483,16 @@ module.exports = class RoundReport extends BasePlugin {
                 data.totalTimePlayed += (now - data.currentSessionStart);
                 data.currentSessionStart = null;
             }
+        }
+    }
+
+    async getVersion() {
+        try {
+            const msg = await this.exec("version");
+            return msg[0];
+        } catch (error) {
+            console.error('Error fetching version:', error);
+            return null;
         }
     }
 }
