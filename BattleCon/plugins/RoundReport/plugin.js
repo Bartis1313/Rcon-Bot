@@ -249,7 +249,7 @@ module.exports = class RoundReport extends BasePlugin {
             });
 
             topPlayers.forEach((player, index) => {
-                const fieldTitle = `${emotesTop10[index + 1]} ${index + 1}: ${player.name}${player.left ? ' †' : ''}`;
+                const fieldTitle = `${emotesTop10[index]} ${player.name}${player.left ? ' †' : ''}`;
                 const fieldValue = [
                     `Score: **${player.score}**`,
                     `K/D: **${player.kd}** (${player.serverKills} / ${player.serverDeaths})`,
