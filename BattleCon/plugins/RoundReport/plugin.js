@@ -319,7 +319,7 @@ module.exports = class RoundReport extends BasePlugin {
             inline: false
         });
 
-        const version = this.getVersion();
+        const version = await this.getVersion();
         const urlImage = version === 'BF4'
             ? 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf4/map_images/195x79/'
             : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/';
