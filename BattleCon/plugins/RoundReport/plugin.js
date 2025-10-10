@@ -326,8 +326,8 @@ module.exports = class RoundReport extends BasePlugin {
 
         const maps = await this.getMapList();
         const indexes = await this.getIndexes();
-        const rawMaps = maps[indexes.currentIdx];
-        const img = urlImage + rawMaps[0].toLowerCase() + '.jpg';
+        const rawMap = maps[indexes.currentIdx];
+        const img = urlImage + rawMap.toLowerCase() + '.jpg';
 
         const embed = {
             title: "Round Report Summary",
@@ -504,7 +504,8 @@ module.exports = class RoundReport extends BasePlugin {
     async getMapList() {
         try {
             const msg = await this.exec("mapList.list");
-            return msg.maps.map(map => map.slice(0, 2));
+            const mapNames = msg.slice(2).filter((_, i) => i % 3 === 0);
+            return mapNames;
         } catch(error) {
             console.error('Error fetching maplist: ', error);
         }
