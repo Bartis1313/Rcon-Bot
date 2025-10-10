@@ -324,6 +324,11 @@ module.exports = class RoundReport extends BasePlugin {
             ? 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf4/map_images/195x79/'
             : 'https://cdn.battlelog.com/bl-cdn/cdnprefix/3422397/public/base/bf3/map_images/146x79/';
 
+        const maps = await this.getMapList();
+        const indexes = await this.getIndexes();
+        const rawMaps = maps[indexes.currentIdx];
+        const img = urlImage + rawMaps[0].toLowerCase() + '.jpg';
+
         const embed = {
             title: "Round Report Summary",
             color: 0x0099ff,
@@ -332,7 +337,7 @@ module.exports = class RoundReport extends BasePlugin {
                 text: "See attached file for complete statistics"
             },
             image: {
-                url: urlImage
+                url: img
             },
             timestamp: new Date()
         };
@@ -493,6 +498,24 @@ module.exports = class RoundReport extends BasePlugin {
         } catch (error) {
             console.error('Error fetching version:', error);
             return null;
+        }
+    }
+
+    async getMapList() {
+        try {
+            const msg = await this.exec("mapList.list");
+            return msg.maps.map(map => map.slice(0, 2));
+        } catch(error) {
+            console.error('Error fetching maplist: ', error);
+        }
+    }
+
+    async getIndexes() {
+        try {
+            const msg = await this.exec("mapList.getMapIndices");
+            return { currentIdx: msg[0], nextIdx: msg[1] };
+        } catch(error) {
+            console.error('Error fetching indexes: ', error);
         }
     }
 }
